@@ -11,6 +11,8 @@ import torch
 from torch import nn
 
 from ..metrics import cosine, l2_norm, project_orthogonal
+from ..models import build_predictor, PredictorHandle, PostProcessor
+from ..models.registry import _resolve_model_config
 from ..schedules import alpha_value, lr_value
 from ..tasks.base import BaseTask, SplitData, TaskData
 from .mo_handler import (
@@ -97,9 +99,25 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
         continuation=False,
         allow_orthogonalization=False,
     ),
+    "saa": MethodSpec(
+        use_dec=False,
+        use_pred=True,
+        use_fair=False,
+        pred_weight_mode="fixed1",
+        continuation=False,
+        allow_orthogonalization=False,
+    ),
+    "wdro": MethodSpec(
+        use_dec=False,
+        use_pred=True,
+        use_fair=False,
+        pred_weight_mode="fixed1",
+        continuation=False,
+        allow_orthogonalization=False,
+    ),
 }
 
-PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "plg", "fplg")
+PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "plg", "fplg", "saa", "wdro")
 METHOD_SPECS: Dict[str, MethodSpec] = {name: BASE_METHOD_SPECS[name] for name in PUBLIC_METHODS}
 
 # Human-readable aliases → canonical abbreviation
@@ -109,11 +127,16 @@ METHOD_ALIASES: Dict[str, str] = {
     "fair_decision_focused": "fdfl",
     "pred_loss_guided": "plg",
     "fair_pred_loss_guided": "fplg",
+    "sample_average_approximation": "saa",
+    "wasserstein_dro": "wdro",
 }
 REVERSE_ALIASES: Dict[str, str] = {v: k for k, v in METHOD_ALIASES.items()}
 
 
 class _MLP2x64Softplus(nn.Module):
+    """Legacy architecture kept for backward compatibility only.
+    New code should use models.build_predictor({"arch": "mlp", ...}) instead.
+    """
     def __init__(self, input_dim: int, output_dim: int) -> None:
         super().__init__()
         self.net = nn.Sequential(
@@ -165,29 +188,74 @@ def _build_predictor(
     seed: int,
     device: torch.device,
     dtype: torch.dtype,
-) -> Tuple[nn.Module, str]:
-    fam = str(family).strip().lower()
-    if fam == "linear":
-        module: nn.Module = nn.Linear(input_dim, output_dim)
-        rng = np.random.default_rng(31_337 + seed * 17)
-        w_np = rng.normal(loc=0.0, scale=0.15, size=(input_dim + 1, output_dim))
-        with torch.no_grad():
-            module.weight.copy_(torch.as_tensor(w_np[:-1, :].T, dtype=dtype))
-            module.bias.copy_(torch.as_tensor(w_np[-1, :], dtype=dtype))
-    elif fam == "mlp_2x64_softplus":
-        torch.manual_seed(13_579 + seed * 101 + 1)
-        module = _MLP2x64Softplus(input_dim=input_dim, output_dim=output_dim)
+    train_cfg: Dict[str, Any] | None = None,
+) -> Tuple[nn.Module, str, PostProcessor]:
+    """Build predictor using the unified models package.
+
+    Returns (module, family_name, post_processor).
+    Supports both legacy 'predictor_family' strings and new 'model' config dicts.
+    """
+    if train_cfg is not None and "model" in train_cfg:
+        # New-style model config
+        model_cfg = _resolve_model_config(train_cfg)
     else:
-        raise ValueError(f"Unsupported core predictor family: {family}")
+        # Legacy: convert family string
+        model_cfg = _resolve_model_config({"predictor_family": family})
 
-    module.to(device=device, dtype=dtype)
-    return module, fam
+    # Determine init mode and seed
+    init_mode = model_cfg.get("init_mode", "default")
+    fam = str(family).strip().lower()
+
+    # For exact backward compat with legacy code, override seed/init
+    if fam == "linear" and init_mode == "default":
+        model_cfg["init_mode"] = "legacy_core"
+        build_seed = seed
+    elif fam == "mlp_2x64_softplus" and init_mode == "default":
+        build_seed = 13_579 + seed * 101 + 1
+    else:
+        build_seed = 13_579 + seed * 101 + 1
+
+    # Determine post-transform: medical tasks need softplus for non-MLP-softplus
+    post_transform = "none"
+    if fam == "mlp_2x64_softplus":
+        # Legacy MLP has softplus built-in, so no external post-processor needed
+        post_transform = "none"
+    elif fam == "linear":
+        # Linear models need external softplus for medical tasks
+        # (applied conditionally at call site based on task type)
+        post_transform = "none"  # caller decides
+
+    handle = build_predictor(
+        config=model_cfg,
+        input_dim=input_dim,
+        output_dim=output_dim,
+        seed=build_seed,
+        device=device,
+        dtype=dtype,
+        post_transform=post_transform,
+    )
+    return handle.module, handle.arch, handle.post_processor
 
 
-def _medical_pred_from_model_output(model_out: torch.Tensor, family: str) -> torch.Tensor:
+def _medical_pred_from_model_output(
+    model_out: torch.Tensor,
+    family: str,
+    post_processor: PostProcessor | None = None,
+) -> torch.Tensor:
+    """Apply positivity transform to model output for medical tasks.
+
+    For models that already output positive values (e.g. legacy mlp_2x64_softplus),
+    only adds eps. For others, applies softplus + eps.
+    """
+    if post_processor is not None and post_processor.transform != "none":
+        return post_processor(model_out)
+    # Legacy behavior
     if family == "linear":
         return torch.nn.functional.softplus(model_out) + 1e-6
-    return model_out + 1e-6
+    if family in ("mlp_2x64_softplus",):
+        return model_out + 1e-6
+    # New architectures: always apply softplus for medical tasks
+    return torch.nn.functional.softplus(model_out) + 1e-6
 
 
 def _eval_split(
@@ -197,11 +265,15 @@ def _eval_split(
     fairness_smoothing: float,
     device: torch.device,
     dtype: torch.dtype,
+    override_pred: np.ndarray | None = None,
 ) -> Dict[str, float]:
-    model.eval()
-    with torch.no_grad():
-        raw_pred = model(to_torch(split.x, device=device, dtype=dtype)).detach().cpu().numpy()
-    model.train()
+    if override_pred is not None:
+        raw_pred = override_pred
+    else:
+        model.eval()
+        with torch.no_grad():
+            raw_pred = model(to_torch(split.x, device=device, dtype=dtype)).detach().cpu().numpy()
+        model.train()
     out = task.compute(
         raw_pred=raw_pred,
         true=split.y,
@@ -232,12 +304,16 @@ def _eval_split_medical(
     device: torch.device,
     dtype: torch.dtype,
     family: str,
+    override_pred: np.ndarray | None = None,
+    post_processor: PostProcessor | None = None,
 ) -> Dict[str, float]:
+    if override_pred is not None:
+        return task.evaluate_split(split=split_name, pred=override_pred, fairness_smoothing=fairness_smoothing)
     split = task._splits[split_name]
     model.eval()
     with torch.no_grad():
         raw_out = model(to_torch(split.x, device=device, dtype=dtype)).reshape(-1)
-        pred = _medical_pred_from_model_output(raw_out, family=family).detach().cpu().numpy().reshape(-1)
+        pred = _medical_pred_from_model_output(raw_out, family=family, post_processor=post_processor).detach().cpu().numpy().reshape(-1)
     model.train()
     return task.evaluate_split(split=split_name, pred=pred, fairness_smoothing=fairness_smoothing)
 
@@ -413,6 +489,7 @@ def _train_single_stage(
     stage_idx: int,
     device: torch.device,
     dtype: torch.dtype,
+    post_processor: PostProcessor | None = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     rng = np.random.default_rng(seed * 10_000 + stage_idx * 113 + 7)
     steps = int(train_cfg["steps_per_lambda"])
@@ -500,6 +577,16 @@ def _train_single_stage(
     elif mo_method is not None:
         raise ValueError(f"Unknown mo_method: {mo_method}")
 
+    # --- SAA: model-free constant predictor (skip training) ---
+    saa_mean = 0.0
+    if method_name == "saa":
+        if isinstance(task, MedicalResourceAllocationTask):
+            train_split = task._splits["train"]
+            saa_mean = float(np.mean(train_split.y))
+        else:
+            saa_mean = float(np.mean(data.train.y))
+        steps = 0  # skip training loop entirely
+
     stage_start = perf_counter()
     for t in range(steps):
         do_log = bool(t % max(log_every, 1) == 0)
@@ -513,7 +600,7 @@ def _train_single_stage(
             batch = task.sample_batch("train", batch_size=batch_size, rng=rng)
             xb_t = to_torch(batch.x, device=device, dtype=dtype)
             raw_out_t = model(xb_t).reshape(-1)
-            pred_t = _medical_pred_from_model_output(raw_out_t, family=family)
+            pred_t = _medical_pred_from_model_output(raw_out_t, family=family, post_processor=post_processor)
             pred_np = pred_t.detach().cpu().numpy().reshape(-1)
             out = task.compute_batch(
                 raw_pred=pred_np,
@@ -566,6 +653,26 @@ def _train_single_stage(
             g_dec_pred = np.asarray(out["grad_dec"], dtype=float).reshape(pred_np.shape) if iter_spec.use_dec else np.zeros_like(pred_np)
         g_pred_pred = np.asarray(out["grad_pred"], dtype=float).reshape(pred_np.shape) if iter_spec.use_pred else np.zeros_like(pred_np)
         g_fair_pred = np.asarray(out["grad_fair"], dtype=float).reshape(pred_np.shape) if iter_spec.use_fair else np.zeros_like(pred_np)
+
+        # --- WDRO: variance-regularized prediction gradient ---
+        if method_name == "wdro":
+            dro_eps = float(train_cfg.get("dro_epsilon", 0.1))
+            if isinstance(task, MedicalResourceAllocationTask):
+                true_np = batch.y
+            else:
+                true_np = yb
+            # Per-sample MSE: average over output dims, keep batch dim
+            per_sample_loss = ((pred_np - true_np) ** 2).reshape(pred_np.shape[0], -1).mean(axis=-1)
+            mean_loss = per_sample_loss.mean()
+            std_loss = per_sample_loss.std()
+            if std_loss > 1e-12:
+                dro_weights = 1.0 + dro_eps * (per_sample_loss - mean_loss) / std_loss
+            else:
+                dro_weights = np.ones_like(per_sample_loss)
+            # Expand weights to broadcast with (batch, n_outputs) gradient shape
+            dro_weights = dro_weights.reshape(-1, *([1] * (g_pred_pred.ndim - 1)))
+            g_pred_pred = g_pred_pred * dro_weights
+            out["loss_pred"] = float(mean_loss + dro_eps * std_loss)
 
         alpha_t = _pred_weight(iter_spec.pred_weight_mode, t=t, alpha_schedule_cfg=train_cfg["alpha_schedule"])
         if not iter_spec.use_fair:
@@ -695,7 +802,7 @@ def _train_single_stage(
                 with torch.no_grad():
                     if isinstance(task, MedicalResourceAllocationTask):
                         new_raw_out = model(xb_t).reshape(-1)
-                        new_pred = _medical_pred_from_model_output(new_raw_out, family=family)
+                        new_pred = _medical_pred_from_model_output(new_raw_out, family=family, post_processor=post_processor)
                         new_pred_np = new_pred.detach().cpu().numpy().reshape(-1)
                         new_out = task.compute_batch(
                             raw_pred=new_pred_np,
@@ -789,6 +896,17 @@ def _train_single_stage(
 
     stage_wallclock = float(perf_counter() - stage_start)
 
+    # SAA: build constant-prediction arrays for evaluation
+    saa_override_val = None
+    saa_override_test = None
+    if method_name == "saa":
+        if isinstance(task, MedicalResourceAllocationTask):
+            saa_override_val = np.full(task._splits["val"].y.shape[0], saa_mean)
+            saa_override_test = np.full(task._splits["test"].y.shape[0], saa_mean)
+        else:
+            saa_override_val = np.full(data.val.y.shape, saa_mean)
+            saa_override_test = np.full(data.test.y.shape, saa_mean)
+
     if isinstance(task, MedicalResourceAllocationTask):
         val_metrics = _eval_split_medical(
             task=task,
@@ -798,6 +916,8 @@ def _train_single_stage(
             device=device,
             dtype=dtype,
             family=family,
+            override_pred=saa_override_val,
+            post_processor=post_processor,
         )
         test_metrics = _eval_split_medical(
             task=task,
@@ -807,6 +927,8 @@ def _train_single_stage(
             device=device,
             dtype=dtype,
             family=family,
+            override_pred=saa_override_test,
+            post_processor=post_processor,
         )
     else:
         val_metrics = _eval_split(
@@ -816,6 +938,7 @@ def _train_single_stage(
             fairness_smoothing=fairness_smoothing,
             device=device,
             dtype=dtype,
+            override_pred=saa_override_val,
         )
         test_metrics = _eval_split(
             task=task,
@@ -824,6 +947,7 @@ def _train_single_stage(
             fairness_smoothing=fairness_smoothing,
             device=device,
             dtype=dtype,
+            override_pred=saa_override_test,
         )
 
     grad_min = float(np.min(norm_combined_list)) if norm_combined_list else 0.0
@@ -891,13 +1015,14 @@ def _run_method_seed(
     family = str(train_cfg.get("predictor_family", "linear"))
     device = resolve_device_or_warn(str(train_cfg.get("device", "cuda")))
     dtype = torch.float64
-    model, family = _build_predictor(
+    model, family, post_processor = _build_predictor(
         family=family,
         input_dim=data.train.x.shape[1],
         output_dim=data.train.y.shape[1],
         seed=seed,
         device=device,
         dtype=dtype,
+        train_cfg=train_cfg,
     )
     initial_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
 
@@ -923,6 +1048,7 @@ def _run_method_seed(
             stage_idx=stage_idx,
             device=device,
             dtype=dtype,
+            post_processor=post_processor,
         )
         cumulative_wallclock += float(stage_row["stage_wallclock_sec"])
         stage_row["cumulative_wallclock_sec"] = cumulative_wallclock

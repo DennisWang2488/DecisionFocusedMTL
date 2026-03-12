@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -769,6 +769,38 @@ class MedicalResourceAllocationTask(BaseTask):
         replace = n < batch_size
         idx = rng.choice(n, size=batch_size, replace=replace)
         return MedicalSplit(x=s.x[idx], y=s.y[idx], cost=s.cost[idx], race=s.race[idx])
+
+    # ------------------------------------------------------------------
+    # Generic decision gradient interface
+    # ------------------------------------------------------------------
+
+    def solve_decision(self, pred: np.ndarray, **ctx: Any) -> np.ndarray:
+        pred_r = np.clip(np.asarray(pred, dtype=float).reshape(-1), 1e-6, None)
+        cost = ctx.get("cost", None)
+        race = ctx.get("race", None)
+        if cost is None or race is None:
+            raise ValueError("cost and race must be provided via ctx.")
+        cost = np.asarray(cost, dtype=float).reshape(-1)
+        race = np.asarray(race, dtype=int).reshape(-1)
+        if self.decision_mode == "group":
+            return self._solve_group(pred_r, cost, race, budget=self.budget, alpha=self.alpha_fair)
+        else:
+            return self._solve_alpha_fair(pred_r, cost, alpha=self.alpha_fair, budget=self.budget)
+
+    def evaluate_objective(self, decision: np.ndarray, true: np.ndarray, **ctx: Any) -> float:
+        true_r = np.asarray(true, dtype=float).reshape(-1)
+        decision = np.asarray(decision, dtype=float).reshape(-1)
+        race = ctx.get("race", None)
+        if self.decision_mode == "group":
+            if race is None:
+                raise ValueError("race must be provided via ctx for group decision_mode.")
+            race = np.asarray(race, dtype=int).reshape(-1)
+            return self._group_objective(decision, true_r, race, alpha=self.alpha_fair)
+        else:
+            return self._alpha_obj(true_r * decision, alpha=self.alpha_fair)
+
+    def supported_gradient_strategies(self) -> List[str]:
+        return ["analytic", "finite_diff"]
 
     # Legacy interface (unused for advanced medical run path)
     def compute(self, raw_pred, true, need_grads, fairness_smoothing: float = 1e-6):

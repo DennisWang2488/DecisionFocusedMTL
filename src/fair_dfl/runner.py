@@ -9,6 +9,7 @@ import pandas as pd
 
 from .algorithms.core_methods import METHOD_SPECS as CORE_METHOD_SPECS, METHOD_ALIASES, run_core_methods
 from .algorithms.advanced_methods import ADVANCED_METHODS, run_advanced_methods
+from .training import run_methods as _run_methods_unified, resolve_method_spec
 from .tasks import (
     MedicalResourceAllocationTask,
     PortfolioQPMultiConstraintTask,
@@ -38,6 +39,8 @@ PUBLIC_METHODS = [
     "ffo",
     "nce",
     "lancer",
+    "saa",
+    "wdro",
 ]
 
 
@@ -316,4 +319,48 @@ def run_experiment(
         stage_rows.extend(stg)
         iter_rows.extend(itr)
 
+    return pd.DataFrame(stage_rows), pd.DataFrame(iter_rows)
+
+
+def run_experiment_unified(
+    cfg: Dict[str, Any],
+    method_configs: Dict[str, Dict[str, Any]],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Run experiments using the unified training loop.
+
+    Unlike run_experiment(), this accepts the full method_configs dict
+    from configs.py (with inline use_dec/use_pred/use_fair flags) and
+    uses the unified training loop for ALL methods including FFO/NCE/LANCER.
+
+    Args:
+        cfg: Experiment config with "task" and "training" keys.
+        method_configs: Dict of {method_name: method_config} from ALL_METHOD_CONFIGS.
+
+    Returns:
+        (stage_results_df, iter_logs_df)
+    """
+    task, data = _build_task(cfg["task"])
+    train_cfg_raw = cfg.get("training", {})
+    train_cfg = dict(train_cfg_raw)
+    pareto_sweep_mode = bool(train_cfg.get("pareto_sweep_mode", train_cfg.get("frontier_mode", False)))
+    if pareto_sweep_mode:
+        lambdas = [float(v) for v in train_cfg.get("lambdas", [0.0])]
+        train_cfg["lambdas"] = lambdas if lambdas else [0.0]
+    else:
+        train_cfg["lambdas"] = [float(train_cfg.get("lambda_train", 0.0))]
+
+    subset_fraction = float(train_cfg.get("train_subset_fraction", 1.0))
+    subset_seed = int(cfg.get("task", {}).get("data_seed", 42))
+    data = _apply_subset_fraction(
+        task=task, data=data,
+        train_subset_fraction=subset_fraction,
+        subset_seed=subset_seed,
+    )
+
+    stage_rows, iter_rows = _run_methods_unified(
+        task=task,
+        data=data,
+        train_cfg=train_cfg,
+        method_configs=method_configs,
+    )
     return pd.DataFrame(stage_rows), pd.DataFrame(iter_rows)

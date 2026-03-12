@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Dict
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -183,6 +183,27 @@ class ResourceAllocationTask(BaseTask):
             "solver_calls": solver_calls,
             "decision_ms": decision_ms,
         }
+
+    # ------------------------------------------------------------------
+    # Generic decision gradient interface
+    # ------------------------------------------------------------------
+
+    def solve_decision(self, pred: np.ndarray, **ctx: Any) -> np.ndarray:
+        costs = ctx.get("costs", getattr(self, "_current_costs", None))
+        if costs is None:
+            raise ValueError("costs must be provided via ctx or bind_context().")
+        pred_2d = np.atleast_2d(pred)
+        pred_pos, _ = softplus_with_grad(pred_2d)
+        pred_pos = pred_pos + 1e-5
+        return self._solve_allocation_batch(pred_pos, costs)
+
+    def evaluate_objective(self, decision: np.ndarray, true: np.ndarray, **ctx: Any) -> float:
+        decision_2d = np.atleast_2d(decision)
+        true_2d = np.atleast_2d(true)
+        return float(np.mean(self._objective(decision_2d, true_2d)))
+
+    def supported_gradient_strategies(self) -> List[str]:
+        return ["analytic", "finite_diff"]
 
     def bind_context(self, groups: np.ndarray, costs: np.ndarray) -> None:
         self._current_groups = groups

@@ -11,7 +11,9 @@ import torch
 
 from ..advanced.lancer import LancerConfig, LancerTrainer
 from ..advanced.nce import NCESolutionPool
-from ..advanced.predictors import PredictorHandle, build_predictor, flatten_param_grads
+from ..models import PredictorHandle, build_predictor as _build_predictor_new
+from ..models.registry import _resolve_model_config
+from ..advanced.predictors import flatten_param_grads
 from ..metrics import cosine, l2_norm
 from ..schedules import alpha_value, lr_value
 from ..tasks.medical_resource_allocation import MedicalResourceAllocationTask
@@ -114,8 +116,8 @@ def _eval_split(
     fairness_smoothing: float,
 ) -> Dict[str, float]:
     split = task._splits[split_name]
-    pred_raw = predictor.predict_numpy(split.x).reshape(-1)
-    pred = np.log1p(np.exp(-np.abs(pred_raw))) + np.maximum(pred_raw, 0.0) + 1e-6
+    # predict_numpy applies post_processor (softplus + eps) automatically
+    pred = predictor.predict_numpy(split.x).reshape(-1)
     return task.evaluate_split(split_name, pred=pred, fairness_smoothing=fairness_smoothing)
 
 
@@ -140,14 +142,20 @@ def _run_single(
     grad_clip_norm = float(train_cfg.get("grad_clip_norm", 0.0))
     explode_threshold = float(train_cfg.get("explode_threshold", 1e9))
 
-    predictor = build_predictor(
-        family=predictor_family,
+    model_cfg = _resolve_model_config(train_cfg)
+    if "hidden_dim" not in model_cfg and "mlp_hidden_dim" in train_cfg:
+        model_cfg["hidden_dim"] = int(train_cfg["mlp_hidden_dim"])
+    if "n_layers" not in model_cfg and "mlp_layers" in train_cfg:
+        model_cfg["n_layers"] = int(train_cfg["mlp_layers"])
+    predictor = _build_predictor_new(
+        config=model_cfg,
         input_dim=task._splits["train"].x.shape[1],
         output_dim=1,
         seed=13_579 + int(seed) * 101 + (0 if predictor_family == "linear" else 1),
         device=device,
-        mlp_hidden_dim=int(train_cfg.get("mlp_hidden_dim", 64)),
-        mlp_layers=int(train_cfg.get("mlp_layers", 2)),
+        dtype=torch.float32,
+        post_transform="softplus",
+        post_eps=1e-6,
     )
     optimizer = torch.optim.Adam(predictor.parameters(), lr=lr0)
 
@@ -194,7 +202,7 @@ def _run_single(
             b = task.sample_batch("train", batch_size=batch_size, rng=rng)
             xb = _torch(b.x, device=device)
             raw_pred = predictor.module(xb).reshape(-1)
-            pred_pos = torch.nn.functional.softplus(raw_pred) + 1e-6
+            pred_pos = predictor.post_processor(raw_pred)
             pred_np = pred_pos.detach().cpu().numpy()
 
             out = task.compute_batch(

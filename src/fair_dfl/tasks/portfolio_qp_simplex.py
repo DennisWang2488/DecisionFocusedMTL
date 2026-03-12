@@ -9,7 +9,7 @@ provided; use finite-difference decision gradients in the trainer.
 
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -180,6 +180,33 @@ class PortfolioQPSimplexTask(BaseTask):
             "solver_calls": solver_calls,
             "decision_ms": decision_ms,
         }
+
+    # ------------------------------------------------------------------
+    # Generic decision gradient interface
+    # ------------------------------------------------------------------
+
+    def solve_decision(self, pred: np.ndarray, **ctx: Any) -> np.ndarray:
+        pred_2d = np.atleast_2d(pred)
+        batch = pred_2d.shape[0]
+        decisions = np.zeros_like(pred_2d)
+        for b in range(batch):
+            decisions[b] = self._solve_single(pred_2d[b])
+        return decisions
+
+    def evaluate_objective(self, decision: np.ndarray, true: np.ndarray, **ctx: Any) -> float:
+        if self._cvx_problem is None:
+            raise RuntimeError("CVXPY problem not initialized; call bind_context first.")
+        sigma = np.asarray(self._cvx_problem["sigma"], dtype=float)
+        decision_2d = np.atleast_2d(decision)
+        true_2d = np.atleast_2d(true)
+        batch = decision_2d.shape[0]
+        objs = np.zeros(batch, dtype=float)
+        for b in range(batch):
+            objs[b] = self._objective(decision_2d[b], true_2d[b], sigma, self.risk_aversion)
+        return float(np.mean(objs))
+
+    def supported_gradient_strategies(self) -> List[str]:
+        return ["finite_diff"]
 
     def bind_context(self, groups: np.ndarray, sigma: np.ndarray) -> None:
         self._current_groups = np.asarray(groups, dtype=int)
