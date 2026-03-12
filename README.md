@@ -22,6 +22,9 @@ python run_methods.py --all
 
 # Dry run — show plan without executing
 python run_methods.py --methods PLG FPLG --dry-run
+
+# Small-sample sanity check (n=1000, 3 fairness types, 3 alphas)
+./scripts/run_sample.sh --dry-run
 ```
 
 Results are saved as CSVs in `results/` by default.
@@ -34,12 +37,28 @@ colab_upload/
     run_methods.py              # CLI experiment runner
     analysis.py                 # Result analysis utilities
     plotting.py                 # Plot generation
-    data_processed.csv          # Medical resource allocation dataset
 
-    notebook_run.ipynb          # Run experiments from notebook
-    notebook_analysis.ipynb     # Analyze results
-    notebook_no_fairness.ipynb  # No-fairness variant experiments
-    medical_experiment_colab.ipynb  # Full medical experiment notebook
+    data/
+        data_processed.csv      # Medical resource allocation dataset (48,784 patients)
+        mosek.lic               # MOSEK solver license
+
+    notebooks/
+        run.ipynb               # Run experiments from notebook
+        analysis.ipynb          # Analyze results and generate plots
+        no_fairness.ipynb       # No-fairness variant experiments
+        archive/
+            medical_experiment_colab.ipynb  # Superseded monolith (kept for reference)
+
+    scripts/
+        run_sample.sh           # Small-sample sanity check (n=1000)
+
+    results/                    # All experiment outputs
+        stage_results_full.csv  # Per-lambda-stage metrics
+        iter_logs_full.csv      # Per-iteration diagnostics
+        *.png                   # Generated plots
+        no_fairness/            # No prediction fairness experiments
+        no_decision_fairness/   # No decision fairness experiments
+        sample/                 # Small-sample test results
 
     src/fair_dfl/
         runner.py               # Top-level experiment dispatch
@@ -62,8 +81,6 @@ colab_upload/
                 fold_opt.py     # FFO (solver unrolling)
                 nce.py          # Noise-contrastive estimation
                 lancer.py       # LANCER surrogate
-                cvxpylayers.py  # CvxpyLayers (placeholder)
-                torch_autograd.py  # PyTorch autograd (placeholder)
 
         training/               # Unified training loop
             loop.py             # train_single_stage(), run_method_seed(), run_methods()
@@ -79,11 +96,11 @@ colab_upload/
             portfolio_qp_multi_constraint.py
             pyepo_synthetic.py
 
-        algorithms/             # MOO handlers and gradient utilities
+        algorithms/             # MOO handlers, gradient utilities, and legacy trainers
             mo_handler.py       # WeightedSum, PCGrad, MGDA, CAGrad, FAMO, PLG variants
             torch_utils.py      # Gradient manipulation utilities
-            core_methods.py     # Legacy core training loop (backward compat)
-            advanced_methods.py # Legacy advanced training loop (backward compat)
+            core_methods.py     # Legacy core trainer (used by runner.py old path)
+            advanced_methods.py # Legacy advanced trainer (used by runner.py old path)
 
         advanced/               # FFO/NCE/LANCER implementation details
             ffolayer_local/     # FFO layer implementation
@@ -185,8 +202,9 @@ python run_methods.py [options]
 --methods NAME [NAME ...]   Methods to run (case-insensitive)
 --all                       Run all 23 methods
 --alphas FLOAT [FLOAT ...]  Alpha-fairness values (default: 0.5 2.0)
+--fairness-type TYPE        Prediction-side fairness metric: mad, gap, atkinson (default: mad)
 --n-sample INT              Number of patients, 0=all (default: 0)
---data-csv PATH             Path to data CSV
+--data-csv PATH             Path to data CSV (default: data/data_processed.csv)
 --results-dir DIR           Output directory (default: results/)
 --seeds INT [INT ...]       Override seeds
 --lambdas FLOAT [FLOAT ...] Override lambda values
@@ -204,7 +222,6 @@ python run_methods.py [options]
 
 ## Notebooks
 
-- **`notebook_run.ipynb`**: Run experiments interactively
-- **`notebook_analysis.ipynb`**: Load results and generate comparison plots
-- **`notebook_no_fairness.ipynb`**: No-fairness variant experiments
-- **`medical_experiment_colab.ipynb`**: Full medical resource allocation experiment for Google Colab
+- **`notebooks/run.ipynb`**: Run experiments interactively
+- **`notebooks/analysis.ipynb`**: Load results and generate comparison plots
+- **`notebooks/no_fairness.ipynb`**: No-fairness variant experiments

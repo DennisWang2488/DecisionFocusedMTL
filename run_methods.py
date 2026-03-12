@@ -52,15 +52,15 @@ from configs import (  # noqa: E402
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-DEFAULT_DATA_CSV = str(SCRIPT_DIR / "data_processed.csv")
+DEFAULT_DATA_CSV = str(SCRIPT_DIR / "data" / "data_processed.csv")
 DEFAULT_RESULTS_DIR = str(SCRIPT_DIR / "results")
 
 
 def run_single(alpha: float, method_name: str, method_spec: dict,
                base_train_cfg: dict, data_csv: str, n_sample: int,
-               batch_size: int, verbose: bool = True):
-    """Run a single (alpha, method) combination via the unified training loop."""
-    task_cfg = make_task_cfg(data_csv, n_sample, alpha)
+               batch_size: int, fairness_type: str = "mad", verbose: bool = True):
+    """Run a single (alpha, fairness_type, method) combination via the unified training loop."""
+    task_cfg = make_task_cfg(data_csv, n_sample, alpha, fairness_type=fairness_type)
     train_cfg = copy.deepcopy(base_train_cfg)
     train_cfg["batch_size"] = batch_size
 
@@ -74,8 +74,10 @@ def run_single(alpha: float, method_name: str, method_spec: dict,
     # Tag results
     stage_df["config_name"] = method_name
     stage_df["alpha_fair"] = alpha
+    stage_df["fairness_type"] = fairness_type
     iter_df["config_name"] = method_name
     iter_df["alpha_fair"] = alpha
+    iter_df["fairness_type"] = fairness_type
 
     if verbose:
         n_rows = len(stage_df)
@@ -180,6 +182,11 @@ def main():
         help="Override device (cuda/cpu).",
     )
     parser.add_argument(
+        "--fairness-type", type=str, default="mad",
+        choices=["mad", "gap", "atkinson"],
+        help="Prediction-side fairness metric (default: mad).",
+    )
+    parser.add_argument(
         "--list-methods", action="store_true",
         help="List all available methods and exit.",
     )
@@ -231,16 +238,17 @@ def main():
     # Dry run
     total_runs = len(args.alphas) * len(selected)
     print("=" * 60)
-    print(f"Methods:    {selected}")
-    print(f"Alphas:     {args.alphas}")
-    print(f"Lambdas:    {train_cfg['lambdas']}")
-    print(f"Seeds:      {train_cfg['seeds']}")
-    print(f"Steps:      {train_cfg['steps_per_lambda']}")
-    print(f"N-sample:   {args.n_sample} (0=all)")
-    print(f"Device:     {train_cfg['device']}")
-    print(f"Results:    {args.results_dir}")
-    print(f"Overwrite:  {args.overwrite}")
-    print(f"Total runs: {total_runs}")
+    print(f"Methods:        {selected}")
+    print(f"Alphas:         {args.alphas}")
+    print(f"Fairness type:  {args.fairness_type}")
+    print(f"Lambdas:        {train_cfg['lambdas']}")
+    print(f"Seeds:          {train_cfg['seeds']}")
+    print(f"Steps:          {train_cfg['steps_per_lambda']}")
+    print(f"N-sample:       {args.n_sample} (0=all)")
+    print(f"Device:         {train_cfg['device']}")
+    print(f"Results:        {args.results_dir}")
+    print(f"Overwrite:      {args.overwrite}")
+    print(f"Total runs:     {total_runs}")
     print("=" * 60)
 
     if args.dry_run:
@@ -249,7 +257,7 @@ def main():
             for name in selected:
                 spec = ALL_METHOD_CONFIGS[name]
                 desc = describe_method(name, spec)
-                print(f"  alpha={alpha}, method={name} ({desc})")
+                print(f"  alpha={alpha}, fairness={args.fairness_type}, method={name} ({desc})")
         return
 
     # Compute batch size
@@ -290,6 +298,7 @@ def main():
                     data_csv=args.data_csv,
                     n_sample=args.n_sample,
                     batch_size=batch_size,
+                    fairness_type=args.fairness_type,
                 )
                 new_stage_dfs.append(stage_df)
                 new_iter_dfs.append(iter_df)
@@ -304,8 +313,8 @@ def main():
 
     # Append and save
     if not new_stages.empty:
-        stage_dedup = ["config_name", "alpha_fair", "seed", "lambda"]
-        iter_dedup = ["config_name", "alpha_fair", "seed", "stage_idx", "iter"]
+        stage_dedup = ["config_name", "alpha_fair", "fairness_type", "seed", "lambda"]
+        iter_dedup = ["config_name", "alpha_fair", "fairness_type", "seed", "stage_idx", "iter"]
 
         # For stage results, check which dedup cols actually exist
         stage_dedup_valid = [c for c in stage_dedup if c in new_stages.columns]
@@ -314,7 +323,7 @@ def main():
         print(f"\nStage results saved: {stage_csv} ({len(combined_stage)} total rows)")
 
     if not new_iters.empty:
-        iter_dedup_valid = ["config_name", "alpha_fair", "seed", "stage_idx", "iter"]
+        iter_dedup_valid = ["config_name", "alpha_fair", "fairness_type", "seed", "stage_idx", "iter"]
         iter_dedup_valid = [c for c in iter_dedup_valid if c in new_iters.columns]
         combined_iter = append_and_save(existing_iter, new_iters, iter_csv,
                                         dedup_cols=iter_dedup_valid if iter_dedup_valid else None)

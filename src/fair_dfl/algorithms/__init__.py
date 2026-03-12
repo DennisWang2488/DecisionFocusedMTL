@@ -1,7 +1,14 @@
-"""Algorithm entry points for the 8 active methods.
+"""Algorithm components — gradient handlers, utilities, and legacy trainers.
 
-Core methods (`fpto`, `dfl`, `fdfl`, `plg`, `fplg`) run via `core_methods`,
-while advanced methods (`ffo`, `nce`, `lancer`) run via `advanced_methods`.
+Active modules (used by training/loop.py):
+  - mo_handler.py   — MOO gradient handlers (PCGrad, MGDA, CAGrad, FAMO, etc.)
+  - torch_utils.py  — gradient manipulation utilities
+
+Legacy trainer wrappers (used by runner.py's old code path):
+  - core_methods.py      — 5-method trainer (fpto, dfl, fdfl, plg, fplg)
+  - advanced_methods.py  — FFO/NCE/LANCER trainer
+
+The unified training pipeline in training/loop.py supersedes the legacy trainers.
 """
 
 from .core_methods import METHOD_SPECS, METHOD_ALIASES, REVERSE_ALIASES, run_core_methods

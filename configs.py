@@ -165,7 +165,8 @@ DEFAULT_TRAIN_CFG = {
 # ---------------------------------------------------------------------------
 # Task config builder
 # ---------------------------------------------------------------------------
-def make_task_cfg(data_csv: str, n_sample: int, alpha_fair: float) -> dict:
+def make_task_cfg(data_csv: str, n_sample: int, alpha_fair: float,
+                  fairness_type: str = "mad") -> dict:
     return {
         "name": "medical_resource_allocation",
         "data_csv": data_csv,
@@ -178,7 +179,7 @@ def make_task_cfg(data_csv: str, n_sample: int, alpha_fair: float) -> dict:
         "budget": -1,
         "budget_rho": 0.35,
         "decision_mode": "group",
-        "fairness_type": "mad",
+        "fairness_type": fairness_type,
     }
 
 
