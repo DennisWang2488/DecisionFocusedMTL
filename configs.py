@@ -135,7 +135,7 @@ def describe_method(name: str, spec: dict) -> str:
 # Default training config
 # ---------------------------------------------------------------------------
 DEFAULT_TRAIN_CFG = {
-    "lambdas": [0.0, 0.05, 0.2, 0.5],
+    "lambdas": [0.0, 0.5],
     "seeds": [11, 22, 33],
     "steps_per_lambda": 70,
     "batch_size": -1,
@@ -165,8 +165,13 @@ DEFAULT_TRAIN_CFG = {
 # ---------------------------------------------------------------------------
 # Task config builder
 # ---------------------------------------------------------------------------
-def make_task_cfg(data_csv: str, n_sample: int, alpha_fair: float,
-                  fairness_type: str = "mad") -> dict:
+def make_task_cfg(
+    data_csv: str,
+    n_sample: int,
+    alpha_fair: float,
+    fairness_type: str = "mad",
+    val_fraction: float = 0.2,
+) -> dict:
     return {
         "name": "medical_resource_allocation",
         "data_csv": data_csv,
@@ -174,7 +179,7 @@ def make_task_cfg(data_csv: str, n_sample: int, alpha_fair: float,
         "data_seed": 42,
         "split_seed": 2,
         "test_fraction": 0.5,
-        "val_fraction": 0.2,
+        "val_fraction": val_fraction,
         "alpha_fair": alpha_fair,
         "budget": -1,
         "budget_rho": 0.35,

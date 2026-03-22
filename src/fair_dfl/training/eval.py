@@ -66,6 +66,12 @@ def eval_split_medical(
     )
 
 
+_EMPTY_METRICS: Dict[str, float] = {
+    "regret": 0.0, "pred_mse": 0.0, "fairness": 0.0,
+    "solver_calls_eval": 0.0, "decision_ms_eval": 0.0,
+}
+
+
 def evaluate_model(
     task: BaseTask,
     predictor: PredictorHandle,
@@ -74,21 +80,31 @@ def evaluate_model(
     saa_override_val: np.ndarray | None = None,
     saa_override_test: np.ndarray | None = None,
 ) -> tuple[Dict[str, float], Dict[str, float]]:
-    """Evaluate on both val and test splits, dispatching to the correct evaluator."""
+    """Evaluate on both val and test splits, dispatching to the correct evaluator.
+
+    If the val split is empty (val_fraction=0.0), val_metrics returns zeros.
+    """
     if isinstance(task, MedicalResourceAllocationTask):
-        val_metrics = eval_split_medical(
-            task=task, predictor=predictor, split_name="val",
-            fairness_smoothing=fairness_smoothing, override_pred=saa_override_val,
-        )
+        val_split = task._splits.get("val")
+        if val_split is not None and val_split.x.shape[0] > 0:
+            val_metrics = eval_split_medical(
+                task=task, predictor=predictor, split_name="val",
+                fairness_smoothing=fairness_smoothing, override_pred=saa_override_val,
+            )
+        else:
+            val_metrics = dict(_EMPTY_METRICS)
         test_metrics = eval_split_medical(
             task=task, predictor=predictor, split_name="test",
             fairness_smoothing=fairness_smoothing, override_pred=saa_override_test,
         )
     else:
-        val_metrics = eval_split(
-            task=task, predictor=predictor, split=data.val,
-            fairness_smoothing=fairness_smoothing, override_pred=saa_override_val,
-        )
+        if data.val is not None and data.val.x.shape[0] > 0:
+            val_metrics = eval_split(
+                task=task, predictor=predictor, split=data.val,
+                fairness_smoothing=fairness_smoothing, override_pred=saa_override_val,
+            )
+        else:
+            val_metrics = dict(_EMPTY_METRICS)
         test_metrics = eval_split(
             task=task, predictor=predictor, split=data.test,
             fairness_smoothing=fairness_smoothing, override_pred=saa_override_test,

@@ -101,7 +101,10 @@ class MedicalResourceAllocationTask(BaseTask):
         n_test = min(max(n_test, 1), n - 2)
         n_remaining = n - n_test
         n_val = int(round(val_fraction * n_remaining))
-        n_val = min(max(n_val, 1), n_remaining - 1)
+        if val_fraction > 0.0:
+            n_val = min(max(n_val, 1), n_remaining - 1)
+        else:
+            n_val = 0
         test_idx = idx[:n_test]
         val_idx = idx[n_test : n_test + n_val]
         train_idx = idx[n_test + n_val :]
@@ -766,6 +769,8 @@ class MedicalResourceAllocationTask(BaseTask):
     def sample_batch(self, split: str, batch_size: int, rng: np.random.Generator) -> MedicalSplit:
         s = self._splits[split]
         n = s.x.shape[0]
+        if batch_size <= 0 or batch_size >= n:
+            return s
         replace = n < batch_size
         idx = rng.choice(n, size=batch_size, replace=replace)
         return MedicalSplit(x=s.x[idx], y=s.y[idx], cost=s.cost[idx], race=s.race[idx])
