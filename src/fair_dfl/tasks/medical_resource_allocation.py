@@ -111,13 +111,12 @@ class MedicalResourceAllocationTask(BaseTask):
         return train_idx, val_idx, test_idx
 
     def generate_data(self, seed: int) -> TaskData:
-        # Use the explicit seed parameter to override instance defaults when
-        # provided, so callers can control randomness through the BaseTask
-        # interface.  Fall back to self.data_seed / self.split_seed when the
-        # caller passes the same value (backward-compatible default).
+        # Use the explicit seed parameter to override data_seed so callers can
+        # control randomness through the BaseTask interface.  split_seed is
+        # intentionally left unchanged so that callers can vary data generation
+        # independently of the train/val/test split.
         if seed != self.data_seed:
             self.data_seed = seed
-            self.split_seed = seed
         path = self._resolve_data_csv()
         df = pd.read_csv(path)
         if self.n_sample > 0 and self.n_sample < len(df):
