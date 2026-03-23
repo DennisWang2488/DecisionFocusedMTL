@@ -46,6 +46,13 @@ register_predictor("ft_transformer", FTTransformer)
 
 _LEGACY_FAMILY_MAP: Dict[str, Dict[str, Any]] = {
     "linear": {"arch": "linear"},
+    "mlp_2x64_relu": {
+        "arch": "mlp",
+        "hidden_dim": 64,
+        "n_layers": 2,
+        "activation": "relu",
+    },
+    # Keep old name as alias for backward compatibility
     "mlp_2x64_softplus": {
         "arch": "mlp",
         "hidden_dim": 64,

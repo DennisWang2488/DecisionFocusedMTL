@@ -656,7 +656,6 @@ def train_single_stage(
         "decision_ms_train": decision_ms_total,
         "decision_ms_eval": val_metrics.get("decision_ms_eval", 0) + test_metrics.get("decision_ms_eval", 0),
         "nan_or_inf_steps": nan_or_inf_steps,
-        "nan_steps": nan_or_inf_steps,
         "exploding_steps": exploding_steps,
         "avg_grad_norm_combined": _safe_mean(norm_combined_list),
         "grad_norm_min": grad_min,
