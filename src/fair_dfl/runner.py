@@ -67,14 +67,14 @@ def _apply_subset_fraction(
 
     train_idx = choose_idx(data.train.x.shape[0])
     val_idx = choose_idx(data.val.x.shape[0])
-    test_idx = choose_idx(data.test.x.shape[0])
+    test_idx = np.arange(data.test.x.shape[0], dtype=int)
 
     train = SplitData(x=data.train.x[train_idx], y=data.train.y[train_idx])
     val = SplitData(x=data.val.x[val_idx], y=data.val.y[val_idx])
     test = SplitData(x=data.test.x[test_idx], y=data.test.y[test_idx])
 
     if isinstance(task, MedicalResourceAllocationTask):
-        for split_name, idx in [("train", train_idx), ("val", val_idx), ("test", test_idx)]:
+        for split_name, idx in [("train", train_idx), ("val", val_idx)]:
             med_split = task._splits[split_name]
             task._splits[split_name] = type(med_split)(
                 x=med_split.x[idx],

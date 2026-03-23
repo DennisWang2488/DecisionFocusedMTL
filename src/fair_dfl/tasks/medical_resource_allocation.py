@@ -771,8 +771,7 @@ class MedicalResourceAllocationTask(BaseTask):
         n = s.x.shape[0]
         if batch_size <= 0 or batch_size >= n:
             return s
-        replace = n < batch_size
-        idx = rng.choice(n, size=batch_size, replace=replace)
+        idx = rng.choice(n, size=batch_size, replace=False)
         return MedicalSplit(x=s.x[idx], y=s.y[idx], cost=s.cost[idx], race=s.race[idx])
 
     # ------------------------------------------------------------------

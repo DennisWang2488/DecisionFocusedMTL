@@ -4,6 +4,26 @@ codex resume 019ce170-90a1-76b1-9fb2-fb04219c1b36
 
 All notable changes made today in this repository.
 
+## 2026-03-23
+
+### Unreleased - Bug-fix pass on experiment semantics and reporting
+
+#### Fixed
+- No-fairness MOO variants now pass only their active objectives into the MOO handler, so `PCGrad-nf`, `MGDA-nf`, and `CAGrad-nf` run as true 2-objective methods instead of carrying a zero fairness objective through the optimizer.
+- `train_subset_fraction` no longer subsets the test split in the unified runner; test evaluation stays fixed across subset experiments.
+- Empty validation splits now record score columns as `NaN` rather than `0.0`, which preserves the distinction between "no validation split" and a genuine zero metric.
+- Normalized test-regret metrics are now written even when validation is absent.
+- Stage-level solver-call and decision-time totals now include work from iterations that were skipped due to NaN/Inf gradients.
+- `run_methods.py` append/dedup logic now tolerates older CSV schemas when new dedup keys such as `fairness_type` are present only in fresh runs.
+- Shared fairness losses for non-medical tasks now support `gap` and `atkinson` in addition to `mad` and `ge`.
+- `softplus_with_grad()` now uses a numerically stable sigmoid computation for large-magnitude logits.
+
+#### Changed
+- The default training config now skips redundant lambda sweeps for methods that do not use fairness unless a method explicitly opts back into the full lambda path.
+
+#### Cleaned Up
+- Removed dead replacement logic from medical-task mini-batch sampling.
+
 ## 2026-03-12
 
 ### Commit `7ecb6e7` - Add unified training and experiment tooling

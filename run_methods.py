@@ -113,14 +113,18 @@ def append_and_save(existing_df: pd.DataFrame, new_df: pd.DataFrame,
     else:
         combined = pd.concat([existing_df, new_df], ignore_index=True)
 
-    if dedup_cols and not combined.empty:
+    shared_dedup_cols = []
+    if dedup_cols:
+        shared_dedup_cols = [c for c in dedup_cols if c in new_df.columns and c in existing_df.columns]
+
+    if shared_dedup_cols and not combined.empty:
         # Remove old rows for (alpha, method, seed, lambda) combos present in new data
-        existing_keys = set(combined[dedup_cols].apply(tuple, axis=1))
-        new_keys = set(new_df[dedup_cols].apply(tuple, axis=1))
+        existing_keys = set(existing_df[shared_dedup_cols].apply(tuple, axis=1))
+        new_keys = set(new_df[shared_dedup_cols].apply(tuple, axis=1))
         overlap = existing_keys & new_keys
         if overlap and not existing_df.empty:
             # Keep only the NEW version of overlapping rows
-            mask = ~existing_df[dedup_cols].apply(tuple, axis=1).isin(new_keys)
+            mask = ~existing_df[shared_dedup_cols].apply(tuple, axis=1).isin(new_keys)
             combined = pd.concat([existing_df[mask], new_df], ignore_index=True)
 
     combined.to_csv(path, index=False)
