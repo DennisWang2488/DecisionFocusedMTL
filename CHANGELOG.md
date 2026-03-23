@@ -6,6 +6,12 @@ All notable changes made today in this repository.
 
 ## 2026-03-23
 
+### Result provenance metadata (Claude)
+
+#### Added
+- Every result row now includes: `run_id`, `timestamp_utc`, `git_commit`, `python_version`, `has_validation`.
+- This enables tracing results back to exact code versions and distinguishing validation-less runs.
+
 ### Additional bug fixes (Claude)
 
 #### Fixed

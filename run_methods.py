@@ -26,10 +26,15 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import os
+import platform
+import subprocess
 import sys
 import time
 import traceback
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -55,6 +60,33 @@ from configs import (  # noqa: E402
 DEFAULT_DATA_CSV = str(SCRIPT_DIR / "data" / "data_processed.csv")
 DEFAULT_RESULTS_DIR = str(SCRIPT_DIR / "results")
 
+# ---------------------------------------------------------------------------
+# Run metadata — attached to every result row for provenance tracking
+# ---------------------------------------------------------------------------
+_RUN_ID = str(uuid.uuid4())[:12]
+_TIMESTAMP_UTC = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _git_commit_hash() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(SCRIPT_DIR), stderr=subprocess.DEVNULL,
+        ).decode().strip()
+    except Exception:
+        return "unknown"
+
+
+def _run_metadata() -> dict:
+    """Return metadata dict to attach to every result row."""
+    return {
+        "run_id": _RUN_ID,
+        "timestamp_utc": _TIMESTAMP_UTC,
+        "git_commit": _git_commit_hash(),
+        "python_version": platform.python_version(),
+        "has_validation": True,  # overridden per-task if val_fraction=0
+    }
+
 
 def run_single(alpha: float, method_name: str, method_spec: dict,
                base_train_cfg: dict, data_csv: str, n_sample: int,
@@ -71,13 +103,15 @@ def run_single(alpha: float, method_name: str, method_spec: dict,
     stage_df, iter_df = run_experiment_unified(cfg, method_configs=method_configs)
     elapsed = time.time() - t0
 
-    # Tag results
-    stage_df["config_name"] = method_name
-    stage_df["alpha_fair"] = alpha
-    stage_df["fairness_type"] = fairness_type
-    iter_df["config_name"] = method_name
-    iter_df["alpha_fair"] = alpha
-    iter_df["fairness_type"] = fairness_type
+    # Tag results with experiment context and provenance metadata
+    meta = _run_metadata()
+    meta["has_validation"] = task_cfg.get("val_fraction", 0.2) > 0
+    for df in (stage_df, iter_df):
+        df["config_name"] = method_name
+        df["alpha_fair"] = alpha
+        df["fairness_type"] = fairness_type
+        for k, v in meta.items():
+            df[k] = v
 
     if verbose:
         n_rows = len(stage_df)
