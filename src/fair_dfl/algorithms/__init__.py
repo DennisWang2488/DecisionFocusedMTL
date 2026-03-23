@@ -11,8 +11,7 @@ Legacy trainer wrappers (used by runner.py's old code path):
 The unified training pipeline in training/loop.py supersedes the legacy trainers.
 """
 
-from .core_methods import METHOD_SPECS, METHOD_ALIASES, REVERSE_ALIASES, run_core_methods
-from .advanced_methods import ADVANCED_METHODS, run_advanced_methods
+from importlib import import_module
 
 __all__ = [
     "METHOD_SPECS",
@@ -22,3 +21,24 @@ __all__ = [
     "run_core_methods",
     "run_advanced_methods",
 ]
+
+_EXPORT_MAP = {
+    "METHOD_SPECS": ".core_methods",
+    "METHOD_ALIASES": ".core_methods",
+    "REVERSE_ALIASES": ".core_methods",
+    "run_core_methods": ".core_methods",
+    "ADVANCED_METHODS": ".advanced_methods",
+    "run_advanced_methods": ".advanced_methods",
+}
+
+
+def __getattr__(name: str):
+    module_name = _EXPORT_MAP.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module = import_module(module_name, __name__)
+    return getattr(module, name)
+
+
+def __dir__():
+    return sorted(list(globals().keys()) + __all__)

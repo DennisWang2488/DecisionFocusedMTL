@@ -18,6 +18,7 @@ All notable changes made today in this repository.
 - `generate_data(seed)` on `MedicalResourceAllocationTask` now respects the `seed` parameter instead of silently ignoring it. When a caller passes a different seed, it overrides `data_seed` only; `split_seed` is left unchanged so callers can vary data generation independently of the train/val/test split. (BUG-4)
 - Renamed misleading legacy config `mlp_2x64_softplus` to `mlp_2x64_relu` (old name kept as alias for backward compatibility). The activation was always `relu`, not `softplus`. (BUG-6)
 - Removed duplicate `nan_steps` metric key from stage results; only `nan_or_inf_steps` is kept. (BUG-7)
+- Converted `fair_dfl.training`, `fair_dfl.algorithms`, and `fair_dfl.tasks` package exports to lazy imports so lightweight unit tests do not eagerly pull in torch / PyEPO side effects during collection.
 
 ### Unreleased - Bug-fix pass on experiment semantics and reporting
 
