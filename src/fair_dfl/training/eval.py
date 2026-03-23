@@ -67,8 +67,14 @@ def eval_split_medical(
 
 
 _EMPTY_METRICS: Dict[str, float] = {
-    "regret": 0.0, "pred_mse": 0.0, "fairness": 0.0,
-    "solver_calls_eval": 0.0, "decision_ms_eval": 0.0,
+    "regret": float("nan"),
+    "pred_mse": float("nan"),
+    "fairness": float("nan"),
+    "regret_normalized": float("nan"),
+    "regret_normalized_true": float("nan"),
+    "regret_normalized_pred_obj": float("nan"),
+    "solver_calls_eval": 0.0,
+    "decision_ms_eval": 0.0,
 }
 
 
@@ -82,7 +88,9 @@ def evaluate_model(
 ) -> tuple[Dict[str, float], Dict[str, float]]:
     """Evaluate on both val and test splits, dispatching to the correct evaluator.
 
-    If the val split is empty (val_fraction=0.0), val_metrics returns zeros.
+    If the val split is empty (val_fraction=0.0), val_metrics returns NaNs
+    for score columns so downstream analysis can distinguish "missing split"
+    from a genuine zero-valued metric.
     """
     if isinstance(task, MedicalResourceAllocationTask):
         val_split = task._splits.get("val")

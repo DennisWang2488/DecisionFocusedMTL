@@ -142,7 +142,7 @@ DEFAULT_TRAIN_CFG = {
     "lr": 0.0005,
     "lr_decay": 0.0005,
     "alpha_schedule": {"type": "inv_sqrt", "alpha0": 1.0, "alpha_min": 0.0},
-    "force_lambda_path_all_methods": True,
+    "force_lambda_path_all_methods": False,
     "grad_clip_norm": 10000.0,
     "explode_threshold": 1000000.0,
     "fairness_smoothing": 1e-6,

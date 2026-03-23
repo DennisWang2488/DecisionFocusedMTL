@@ -52,6 +52,10 @@ def _safe_mean(xs: List[float]) -> float:
     return float(np.mean(xs)) if xs else 0.0
 
 
+def _metric_or_nan(metrics: Dict[str, float], key: str) -> float:
+    return float(metrics.get(key, float("nan")))
+
+
 def _sample_batch(
     split: SplitData, batch_size: int, rng: np.random.Generator,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -127,6 +131,33 @@ def _build_mo_handler(
             kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
         )
     raise ValueError(f"Unknown mo_method: {mo_method}")
+
+
+def _build_active_moo_payload(
+    *,
+    iter_spec: MethodSpec,
+    out: Dict[str, Any],
+    g_dec_param: np.ndarray,
+    g_pred_param: np.ndarray,
+    g_fair_param: np.ndarray,
+    mo_handler: MultiObjectiveGradientHandler,
+) -> tuple[Dict[str, np.ndarray], Dict[str, float]]:
+    if isinstance(mo_handler, (NestedPLGFairPrimaryHandler, NestedPLGPredPrimaryHandler)):
+        if not (iter_spec.use_dec and iter_spec.use_pred and iter_spec.use_fair):
+            raise ValueError("plg_fp/plg_pp require decision, prediction, and fairness objectives to all be enabled.")
+
+    grads: Dict[str, np.ndarray] = {}
+    losses: Dict[str, float] = {}
+    if iter_spec.use_pred:
+        grads["pred_loss"] = g_pred_param
+        losses["pred_loss"] = float(out["loss_pred"])
+    if iter_spec.use_dec:
+        grads["decision_regret"] = g_dec_param
+        losses["decision_regret"] = float(out["loss_dec"])
+    if iter_spec.use_fair:
+        grads["pred_fairness"] = g_fair_param
+        losses["pred_fairness"] = float(out["loss_fair"])
+    return grads, losses
 
 
 def _combine_prediction_gradients(
@@ -422,16 +453,14 @@ def train_single_stage(
 
         # --- MOO handler or standard backward ---
         if mo_handler is not None:
-            mo_grads = {
-                "pred_loss": g_pred_param,
-                "decision_regret": g_dec_param,
-                "pred_fairness": g_fair_param,
-            }
-            mo_losses_dict = {
-                "pred_loss": float(out["loss_pred"]),
-                "decision_regret": float(out["loss_dec"]),
-                "pred_fairness": float(out["loss_fair"]),
-            }
+            mo_grads, mo_losses_dict = _build_active_moo_payload(
+                iter_spec=iter_spec,
+                out=out,
+                g_dec_param=g_dec_param,
+                g_pred_param=g_pred_param,
+                g_fair_param=g_fair_param,
+                mo_handler=mo_handler,
+            )
             g_comb_param = mo_handler.compute_direction(mo_grads, mo_losses_dict, step=t, epsilon=1e-4)
 
             predictor.module.zero_grad(set_to_none=True)
@@ -512,18 +541,19 @@ def train_single_stage(
                             need_grads=False, fairness_smoothing=fairness_smoothing,
                         )
                 predictor.train()
-                mo_handler.update_weights({
-                    "pred_loss": float(new_out["loss_pred"]),
-                    "decision_regret": float(new_out["loss_dec"]),
-                    "pred_fairness": float(new_out["loss_fair"]),
-                })
+                _, new_losses = _build_active_moo_payload(
+                    iter_spec=iter_spec,
+                    out=new_out,
+                    g_dec_param=g_dec_param,
+                    g_pred_param=g_pred_param,
+                    g_fair_param=g_fair_param,
+                    mo_handler=mo_handler,
+                )
+                mo_handler.update_weights(new_losses)
 
             # Dual lambda update
             if beta_mode == "constraint" and iter_spec.use_fair:
                 dual_lambda = max(0.0, dual_lambda + dual_lr * (float(out["loss_fair"]) - fair_tau))
-
-            solver_calls_total += solver_calls_iter
-            decision_ms_total += decision_ms_iter
 
             delta_theta_l2 = 0.0
             if params_before is not None:
@@ -533,6 +563,9 @@ def train_single_stage(
                         for p, pb in zip(predictor.module.parameters(), params_before)
                     )
                     delta_theta_l2 = float(np.sqrt(total))
+
+        solver_calls_total += solver_calls_iter
+        decision_ms_total += decision_ms_iter
 
         # --- Logging ---
         if do_log:
@@ -611,12 +644,12 @@ def train_single_stage(
         "seed": seed,
         "stage_idx": stage_idx,
         "lambda": lambda_value,
-        "val_regret": val_metrics["regret"],
-        "val_fairness": val_metrics["fairness"],
-        "val_pred_mse": val_metrics["pred_mse"],
-        "test_regret": test_metrics["regret"],
-        "test_fairness": test_metrics["fairness"],
-        "test_pred_mse": test_metrics["pred_mse"],
+        "val_regret": _metric_or_nan(val_metrics, "regret"),
+        "val_fairness": _metric_or_nan(val_metrics, "fairness"),
+        "val_pred_mse": _metric_or_nan(val_metrics, "pred_mse"),
+        "test_regret": _metric_or_nan(test_metrics, "regret"),
+        "test_fairness": _metric_or_nan(test_metrics, "fairness"),
+        "test_pred_mse": _metric_or_nan(test_metrics, "pred_mse"),
         "stage_wallclock_sec": stage_wallclock,
         "solver_calls_train": solver_calls_total,
         "solver_calls_eval": val_metrics.get("solver_calls_eval", 0) + test_metrics.get("solver_calls_eval", 0),
@@ -640,9 +673,9 @@ def train_single_stage(
         ("regret_normalized_true", "val_regret_normalized_true"),
         ("regret_normalized_pred_obj", "val_regret_normalized_pred_obj"),
     ]:
-        if key in val_metrics:
-            stage_row[metric] = float(val_metrics[key])
-            stage_row[metric.replace("val_", "test_")] = float(test_metrics[key])
+        if key in val_metrics or key in test_metrics:
+            stage_row[metric] = _metric_or_nan(val_metrics, key)
+            stage_row[metric.replace("val_", "test_")] = _metric_or_nan(test_metrics, key)
 
     return stage_row, iter_logs
 
