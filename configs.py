@@ -60,8 +60,8 @@ ALL_METHOD_CONFIGS = {
                "pred_weight_mode": "fixed1"},
     "VarDRO": {"method": "var_dro", "use_dec": False, "use_pred": True,  "use_fair": False,
                "pred_weight_mode": "fixed1", "dro_epsilon": 0.1},
-    "WassDRO": {"method": "wass_dro", "use_dec": False, "use_pred": True,  "use_fair": False,
-                "pred_weight_mode": "fixed1", "wdro_epsilon": 0.1},
+    "WDRO":   {"method": "wass_dro", "use_dec": False, "use_pred": True,  "use_fair": False,
+               "pred_weight_mode": "fixed1", "wdro_epsilon": 0.1},
 
     # ----- MOO methods (3-objective with MOO handler) -----
     "WS-equal": {
@@ -216,7 +216,7 @@ COLOR_MAP = {
     "MGDA": "#bcbd22", "PCGrad": "#17becf", "PLG-FP": "#aec7e8", "PLG-PP": "#ffbb78",
     "CAGrad": "#98df8a", "FAMO": "#ff9896",
     "DFL": "#c5b0d5", "PLG": "#c49c94", "FPLG": "#f7b6d2", "NCE": "#dbdb8d",
-    "SAA": "#e6550d", "VarDRO": "#756bb1", "WassDRO": "#393b79",
+    "SAA": "#e6550d", "VarDRO": "#756bb1", "WDRO": "#393b79",
     "PTO": "#636363", "PCGrad-nf": "#17becf", "MGDA-nf": "#bcbd22", "CAGrad-nf": "#98df8a",
 }
 
@@ -226,6 +226,6 @@ MARKER_MAP = {
     "MGDA": "h", "PCGrad": "*", "PLG-FP": "X", "PLG-PP": "P",
     "CAGrad": "d", "FAMO": "H",
     "DFL": "8", "PLG": "+", "FPLG": "x", "NCE": "1",
-    "SAA": "D", "VarDRO": "p", "WassDRO": "2",
+    "SAA": "D", "VarDRO": "p", "WDRO": "2",
     "PTO": "o", "PCGrad-nf": "*", "MGDA-nf": "h", "CAGrad-nf": "d",
 }
