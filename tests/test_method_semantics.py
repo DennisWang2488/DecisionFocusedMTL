@@ -26,7 +26,7 @@ class TestMethodSpecResolution:
     def test_saa_dro_no_decision(self):
         """SAA, VarDRO, and WassDRO should not use decision gradients."""
         from configs import ALL_METHOD_CONFIGS
-        for name in ["SAA", "VarDRO", "WassDRO"]:
+        for name in ["SAA", "VarDRO", "WDRO"]:
             spec = resolve_method_spec(ALL_METHOD_CONFIGS[name])
             assert not spec.use_dec, f"{name} should have use_dec=False"
 
