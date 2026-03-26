@@ -40,7 +40,8 @@ PUBLIC_METHODS = [
     "nce",
     "lancer",
     "saa",
-    "wdro",
+    "var_dro",
+    "wass_dro",
 ]
 
 

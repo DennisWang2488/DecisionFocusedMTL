@@ -107,7 +107,15 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
         continuation=False,
         allow_orthogonalization=False,
     ),
-    "wdro": MethodSpec(
+    "var_dro": MethodSpec(
+        use_dec=False,
+        use_pred=True,
+        use_fair=False,
+        pred_weight_mode="fixed1",
+        continuation=False,
+        allow_orthogonalization=False,
+    ),
+    "wass_dro": MethodSpec(
         use_dec=False,
         use_pred=True,
         use_fair=False,
@@ -117,7 +125,7 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
     ),
 }
 
-PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "plg", "fplg", "saa", "wdro")
+PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "plg", "fplg", "saa", "var_dro", "wass_dro")
 METHOD_SPECS: Dict[str, MethodSpec] = {name: BASE_METHOD_SPECS[name] for name in PUBLIC_METHODS}
 
 # Human-readable aliases → canonical abbreviation
@@ -128,7 +136,8 @@ METHOD_ALIASES: Dict[str, str] = {
     "pred_loss_guided": "plg",
     "fair_pred_loss_guided": "fplg",
     "sample_average_approximation": "saa",
-    "wasserstein_dro": "wdro",
+    "variance_dro": "var_dro",
+    "wasserstein_dro": "wass_dro",
 }
 REVERSE_ALIASES: Dict[str, str] = {v: k for k, v in METHOD_ALIASES.items()}
 
@@ -654,8 +663,8 @@ def _train_single_stage(
         g_pred_pred = np.asarray(out["grad_pred"], dtype=float).reshape(pred_np.shape) if iter_spec.use_pred else np.zeros_like(pred_np)
         g_fair_pred = np.asarray(out["grad_fair"], dtype=float).reshape(pred_np.shape) if iter_spec.use_fair else np.zeros_like(pred_np)
 
-        # --- WDRO: variance-regularized prediction gradient ---
-        if method_name == "wdro":
+        # --- VarDRO: f-divergence variance-regularized prediction gradient ---
+        if method_name == "var_dro":
             dro_eps = float(train_cfg.get("dro_epsilon", 0.1))
             if isinstance(task, MedicalResourceAllocationTask):
                 true_np = batch.y
@@ -667,12 +676,43 @@ def _train_single_stage(
             std_loss = per_sample_loss.std()
             if std_loss > 1e-12:
                 dro_weights = 1.0 + dro_eps * (per_sample_loss - mean_loss) / std_loss
+                dro_weights = np.maximum(dro_weights, 0.0)
             else:
                 dro_weights = np.ones_like(per_sample_loss)
             # Expand weights to broadcast with (batch, n_outputs) gradient shape
             dro_weights = dro_weights.reshape(-1, *([1] * (g_pred_pred.ndim - 1)))
             g_pred_pred = g_pred_pred * dro_weights
             out["loss_pred"] = float(mean_loss + dro_eps * std_loss)
+
+        # --- WassDRO: Wasserstein DRO via input gradient penalty ---
+        wass_dro_penalty_val = 0.0
+        if method_name == "wass_dro":
+            wdro_eps = float(train_cfg.get("wdro_epsilon", 0.1))
+            xb_wdro = xb_t.detach().clone().requires_grad_(True)
+            if isinstance(task, MedicalResourceAllocationTask):
+                raw_wdro = model(xb_wdro).reshape(-1)
+                pred_wdro = post_processor(raw_wdro)
+                yb_wdro = to_torch(batch.y, device=device, dtype=dtype)
+                per_sample_mse = (pred_wdro - yb_wdro) ** 2
+            else:
+                pred_wdro = model(xb_wdro)
+                if post_processor.transform != "none":
+                    pred_wdro = post_processor(pred_wdro)
+                yb_wdro = to_torch(yb, device=device, dtype=dtype)
+                per_sample_mse = ((pred_wdro - yb_wdro) ** 2).reshape(
+                    pred_wdro.shape[0], -1
+                ).mean(dim=-1)
+            grad_x = torch.autograd.grad(
+                per_sample_mse.sum(), xb_wdro, create_graph=True,
+            )[0]
+            grad_norms = (grad_x ** 2).sum(dim=-1).sqrt()
+            penalty = wdro_eps * grad_norms.mean()
+            wass_dro_penalty_val = float(penalty.item())
+            model.zero_grad(set_to_none=True)
+            penalty.backward()
+            wass_dro_penalty_param_grad = flatten_param_grads(model)
+            out["wdro_grad_penalty"] = wass_dro_penalty_val
+            out["loss_pred"] = float(per_sample_mse.mean().item()) + wass_dro_penalty_val
 
         alpha_t = _pred_weight(iter_spec.pred_weight_mode, t=t, alpha_schedule_cfg=train_cfg["alpha_schedule"])
         if not iter_spec.use_fair:
@@ -725,6 +765,10 @@ def _train_single_stage(
             retain_graph=True,
             device=device,
         )
+
+        # WassDRO: add gradient penalty contribution to pred param grad
+        if method_name == "wass_dro":
+            g_pred_param = g_pred_param + wass_dro_penalty_param_grad
 
         if mo_handler is not None:
             mo_grads = {

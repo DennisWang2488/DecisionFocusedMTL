@@ -46,7 +46,11 @@ _LEGACY_METHOD_SPECS: Dict[str, MethodSpec] = {
         use_dec=False, use_pred=True, use_fair=False,
         pred_weight_mode="fixed1", continuation=False, allow_orthogonalization=False,
     ),
-    "wdro": MethodSpec(
+    "var_dro": MethodSpec(
+        use_dec=False, use_pred=True, use_fair=False,
+        pred_weight_mode="fixed1", continuation=False, allow_orthogonalization=False,
+    ),
+    "wass_dro": MethodSpec(
         use_dec=False, use_pred=True, use_fair=False,
         pred_weight_mode="fixed1", continuation=False, allow_orthogonalization=False,
     ),

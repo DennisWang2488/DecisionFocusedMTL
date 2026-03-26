@@ -1,6 +1,6 @@
 """Unified training loop for all DFL methods.
 
-Merges the core (FPTO, DFL, FDFL, PLG, FPLG, SAA, WDRO) and advanced
+Merges the core (FPTO, DFL, FDFL, PLG, FPLG, SAA, VarDRO, WassDRO) and advanced
 (FFO, NCE, LANCER) training paths into a single train_single_stage()
 that handles all methods, MOO handlers, and task types.
 """
@@ -226,7 +226,7 @@ def train_single_stage(
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Train one lambda stage for any method.
 
-    Handles all method types: base (FPTO, DFL, FDFL, PLG, FPLG), SAA, WDRO,
+    Handles all method types: base (FPTO, DFL, FDFL, PLG, FPLG), SAA, VarDRO, WassDRO,
     MOO handlers, and advanced decision gradient backends (FFO, NCE, LANCER, finite-diff).
     """
     device = predictor.device
@@ -391,8 +391,9 @@ def train_single_stage(
             if iter_spec.use_fair else np.zeros_like(pred_np)
         )
 
-        # --- WDRO reweighting ---
-        if method_name == "wdro":
+        # --- VarDRO: f-divergence variance-regularized prediction gradient ---
+        # Implements E[loss] + eps * std(loss), following Duchi & Namkoong (2017).
+        if method_name == "var_dro":
             dro_eps = float(train_cfg.get("dro_epsilon", 0.1))
             true_np = yb if not isinstance(task, MedicalResourceAllocationTask) else batch.y
             per_sample_loss = ((pred_np - true_np) ** 2).reshape(pred_np.shape[0], -1).mean(axis=-1)
@@ -400,11 +401,50 @@ def train_single_stage(
             std_loss = per_sample_loss.std()
             if std_loss > 1e-12:
                 dro_weights = 1.0 + dro_eps * (per_sample_loss - mean_loss) / std_loss
+                dro_weights = np.maximum(dro_weights, 0.0)
             else:
                 dro_weights = np.ones_like(per_sample_loss)
             dro_weights = dro_weights.reshape(-1, *([1] * (g_pred_pred.ndim - 1)))
             g_pred_pred = g_pred_pred * dro_weights
             out["loss_pred"] = float(mean_loss + dro_eps * std_loss)
+
+        # --- WassDRO: Wasserstein DRO via input gradient penalty ---
+        # Implements E[loss] + eps * E[||nabla_x loss||], following
+        # Gao, Chen & Kleywegt (2024) "Wasserstein DRO and Variation Regularization".
+        # The penalty on the Lipschitz constant of the loss w.r.t. inputs
+        # provides robustness to Wasserstein perturbations in the data distribution.
+        wass_dro_penalty_val = 0.0
+        if method_name == "wass_dro":
+            wdro_eps = float(train_cfg.get("wdro_epsilon", 0.1))
+            # Re-forward with input gradients enabled for the penalty term
+            xb_wdro = xb_t.detach().clone().requires_grad_(True)
+            if isinstance(task, MedicalResourceAllocationTask):
+                raw_wdro = predictor.module(xb_wdro).reshape(-1)
+                pred_wdro = predictor.post_processor(raw_wdro)
+                yb_wdro = to_torch(batch.y, device=device, dtype=dtype)
+                per_sample_mse = (pred_wdro - yb_wdro) ** 2
+            else:
+                pred_wdro = predictor.module(xb_wdro)
+                if predictor.post_processor.transform != "none":
+                    pred_wdro = predictor.post_processor(pred_wdro)
+                yb_wdro = to_torch(yb, device=device, dtype=dtype)
+                per_sample_mse = ((pred_wdro - yb_wdro) ** 2).reshape(
+                    pred_wdro.shape[0], -1
+                ).mean(dim=-1)
+            # Gradient of per-sample losses w.r.t. inputs
+            grad_x = torch.autograd.grad(
+                per_sample_mse.sum(), xb_wdro, create_graph=True,
+            )[0]  # (batch, n_features)
+            # Per-sample L2 norm of input gradients (Lipschitz proxy)
+            grad_norms = (grad_x ** 2).sum(dim=-1).sqrt()  # (batch,)
+            penalty = wdro_eps * grad_norms.mean()
+            wass_dro_penalty_val = float(penalty.item())
+            # Backprop penalty to get its parameter gradient contribution
+            predictor.module.zero_grad(set_to_none=True)
+            penalty.backward()
+            wass_dro_penalty_param_grad = flatten_param_grads(predictor.module)
+            out["wdro_grad_penalty"] = wass_dro_penalty_val
+            out["loss_pred"] = float(per_sample_mse.mean().item()) + wass_dro_penalty_val
 
         # --- Alpha/beta weights ---
         alpha_t = _pred_weight(iter_spec.pred_weight_mode, t=t, alpha_schedule_cfg=train_cfg["alpha_schedule"])
@@ -450,6 +490,10 @@ def train_single_stage(
             module=predictor.module, output=pred_t, grad_out=g_fair_pred,
             retain_graph=True, device=device,
         )
+
+        # --- WassDRO: add gradient penalty contribution to pred param grad ---
+        if method_name == "wass_dro":
+            g_pred_param = g_pred_param + wass_dro_penalty_param_grad
 
         # --- MOO handler or standard backward ---
         if mo_handler is not None:
