@@ -54,10 +54,12 @@ ALL_METHOD_CONFIGS = {
                   "pred_weight_mode": "fixed1"},
 
     # ----- Data-driven optimization baselines -----
-    "SAA":    {"method": "saa",  "use_dec": False, "use_pred": True,  "use_fair": False,
+    "SAA":    {"method": "saa",     "use_dec": False, "use_pred": True,  "use_fair": False,
                "pred_weight_mode": "fixed1"},
-    "WDRO":   {"method": "wdro", "use_dec": False, "use_pred": True,  "use_fair": False,
+    "VarDRO": {"method": "var_dro", "use_dec": False, "use_pred": True,  "use_fair": False,
                "pred_weight_mode": "fixed1", "dro_epsilon": 0.1},
+    "WDRO":   {"method": "wdro",    "use_dec": False, "use_pred": True,  "use_fair": False,
+               "pred_weight_mode": "fixed1", "wdro_epsilon": 0.1},
 
     # ----- MOO methods (3-objective with MOO handler) -----
     # NOTE: MOO handlers compute their own gradient combination, so
@@ -217,7 +219,7 @@ COLOR_MAP = {
     "MGDA": "#bcbd22", "PCGrad": "#17becf",
     "CAGrad": "#98df8a", "FAMO": "#ff9896",
     "DFL": "#c5b0d5", "PLG": "#c49c94", "FPLG": "#f7b6d2",
-    "SAA": "#e6550d", "WDRO": "#756bb1",
+    "SAA": "#e6550d", "VarDRO": "#756bb1", "WDRO": "#393b79",
     "PTO": "#636363", "PCGrad-nf": "#17becf", "MGDA-nf": "#bcbd22", "CAGrad-nf": "#98df8a",
 }
 
@@ -227,6 +229,6 @@ MARKER_MAP = {
     "MGDA": "h", "PCGrad": "*",
     "CAGrad": "d", "FAMO": "H",
     "DFL": "8", "PLG": "+", "FPLG": "x",
-    "SAA": "D", "WDRO": "p",
+    "SAA": "D", "VarDRO": "p", "WDRO": "2",
     "PTO": "o", "PCGrad-nf": "*", "MGDA-nf": "h", "CAGrad-nf": "d",
 }

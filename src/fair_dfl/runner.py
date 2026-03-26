@@ -30,7 +30,8 @@ PUBLIC_METHODS = [
     "plg",
     "fplg",
     "saa",
-    "wdro",
+    "var_dro",
+    "wass_dro",
 ]
 
 
