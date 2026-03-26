@@ -29,14 +29,35 @@ python run_methods.py --methods PLG FPLG --dry-run
 
 Results are saved as CSVs in `results/` by default.
 
+The root-level scripts `run_methods.py`, `run_ablation.py`, `analysis.py`, `plotting.py`, and `configs.py`
+are compatibility entrypoints. Their implementations now live under `experiments/`.
+
 ## Project Structure
 
 ```
 colab_upload/
-    configs.py                  # Method registry, training defaults, plot styling
-    run_methods.py              # CLI experiment runner
-    analysis.py                 # Result analysis utilities
-    plotting.py                 # Plot generation
+    README.md                   # Project overview and usage
+    CHANGELOG.md                # High-level change history
+    Makefile                    # Common developer workflows
+    pyproject.toml              # Packaging, pytest, and lint config
+
+    run_methods.py              # Thin compatibility wrapper
+    run_ablation.py             # Thin compatibility wrapper
+    analysis.py                 # Thin compatibility wrapper
+    plotting.py                 # Thin compatibility wrapper
+    configs.py                  # Thin compatibility wrapper
+
+    docs/                       # Supplementary project documents
+        CODE_REVIEW.md
+        DFL_MultiPortfolio_Fairness_Spec.md
+
+    experiments/                # Experiment-facing code grouped by function
+        __init__.py
+        configs.py              # Method registry, defaults, plot styling
+        run_methods.py          # Main CLI experiment runner
+        run_ablation.py         # Ablation experiment runner
+        analysis.py             # Result loading and summary helpers
+        plotting.py             # Plot generation
 
     data/
         data_processed.csv      # Medical resource allocation dataset (48,784 patients)
@@ -106,6 +127,12 @@ colab_upload/
             ffolayer_local/     # FFO layer implementation
             nce.py              # NCE solution pool
             lancer.py           # LANCER trainer
+
+    tests/                     # Lightweight regression and semantics checks
+        test_losses.py
+        test_medical_gradients.py
+        test_method_semantics.py
+        test_mo_handlers.py
 ```
 
 ## Methods
@@ -154,7 +181,7 @@ PCGrad-nf, MGDA-nf, CAGrad-nf: 2-objective (dec+pred) versions of MOO methods.
 
 ## Configuration
 
-Method configs in `configs.py` declare:
+Method configs in `experiments/configs.py` declare:
 - **Objective flags**: `use_dec`, `use_pred`, `use_fair`
 - **Prediction weight mode**: `pred_weight_mode` (`fixed1`, `schedule`, `zero`)
 - **Continuation**: whether to carry model state across lambda stages
@@ -162,7 +189,7 @@ Method configs in `configs.py` declare:
 - **MOO handler**: `mo_method` (for multi-objective gradient combination)
 
 Training defaults in `DEFAULT_TRAIN_CFG`:
-- `lambdas`: fairness penalty weights for Pareto sweep `[0.0, 0.05, 0.2, 0.5]`
+- `lambdas`: fairness penalty weights for Pareto sweep `[0.0, 0.5]`
 - `seeds`: `[11, 22, 33]`
 - `steps_per_lambda`: `70`
 - `model`: `{"arch": "mlp", "hidden_dim": 64, "n_layers": 2}`
@@ -225,3 +252,11 @@ python run_methods.py [options]
 - **`notebooks/run.ipynb`**: Run experiments interactively
 - **`notebooks/analysis.ipynb`**: Load results and generate comparison plots
 - **`notebooks/no_fairness.ipynb`**: No-fairness variant experiments
+
+## Layout Rationale
+
+- `src/fair_dfl/`: reusable library code
+- `experiments/`: experiment orchestration, configs, and analysis utilities
+- `docs/`: review/spec/reference documents
+- `data/`, `results/`, `notebooks/`: inputs, outputs, and exploratory work
+- root wrappers: preserve existing commands while keeping implementation files grouped by function
