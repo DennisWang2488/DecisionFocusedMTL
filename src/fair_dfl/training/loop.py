@@ -696,6 +696,9 @@ def run_method_seed(
     force_lambda_path = bool(train_cfg.get("force_lambda_path_all_methods", False))
     if (not base_spec.use_fair) and (not force_lambda_path):
         lambdas = [0.0]
+    # MOO methods determine objective weighting internally; lambda has no effect
+    if train_cfg.get("mo_method") is not None and (not force_lambda_path):
+        lambdas = [0.0]
 
     # Build predictor
     device = resolve_device_or_warn(str(train_cfg.get("device", "cuda")))
