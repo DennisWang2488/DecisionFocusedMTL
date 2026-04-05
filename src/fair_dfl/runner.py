@@ -12,6 +12,7 @@ from .algorithms.advanced_methods import ADVANCED_METHODS, run_advanced_methods
 from .training import run_methods as _run_methods_unified, resolve_method_spec
 from .tasks import (
     MedicalResourceAllocationTask,
+    MultiDimKnapsackTask,
     PortfolioQPMultiConstraintTask,
     PortfolioQPTask,
     PortfolioQPSimplexTask,
@@ -245,6 +246,29 @@ def _build_task(task_cfg: Dict[str, Any]) -> Tuple[BaseTask, TaskData]:
             constraints=data.meta["constraints"],
             targets=data.meta["targets"],
         )
+        return task, data
+
+    if name == "md_knapsack":
+        task = MultiDimKnapsackTask(
+            n_samples_train=int(task_cfg["n_samples_train"]),
+            n_samples_val=int(task_cfg["n_samples_val"]),
+            n_samples_test=int(task_cfg["n_samples_test"]),
+            n_features=int(task_cfg["n_features"]),
+            n_items=int(task_cfg["n_items"]),
+            n_constraints=int(task_cfg["n_constraints"]),
+            scenario=str(task_cfg.get("scenario", "alpha_fair")),
+            alpha_fair=float(task_cfg.get("alpha_fair", 2.0)),
+            group_bias=float(task_cfg.get("group_bias", 0.3)),
+            noise_std_lo=float(task_cfg.get("noise_std_lo", 0.1)),
+            noise_std_hi=float(task_cfg.get("noise_std_hi", 0.5)),
+            poly_degree=int(task_cfg.get("poly_degree", 2)),
+            budget_tightness=float(task_cfg.get("budget_tightness", 0.5)),
+            fairness_type=fairness_type,
+            fairness_ge_alpha=fairness_ge_alpha,
+        )
+        data_seed = int(task_cfg.get("data_seed", 42))
+        data = task.generate_data(seed=data_seed)
+        task.bind_context(groups=data.groups, A=data.meta["A"], b=data.meta["b"])
         return task, data
 
     if name == "medical_resource_allocation":
