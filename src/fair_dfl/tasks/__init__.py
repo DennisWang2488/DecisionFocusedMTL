@@ -3,6 +3,7 @@
 from importlib import import_module
 
 __all__ = [
+    "MultiDimKnapsackTask",
     "PortfolioQPTask",
     "PortfolioQPSimplexTask",
     "PortfolioQPMultiConstraintTask",
@@ -14,6 +15,7 @@ __all__ = [
 ]
 
 _EXPORT_MAP = {
+    "MultiDimKnapsackTask": ".md_knapsack",
     "PortfolioQPTask": ".portfolio_qp",
     "PortfolioQPSimplexTask": ".portfolio_qp_simplex",
     "PortfolioQPMultiConstraintTask": ".portfolio_qp_multi_constraint",

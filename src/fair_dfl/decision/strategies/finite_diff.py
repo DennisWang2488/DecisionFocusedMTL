@@ -133,8 +133,9 @@ class FiniteDiffStrategy(DecisionGradientStrategy):
 
         # Compute true objective for each sample
         obj_true = np.zeros(bsz, dtype=float)
+        oracle_solver = getattr(task, "solve_oracle_decision", task.solve_decision)
         for b in range(bsz):
-            d_true = task.solve_decision(true[b:b+1], **ctx)
+            d_true = oracle_solver(true[b:b+1], **ctx)
             obj_true[b] = task.evaluate_objective(d_true, true[b:b+1], **ctx)
             solver_calls += 1
 
