@@ -265,6 +265,7 @@ def _build_task(task_cfg: Dict[str, Any]) -> Tuple[BaseTask, TaskData]:
             budget_tightness=float(task_cfg.get("budget_tightness", 0.5)),
             fairness_type=fairness_type,
             fairness_ge_alpha=fairness_ge_alpha,
+            group_ratio=float(task_cfg.get("group_ratio", 0.5)),
         )
         data_seed = int(task_cfg.get("data_seed", 42))
         data = task.generate_data(seed=data_seed)

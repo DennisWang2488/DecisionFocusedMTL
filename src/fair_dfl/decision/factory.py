@@ -58,6 +58,12 @@ def build_decision_gradient(
         eps = float(train_cfg.get("decision_grad_fd_eps", 1e-3))
         strategy = FiniteDiffStrategy(eps=eps)
 
+    elif backend == "spsa":
+        from .strategies.spsa import SPSAStrategy
+        eps = float(train_cfg.get("decision_grad_spsa_eps", 5e-3))
+        n_dirs = int(train_cfg.get("decision_grad_spsa_n_dirs", 1))
+        strategy = SPSAStrategy(eps=eps, n_dirs=n_dirs)
+
     elif backend == "ffo":
         from .strategies.fold_opt import FoldOptStrategy
         ffo_cfg = dict(train_cfg.get("ffo", {}))
@@ -98,7 +104,7 @@ def build_decision_gradient(
     else:
         raise ValueError(
             f"Unknown decision_grad_backend: {backend!r}. "
-            f"Options: analytic, finite_diff, ffo, nce, lancer, cvxpylayers, autograd"
+            f"Options: analytic, finite_diff, spsa, ffo, nce, lancer, cvxpylayers, autograd"
         )
 
     if not strategy.supports_task(task):

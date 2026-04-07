@@ -98,6 +98,7 @@ def _make_task_cfg(args: argparse.Namespace, alpha: float) -> dict:
     cfg["n_samples_val"] = int(args.n_val)
     cfg["n_samples_test"] = int(args.n_test)
     cfg["data_seed"] = int(args.data_seed)
+    cfg["group_ratio"] = float(args.group_ratio)
     return cfg
 
 
@@ -160,6 +161,8 @@ def main() -> None:
     parser.add_argument("--noise-std-lo", type=float, default=0.1)
     parser.add_argument("--noise-std-hi", type=float, default=0.5)
     parser.add_argument("--budget-tightness", type=float, default=0.5)
+    parser.add_argument("--group-ratio", type=float, default=0.5,
+                        help="Fraction of items in group 0 (default: 0.5 = equal groups)")
     parser.add_argument("--fairness-type", default="mad", choices=["mad", "gap", "atkinson"])
     parser.add_argument("--data-seed", type=int, default=42)
     parser.add_argument("--n-train", type=int, default=120)

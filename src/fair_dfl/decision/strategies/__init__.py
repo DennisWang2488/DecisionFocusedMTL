@@ -2,10 +2,12 @@
 
 from .analytic import AnalyticStrategy
 from .finite_diff import FiniteDiffStrategy
+from .spsa import SPSAStrategy
 
 __all__ = [
     "AnalyticStrategy",
     "FiniteDiffStrategy",
+    "SPSAStrategy",
 ]
 
 # Lazy imports for optional strategies (require additional dependencies)

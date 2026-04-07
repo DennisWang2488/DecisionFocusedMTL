@@ -32,6 +32,7 @@ class MultiDimKnapsackTask(BaseTask):
     budget_tightness: float = 0.5
     fairness_type: str = "mad"
     fairness_ge_alpha: float = 2.0
+    group_ratio: float = 0.5
     _current_groups: np.ndarray = field(default=None, repr=False, init=False)
     _current_A: np.ndarray = field(default=None, repr=False, init=False)
     _current_b: np.ndarray = field(default=None, repr=False, init=False)
@@ -44,14 +45,18 @@ class MultiDimKnapsackTask(BaseTask):
             raise ValueError(f"scenario must be 'lp' or 'alpha_fair', got {self.scenario!r}")
         if self.alpha_fair <= 0.0:
             raise ValueError("alpha_fair must be positive.")
+        if not (0.0 < self.group_ratio <= 1.0):
+            raise ValueError(f"group_ratio must be in (0, 1], got {self.group_ratio}")
         self.name = "md_knapsack"
         self.n_outputs = self.n_items
 
     def generate_data(self, seed: int) -> TaskData:
         rng = np.random.default_rng(seed)
 
+        # group_ratio controls fraction of items in group 0 (majority group)
+        n_group0 = max(1, min(self.n_items - 1, int(round(self.group_ratio * self.n_items))))
         groups = np.zeros(self.n_items, dtype=int)
-        groups[self.n_items // 2:] = 1
+        groups[n_group0:] = 1
 
         A = rng.uniform(0.5, 1.5, size=(self.n_constraints, self.n_items))
         b = self.budget_tightness * A.sum(axis=1)
@@ -175,6 +180,7 @@ class MultiDimKnapsackTask(BaseTask):
         true: np.ndarray,
         need_grads: bool,
         fairness_smoothing: float = 1e-6,
+        skip_regret: bool = False,
     ) -> Dict[str, Any]:
         if need_grads:
             raise ValueError(
@@ -194,10 +200,18 @@ class MultiDimKnapsackTask(BaseTask):
             smoothing=fairness_smoothing,
             ge_alpha=self.fairness_ge_alpha,
         )
-        loss_dec, loss_dec_norm, loss_dec_norm_true, solver_calls, decision_ms = self._decision_regret(
-            pred_pos,
-            np.asarray(true, dtype=float),
-        )
+
+        if skip_regret:
+            loss_dec = 0.0
+            loss_dec_norm = 0.0
+            loss_dec_norm_true = 0.0
+            solver_calls = 0
+            decision_ms = 0.0
+        else:
+            loss_dec, loss_dec_norm, loss_dec_norm_true, solver_calls, decision_ms = self._decision_regret(
+                pred_pos,
+                np.asarray(true, dtype=float),
+            )
 
         return {
             "loss_dec": loss_dec,

@@ -334,23 +334,31 @@ def train_single_stage(
         )
         need_dec_grads = bool(iter_spec.use_dec and (not use_fd) and dec_grad_computer is None)
 
+        # Skip expensive decision-regret solver calls during training.
+        # The regret in compute() is only for logging — decision gradients
+        # come from the finite_diff backend separately.  Regret is always
+        # computed during the evaluation phase at the end of each stage.
+        _skip_regret = True
+
         if isinstance(task, MedicalResourceAllocationTask):
             out = task.compute_batch(
                 raw_pred=pred_np, true=yb, cost=batch.cost, race=batch.race,
                 need_grads=need_dec_grads, fairness_smoothing=fairness_smoothing,
             )
         else:
+            compute_kwargs = dict(
+                raw_pred=pred_np, true=yb,
+                need_grads=need_dec_grads, fairness_smoothing=fairness_smoothing,
+            )
+            # Pass skip_regret if the task supports it (md_knapsack does)
+            if hasattr(task, 'compute') and 'skip_regret' in task.compute.__code__.co_varnames:
+                compute_kwargs['skip_regret'] = _skip_regret
             try:
-                out = task.compute(
-                    raw_pred=pred_np, true=yb,
-                    need_grads=need_dec_grads, fairness_smoothing=fairness_smoothing,
-                )
+                out = task.compute(**compute_kwargs)
             except ValueError as exc:
                 if iter_spec.use_dec and need_dec_grads and "analytic" in str(exc).lower():
-                    out = task.compute(
-                        raw_pred=pred_np, true=yb,
-                        need_grads=False, fairness_smoothing=fairness_smoothing,
-                    )
+                    compute_kwargs['need_grads'] = False
+                    out = task.compute(**compute_kwargs)
                     use_fd = True
                 else:
                     raise
