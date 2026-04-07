@@ -54,10 +54,16 @@ colab_upload/
     experiments/                # Experiment-facing code grouped by function
         __init__.py
         configs.py              # Method registry, defaults, plot styling
+        colab_runner.py         # Shared runner for Colab workers (healthcare + knapsack + LP)
         run_methods.py          # Main CLI experiment runner
         run_ablation.py         # Ablation experiment runner
+        run_healthcare_final.py # Healthcare experiment (INFORMS JoC)
+        run_knapsack_final.py   # Alpha-fair knapsack experiment (INFORMS JoC)
+        generate_tables.py      # LaTeX table generator
+        generate_figures.py     # Publication figure generator
         analysis.py             # Result loading and summary helpers
         plotting.py             # Plot generation
+        lp_knapsack/            # LP knapsack experiment with SPO+ (see below)
 
     data/
         data_processed.csv      # Medical resource allocation dataset (48,784 patients)
@@ -99,6 +105,8 @@ colab_upload/
             strategies/
                 analytic.py     # Analytic (KKT-based) gradients
                 finite_diff.py  # Finite difference approximation
+                spsa.py         # SPSA (simultaneous perturbation)
+                spo_plus.py     # SPO+ (LP surrogate, Elmachtoub & Grigas 2022)
                 fold_opt.py     # FFO (solver unrolling)
                 nce.py          # Noise-contrastive estimation
                 lancer.py       # LANCER surrogate
@@ -110,6 +118,7 @@ colab_upload/
 
         tasks/                  # Optimization tasks
             base.py             # BaseTask, SplitData, TaskData
+            md_knapsack.py      # Multi-dim knapsack (LP + alpha-fair scenarios)
             medical_resource_allocation.py
             resource_allocation.py
             portfolio_qp.py
@@ -217,6 +226,8 @@ Set `decision_grad_backend` in method config:
 |---------|----------|----------|
 | `analytic` (default) | KKT-based implicit diff | Tasks with closed-form solutions |
 | `finite_diff` | Finite differences | Any task with a solver |
+| `spsa` | Simultaneous perturbation (Spall 1992) | Black-box solvers, dim-independent cost |
+| `spo_plus` | SPO+ convex surrogate (Elmachtoub & Grigas 2022) | LP tasks only, 2 calls/sample |
 | `ffo` | Solver unrolling | Differentiable solvers |
 | `nce` | Noise-contrastive estimation | Black-box solvers |
 | `lancer` | Learned surrogate | Black-box solvers |
@@ -252,6 +263,37 @@ python run_methods.py [options]
 - **`notebooks/run.ipynb`**: Run experiments interactively
 - **`notebooks/analysis.ipynb`**: Load results and generate comparison plots
 - **`notebooks/no_fairness.ipynb`**: No-fairness variant experiments
+
+## LP Knapsack Experiment (INFORMS JoC)
+
+The `experiments/lp_knapsack/` directory contains a self-contained LP knapsack
+experiment designed to demonstrate decision-focused multi-task fair learning
+with strong method differentiation.
+
+**Problem:** `max r^T d,  A d <= b,  0 <= d <= 1` — LP solutions are at
+vertices (most items are fully selected or fully excluded), so prediction
+quality directly determines which items are chosen.
+
+**Decision gradient:** SPO+ (Elmachtoub & Grigas 2022) — a convex surrogate
+for LP regret. Only 2 solver calls per sample per gradient step.
+
+**Fairness:** Prediction-level MAD (mean absolute deviation of per-group MSE)
+during training. Decision-level metrics (allocation gap, selection rate gap,
+welfare gap) for evaluation.
+
+```bash
+# Local run
+python experiments/lp_knapsack/run_lp_knapsack.py
+python experiments/lp_knapsack/run_lp_knapsack.py --dry-run
+python experiments/lp_knapsack/run_lp_knapsack.py --methods FDFL-Scal --unfairness high
+
+# Colab (in notebook cell)
+from experiments.colab_runner import *
+run_lp_knapsack_slice(unfairness_levels=['mild'], results_dir=LP_RESULTS)
+```
+
+See [`experiments/lp_knapsack/README.md`](experiments/lp_knapsack/README.md)
+for the full experimental specification.
 
 ## Layout Rationale
 
