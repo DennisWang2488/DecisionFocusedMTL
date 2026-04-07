@@ -12,6 +12,14 @@ import numpy as np
 from ..losses import group_fairness_loss_and_grad, mse_loss_and_grad, softplus_with_grad
 from .base import BaseTask, SplitData, TaskData
 
+# Solver preference: CLARABEL (modern, bundled with CVXPY 1.4+) → MOSEK
+# (if installed and licensed) → SCS (last resort).
+_SOLVER_CHAIN = [
+    (cp.CLARABEL, {}),
+    (cp.MOSEK,    {}),
+    (cp.SCS,      {}),
+]
+
 
 @dataclass
 class MultiDimKnapsackTask(BaseTask):
@@ -97,10 +105,13 @@ class MultiDimKnapsackTask(BaseTask):
 
     def _build_cvxpy(self, A: np.ndarray, b: np.ndarray) -> None:
         d = cp.Variable(self.n_items, nonneg=True)
-        r = cp.Parameter(self.n_items, nonneg=True)
+        # LP allows negative benefits (needed by SPO+); alpha-fair needs nonneg
+        # for power functions.
+        r = cp.Parameter(self.n_items, nonneg=(self.scenario != "lp"))
         constraints = [A @ d <= b]
 
         if self.scenario == "lp":
+            constraints.append(d <= 1)  # bounded [0,1] knapsack
             objective = cp.Maximize(r @ d)
         else:
             alpha = self.alpha_fair
@@ -123,14 +134,24 @@ class MultiDimKnapsackTask(BaseTask):
         return self._cvx_problem, [self._cvx_r_param], [self._cvx_d_var]
 
     def _solve_single(self, benefit: np.ndarray) -> np.ndarray:
+        """Solve with benefit clipped to positive (safe for alpha-fair power objectives)."""
         self._cvx_r_param.value = np.clip(np.asarray(benefit, dtype=float), 1e-8, None)
-        try:
-            self._cvx_problem.solve(solver=cp.ECOS, warm_start=True)
-        except cp.SolverError:
-            self._cvx_problem.solve(solver=cp.SCS, warm_start=False)
-        if self._cvx_d_var.value is None:
-            return np.zeros(self.n_items, dtype=float)
-        return np.clip(np.asarray(self._cvx_d_var.value, dtype=float), 0.0, None)
+        return self._run_solver()
+
+    def _solve_raw(self, benefit: np.ndarray) -> np.ndarray:
+        """Solve LP with raw benefit vector (may contain negatives). For SPO+ only."""
+        self._cvx_r_param.value = np.asarray(benefit, dtype=float)
+        return self._run_solver()
+
+    def _run_solver(self) -> np.ndarray:
+        for solver, kwargs in _SOLVER_CHAIN:
+            try:
+                self._cvx_problem.solve(solver=solver, **kwargs)
+                if self._cvx_d_var.value is not None:
+                    return np.clip(np.asarray(self._cvx_d_var.value, dtype=float), 0.0, None)
+            except cp.SolverError:
+                continue
+        return np.zeros(self.n_items, dtype=float)
 
     def _solve_batch(self, benefit: np.ndarray) -> np.ndarray:
         benefit_2d = np.atleast_2d(np.asarray(benefit, dtype=float))
@@ -188,8 +209,14 @@ class MultiDimKnapsackTask(BaseTask):
                 "Use training.decision_grad_backend='finite_diff'."
             )
 
-        pred_pos, pred_pos_grad = softplus_with_grad(np.asarray(raw_pred, dtype=float))
-        pred_pos = pred_pos + 1e-5
+        # LP: raw predictions are valid benefits (can be any real number).
+        # Alpha-fair: softplus ensures positive benefits for power objectives.
+        if self.scenario == "lp":
+            pred_pos = np.asarray(raw_pred, dtype=float)
+            pred_pos_grad = np.ones_like(pred_pos)
+        else:
+            pred_pos, pred_pos_grad = softplus_with_grad(np.asarray(raw_pred, dtype=float))
+            pred_pos = pred_pos + 1e-5
 
         loss_pred, grad_pred_pos = mse_loss_and_grad(pred_pos, true)
         loss_fair, grad_fair_pos = group_fairness_loss_and_grad(
@@ -207,13 +234,17 @@ class MultiDimKnapsackTask(BaseTask):
             loss_dec_norm_true = 0.0
             solver_calls = 0
             decision_ms = 0.0
+            dec_fair = {}
         else:
             loss_dec, loss_dec_norm, loss_dec_norm_true, solver_calls, decision_ms = self._decision_regret(
                 pred_pos,
                 np.asarray(true, dtype=float),
             )
+            # Decision-level fairness metrics (evaluation only)
+            d_pred = self._solve_batch(pred_pos)
+            dec_fair = self._decision_fairness_metrics(d_pred, np.asarray(true, dtype=float))
 
-        return {
+        result = {
             "loss_dec": loss_dec,
             "loss_dec_normalized": loss_dec_norm,
             "loss_dec_normalized_true": loss_dec_norm_true,
@@ -225,9 +256,13 @@ class MultiDimKnapsackTask(BaseTask):
             "solver_calls": solver_calls,
             "decision_ms": decision_ms,
         }
+        result.update(dec_fair)
+        return result
 
     def solve_decision(self, pred: np.ndarray, **ctx: Any) -> np.ndarray:
         pred_2d = np.atleast_2d(np.asarray(pred, dtype=float))
+        if self.scenario == "lp":
+            return self._solve_batch(pred_2d)
         pred_pos, _ = softplus_with_grad(pred_2d)
         pred_pos = pred_pos + 1e-5
         return self._solve_batch(pred_pos)
@@ -239,5 +274,38 @@ class MultiDimKnapsackTask(BaseTask):
     def evaluate_objective(self, decision: np.ndarray, true: np.ndarray, **ctx: Any) -> float:
         return float(np.mean(self._objective_batch(decision, true)))
 
+    def _decision_fairness_metrics(
+        self, decision: np.ndarray, true_benefit: np.ndarray,
+    ) -> Dict[str, float]:
+        """Decision-level fairness metrics (evaluation only, not for training)."""
+        groups = self._current_groups
+        g0 = groups == 0
+        g1 = groups == 1
+        if g0.sum() == 0 or g1.sum() == 0:
+            return {"decision_alloc_gap": 0.0, "decision_selection_gap": 0.0,
+                    "decision_welfare_gap": 0.0}
+
+        d2 = np.atleast_2d(decision)
+        t2 = np.atleast_2d(true_benefit)
+
+        # 1. Allocation gap: |mean(d[group0]) - mean(d[group1])|
+        alloc_gap = abs(float(d2[:, g0].mean()) - float(d2[:, g1].mean()))
+
+        # 2. Selection rate gap (d_i > 0.5 counts as "selected")
+        sel = d2 > 0.5
+        sel_gap = abs(float(sel[:, g0].mean()) - float(sel[:, g1].mean()))
+
+        # 3. Welfare gap: |mean(r*d per group0) - mean(r*d per group1)|
+        welfare = t2 * d2
+        welfare_gap = abs(float(welfare[:, g0].mean()) - float(welfare[:, g1].mean()))
+
+        return {
+            "decision_alloc_gap": alloc_gap,
+            "decision_selection_gap": sel_gap,
+            "decision_welfare_gap": welfare_gap,
+        }
+
     def supported_gradient_strategies(self) -> List[str]:
-        return ["finite_diff"]
+        if self.scenario == "lp":
+            return ["finite_diff", "spsa", "spo_plus"]
+        return ["finite_diff", "spsa"]

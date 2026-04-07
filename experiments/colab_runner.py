@@ -114,6 +114,7 @@ def run_healthcare_slice(
     steps: int = 70,
     task_overrides: dict | None = None,
     train_overrides: dict | None = None,
+    overwrite: bool = False,
 ) -> pd.DataFrame:
     """Run a slice of the healthcare grid. Skips completed runs.
 
@@ -129,6 +130,9 @@ def run_healthcare_slice(
         activation, dropout, batch_norm) are routed into the model sub-config.
         Other keys (lr, lr_decay, grad_clip_norm, batch_size, log_every, etc.)
         go directly into the training config.
+    overwrite : bool
+        If False (default), skip runs that already have stage_results.csv.
+        Set True to re-run and overwrite existing results.
     """
     import torch
     from fair_dfl.runner import run_experiment_unified
@@ -180,7 +184,7 @@ def run_healthcare_slice(
                     run_idx += 1
                     rdir = Path(results_dir) / method_label / f"alpha_{alpha}_hd_{hd}" / f"seed_{seed}"
 
-                    if _done(rdir):
+                    if _done(rdir) and not overwrite:
                         skipped += 1
                         try:
                             all_stage.append(pd.read_csv(rdir / "stage_results.csv"))
@@ -286,6 +290,7 @@ def run_knapsack_slice(
     unfairness_configs: dict | None = None,
     task_overrides: dict | None = None,
     train_overrides: dict | None = None,
+    overwrite: bool = False,
 ) -> pd.DataFrame:
     """Run a slice of the knapsack grid. Skips completed runs.
 
@@ -355,7 +360,7 @@ def run_knapsack_slice(
                     run_idx += 1
                     rdir = Path(results_dir) / method_label / f"alpha_{alpha}_uf_{uf_name}" / f"seed_{seed}"
 
-                    if _done(rdir):
+                    if _done(rdir) and not overwrite:
                         skipped += 1
                         try:
                             all_stage.append(pd.read_csv(rdir / "stage_results.csv"))
@@ -445,6 +450,184 @@ def run_knapsack_slice(
                                        "uf": uf_name, "seed": seed, "error": str(e)})
                         print(f"ERROR: {e}")
                         traceback.print_exc()
+
+    print(f"\nDone: {run_idx-skipped-len(errors)} new, {skipped} skipped, {len(errors)} errors")
+    if times:
+        print(f"Avg: {np.mean(times):.1f}s/run, Total: {sum(times)/60:.1f}min")
+    if errors:
+        print("Errors:", errors)
+
+    if all_stage:
+        result = pd.concat(all_stage, ignore_index=True)
+        agg_path = Path(results_dir) / "stage_results_all.csv"
+        result.to_csv(agg_path, index=False)
+        print(f"Saved: {agg_path} ({len(result)} rows)")
+        return result
+    return pd.DataFrame()
+
+
+# ======================================================================
+# LP Knapsack runner
+# ======================================================================
+
+LP_RESULTS_DEFAULT = "results/final/lp_knapsack"
+
+LP_UNFAIRNESS_LEVELS = {
+    "mild":   {"group_bias": 0.2, "noise_std_lo": 0.05, "noise_std_hi": 0.5,  "group_ratio": 0.5},
+    "medium": {"group_bias": 0.4, "noise_std_lo": 0.05, "noise_std_hi": 1.0,  "group_ratio": 0.65},
+    "high":   {"group_bias": 0.6, "noise_std_lo": 0.05, "noise_std_hi": 1.5,  "group_ratio": 0.75},
+}
+
+
+def run_lp_knapsack_slice(
+    unfairness_levels: list[str] | None = None,
+    seeds: list[int] | None = None,
+    methods: list[str] | None = None,
+    results_dir: str = LP_RESULTS_DEFAULT,
+    device: str = "cpu",
+    steps: int = 200,
+    unfairness_configs: dict | None = None,
+    task_overrides: dict | None = None,
+    train_overrides: dict | None = None,
+) -> pd.DataFrame:
+    """Run LP knapsack experiment with SPO+ decision gradients.
+
+    No alpha loop — LP objective has no alpha parameter.
+    FDFL methods use decision_grad_backend='spo_plus'.
+    """
+    from fair_dfl.runner import run_experiment_unified
+    from experiments.configs import ALL_METHOD_CONFIGS, DEFAULT_TRAIN_CFG
+
+    uf_configs = unfairness_configs if unfairness_configs is not None else LP_UNFAIRNESS_LEVELS
+    unfairness_levels = unfairness_levels or list(uf_configs.keys())
+    default_seeds = seeds or SEEDS
+    t_ovr = task_overrides or {}
+    tr_ovr = train_overrides or {}
+
+    selected = {k: v for k, v in METHOD_GRID.items()
+                if methods is None or k in methods}
+
+    total = len(selected) * len(unfairness_levels) * len(default_seeds)
+
+    print(f"\n{'='*60}")
+    print(f"LP Knapsack (SPO+): {list(selected.keys())}")
+    print(f"Unfairness={unfairness_levels}, Seeds={default_seeds}")
+    if t_ovr:
+        print(f"Task overrides: {t_ovr}")
+    if tr_ovr:
+        print(f"Train overrides: {tr_ovr}")
+    if unfairness_configs is not None:
+        for k, v in uf_configs.items():
+            print(f"  {k}: {v}")
+    print(f"Total runs={total}")
+    print(f"{'='*60}")
+
+    all_stage = []
+    errors = []
+    times = []
+    skipped = 0
+    run_idx = 0
+
+    for method_label, grid_spec in selected.items():
+        config_name = grid_spec["config"]
+        lambdas = grid_spec["lambdas"]
+        method_spec = copy.deepcopy(ALL_METHOD_CONFIGS[config_name])
+        is_fdfl = method_label in DECISION_GRAD_METHODS
+
+        for uf_name in unfairness_levels:
+            uf = uf_configs[uf_name]
+            for seed in default_seeds:
+                run_idx += 1
+                rdir = Path(results_dir) / method_label / f"uf_{uf_name}" / f"seed_{seed}"
+
+                if _done(rdir):
+                    skipped += 1
+                    try:
+                        all_stage.append(pd.read_csv(rdir / "stage_results.csv"))
+                    except Exception:
+                        pass
+                    continue
+
+                print(f"  [{run_idx}/{total}] {method_label} uf={uf_name} s={seed}", end=" ", flush=True)
+
+                try:
+                    task_cfg = {
+                        "name": "md_knapsack",
+                        "n_samples_train": t_ovr.get("n_samples_train", 80),
+                        "n_samples_val": 0,
+                        "n_samples_test": t_ovr.get("n_samples_test", 80),
+                        "n_features": t_ovr.get("n_features", 5),
+                        "n_items": t_ovr.get("n_items", 10),
+                        "n_constraints": t_ovr.get("n_constraints", 3),
+                        "scenario": "lp",
+                        "alpha_fair": 1.0,
+                        "poly_degree": t_ovr.get("poly_degree", 2),
+                        "group_bias": uf["group_bias"],
+                        "noise_std_lo": uf["noise_std_lo"],
+                        "noise_std_hi": uf["noise_std_hi"],
+                        "group_ratio": uf["group_ratio"],
+                        "budget_tightness": t_ovr.get("budget_tightness", 0.3),
+                        "data_seed": 42, "fairness_type": "mad",
+                    }
+
+                    fdfl_bsz = tr_ovr.get("fdfl_batch_size", 32)
+                    dec_backend = tr_ovr.get("decision_grad_backend", "spo_plus")
+
+                    train_cfg = copy.deepcopy(DEFAULT_TRAIN_CFG)
+                    train_cfg["seeds"] = [seed]
+                    train_cfg["lambdas"] = lambdas
+                    train_cfg["steps_per_lambda"] = steps
+                    train_cfg["lr"] = tr_ovr.get("lr", 0.002)
+                    train_cfg["batch_size"] = fdfl_bsz if is_fdfl else -1
+                    train_cfg["decision_grad_backend"] = dec_backend if is_fdfl else "analytic"
+                    train_cfg["device"] = device
+                    train_cfg["model"]["hidden_dim"] = 64
+                    train_cfg["log_every"] = 2
+                    _apply_train_overrides(train_cfg, {
+                        k: v for k, v in tr_ovr.items()
+                        if k not in ("fdfl_batch_size", "decision_grad_backend", "lr")
+                    })
+
+                    for k, v in method_spec.items():
+                        if k not in {"method", "use_dec", "use_pred", "use_fair",
+                                     "pred_weight_mode", "continuation",
+                                     "allow_orthogonalization"}:
+                            train_cfg[k] = v
+
+                    cfg = {"task": task_cfg, "training": train_cfg}
+                    t0 = time.time()
+                    stage_df, iter_df = run_experiment_unified(
+                        cfg, method_configs={config_name: method_spec}
+                    )
+                    elapsed = time.time() - t0
+                    times.append(elapsed)
+
+                    for df in (stage_df, iter_df):
+                        if not df.empty:
+                            df["method_label"] = method_label
+                            df["unfairness_level"] = uf_name
+                            df["group_bias"] = uf["group_bias"]
+                            df["group_ratio"] = uf["group_ratio"]
+                            df["config_name"] = config_name
+
+                    _save_run(rdir, stage_df, iter_df, {
+                        "method_label": method_label, "config_name": config_name,
+                        "unfairness": uf_name, "seed": seed,
+                        "lambdas": lambdas, "elapsed_sec": elapsed,
+                    })
+                    if not stage_df.empty:
+                        all_stage.append(stage_df)
+                    print(f"({elapsed:.1f}s)")
+
+                    if len(times) == 1:
+                        remaining = total - run_idx
+                        print(f"    Est. remaining: {remaining * elapsed / 60:.0f}min")
+
+                except Exception as e:
+                    errors.append({"method": method_label,
+                                   "uf": uf_name, "seed": seed, "error": str(e)})
+                    print(f"ERROR: {e}")
+                    traceback.print_exc()
 
     print(f"\nDone: {run_idx-skipped-len(errors)} new, {skipped} skipped, {len(errors)} errors")
     if times:

@@ -57,9 +57,6 @@ METRICS = {
 
 def _load_results(results_dir: str) -> pd.DataFrame:
     p = Path(results_dir)
-    agg = p / "stage_results_all.csv"
-    if agg.exists():
-        return pd.read_csv(agg)
     csvs = sorted(p.rglob("stage_results.csv"))
     if not csvs:
         return pd.DataFrame()
@@ -106,6 +103,10 @@ def generate_healthcare_table(df: pd.DataFrame, output_dir: Path) -> str:
     if df.empty:
         return "% No healthcare results"
 
+    # Filter to hidden_dim=64 for uniform comparison
+    if "hidden_dim" in df.columns:
+        df = df[df["hidden_dim"] == 64].copy()
+
     # Ensure lambda column
     if "lambda" not in df.columns:
         df["lambda"] = 0.0
@@ -117,8 +118,8 @@ def generate_healthcare_table(df: pd.DataFrame, output_dir: Path) -> str:
 
     lines = [
         r"\begin{table}[htbp]", r"\centering",
-        r"\caption{Healthcare resource allocation. Mean $\pm$ std over 5 seeds, "
-        r"best hidden dim selected per (method, $\alpha$). Best in \textbf{bold}.}",
+        r"\caption{Healthcare resource allocation. Mean $\pm$ std over 5 seeds. "
+        r"Best in \textbf{bold}.}",
         r"\label{tab:healthcare}", r"\small",
         r"\begin{tabular}{" + col_spec + "}",
         r"\toprule",

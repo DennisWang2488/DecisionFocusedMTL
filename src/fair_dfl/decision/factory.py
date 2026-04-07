@@ -93,6 +93,10 @@ def build_decision_gradient(
             lancer_cfg=lancer_cfg,
         )
 
+    elif backend == "spo_plus":
+        from .strategies.spo_plus import SPOPlusStrategy
+        strategy = SPOPlusStrategy()
+
     elif backend == "cvxpylayers":
         from .strategies.cvxpylayers import CvxpyLayersStrategy
         strategy = CvxpyLayersStrategy()
@@ -104,7 +108,7 @@ def build_decision_gradient(
     else:
         raise ValueError(
             f"Unknown decision_grad_backend: {backend!r}. "
-            f"Options: analytic, finite_diff, spsa, ffo, nce, lancer, cvxpylayers, autograd"
+            f"Options: analytic, finite_diff, spsa, spo_plus, ffo, nce, lancer, cvxpylayers, autograd"
         )
 
     if not strategy.supports_task(task):

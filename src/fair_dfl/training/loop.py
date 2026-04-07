@@ -684,6 +684,12 @@ def train_single_stage(
             stage_row[metric] = _metric_or_nan(val_metrics, key)
             stage_row[metric.replace("val_", "test_")] = _metric_or_nan(test_metrics, key)
 
+    # Forward decision-level fairness metrics (decision_alloc_gap, etc.)
+    for prefix, m_dict in [("val_", val_metrics), ("test_", test_metrics)]:
+        for key, value in m_dict.items():
+            if key.startswith("decision_"):
+                stage_row[prefix + key] = value
+
     return stage_row, iter_logs
 
 

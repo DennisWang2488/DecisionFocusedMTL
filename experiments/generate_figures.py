@@ -75,9 +75,6 @@ METHOD_CATEGORY = {
 
 def _load_results(results_dir: str) -> pd.DataFrame:
     p = Path(results_dir)
-    agg = p / "stage_results_all.csv"
-    if agg.exists():
-        return pd.read_csv(agg)
     csvs = sorted(p.rglob("stage_results.csv"))
     if not csvs:
         return pd.DataFrame()

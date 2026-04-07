@@ -44,6 +44,10 @@ def eval_split(
     ]:
         if key in out:
             metrics[metric_name] = float(out[key])
+    # Forward decision-level fairness metrics (e.g. decision_alloc_gap)
+    for key in out:
+        if key.startswith("decision_"):
+            metrics[key] = float(out[key])
     return metrics
 
 

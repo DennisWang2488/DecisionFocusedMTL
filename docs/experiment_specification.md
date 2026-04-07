@@ -1,6 +1,6 @@
 # Experiment Specification: Decision-Focused Multi-Task Fair Learning
 
-**Document purpose:** Reference for writing the Experiments and Results sections of the INFORMS JoC paper. Contains all parameters, design choices, and rationale.
+**Document purpose:** Reference for writing the Experiments and Results sections of the INFORMS JoC paper. Contains all parameters, design choices, mathematical definitions, and rationale.
 
 ---
 
@@ -11,71 +11,136 @@ We evaluate our framework on two experiments:
 1. **Healthcare Resource Allocation** (real data, Obermeyer et al. 2019)
 2. **Synthetic Multi-Dimensional Knapsack** (controlled unfairness)
 
-Both share the same method comparison and metric framework. The healthcare experiment tests on a real-world dataset with inherent group disparities; the knapsack experiment isolates unfairness mechanisms under controlled conditions.
+Both share the same method comparison and metric framework. The healthcare experiment tests on a real-world dataset with inherent group disparities; the knapsack experiment isolates unfairness mechanisms under controlled conditions across three severity levels.
 
-### Methods Compared
+### 1.1 Optimization Framework
+
+Both experiments follow the same **predict-then-decide** pipeline. A parametric model f_theta: X -> R^n predicts item benefits y-hat from features x. The predicted benefits are passed to a downstream optimization solver to produce a decision d:
+
+```
+d*(y-hat) = argmax_{d in D} U(d, y-hat)
+```
+
+where D is the feasible set (knapsack constraints or budget constraint) and U is the alpha-fair utility function. The true quality of the decision is evaluated using the **true** benefits y:
+
+```
+obj_true  = U(d*(y),    y)   [oracle decision on true benefits]
+obj_pred  = U(d*(y-hat), y)  [predicted decision evaluated on true benefits]
+```
+
+Regret = obj_true - obj_pred >= 0.
+
+### 1.2 Alpha-Fairness Utility
+
+Both experiments use the **alpha-fairness** family of utility functions (Mo & Walrand 2000):
+
+```
+U_alpha(u) = sum_i u_i^(1-alpha) / (1-alpha),   alpha != 1
+           = sum_i log(u_i),                      alpha = 1
+```
+
+where u_i = r_i * d_i is the utility of item/patient i (benefit r_i times allocation d_i).
+
+- **alpha -> 0:** approaches sum of utilities (utilitarian / max total welfare)
+- **alpha = 0.5:** moderate inequality aversion
+- **alpha = 1:** proportional fairness (Nash bargaining)
+- **alpha = 2:** strong inequality aversion (closer to Rawlsian max-min)
+- **alpha -> inf:** max-min fairness (Rawlsian)
+
+We test alpha in {0.5, 2.0} to bracket the policy-relevant range between efficiency-leaning and equity-leaning objectives.
+
+### 1.3 Methods Compared
 
 | Method | Category | Objectives Used | Lambda | Description |
 |--------|----------|----------------|--------|-------------|
-| FPTO (lambda=0) = **PTO** | Two-stage | pred | 0 | Predict-then-optimize (no fairness) |
+| FPTO (lambda=0) = **PTO** | Two-stage | pred | 0 | Predict-then-optimize, no fairness |
 | FPTO (lambda=0.5,1,5) | Two-stage | pred + fair | 0.5, 1, 5 | Fair predict-then-optimize |
-| SAA | Data-driven | -- | -- | Sample average approximation (no ML model) |
-| WDRO | Data-driven | pred (robust) | -- | Wasserstein distributionally robust optimization |
-| FDFL-Scal (lambda=0) = **DFL** | Integrated | dec + pred | 0 | Decision-focused learning (no fairness) |
-| FDFL-Scal (lambda=0.5,1,5) | Integrated | dec + pred + fair | 0.5, 1, 5 | Scalarized fair decision-focused learning |
-| FDFL-PCGrad | Integrated + MOO | dec + pred + fair | -- | PCGrad multi-objective handler |
-| FDFL-MGDA | Integrated + MOO | dec + pred + fair | -- | MGDA multi-objective handler |
-| FDFL-CAGrad | Integrated + MOO | dec + pred + fair | -- | CAGrad multi-objective handler |
+| SAA | Data-driven baseline | -- | -- | Sample average approximation, no ML |
+| WDRO | Data-driven baseline | pred (robust) | -- | Wasserstein DRO |
+| FDFL-Scal (lambda=0) = **DFL** | Integrated | dec + pred | 0 | Decision-focused learning, no fairness |
+| FDFL-Scal (lambda=0.5,1,5) | Integrated | dec + pred + fair | 0.5, 1, 5 | Scalarized fair DFL |
+| FDFL-PCGrad | Integrated + MOO | dec + pred + fair | -- | PCGrad gradient combination |
+| FDFL-MGDA | Integrated + MOO | dec + pred + fair | -- | MGDA gradient combination |
+| FDFL-CAGrad | Integrated + MOO | dec + pred + fair | -- | CAGrad gradient combination |
 
-**Key insight:** FPTO and FDFL-Scal each sweep lambda in {0, 0.5, 1, 5}. At lambda=0, FPTO reduces to PTO (no fairness), and FDFL-Scal reduces to DFL (no prediction fairness). MOO methods do not require a lambda parameter — they determine objective weighting algorithmically.
+**Method hierarchy:**
+- **FPTO** (Fair Predict-Then-Optimize): trains on prediction MSE + lambda * fairness penalty. At lambda=0 this is standard PTO.
+- **FDFL-Scal** (Fair Decision-Focused Learning, Scalarized): trains on decision regret + prediction MSE (via PLG schedule) + lambda * fairness. At lambda=0 this is DFL. This is the proposed FPLG method.
+- **FDFL-{MOO}**: same as FDFL-Scal but uses a MOO gradient combination rule (PCGrad / MGDA / CAGrad) instead of scalarization. Lambda is not a separate parameter — the MOO handler determines the gradient blend.
 
-### Three Objectives
+**Key insight:** FPTO and FDFL-Scal sweep lambda in {0, 0.5, 1, 5}, producing a Pareto approximation. At lambda=0, FPTO = PTO and FDFL-Scal = DFL. MOO methods do not require lambda — they determine objective weighting algorithmically from gradient geometry.
 
-1. **Prediction loss** (pred): Mean squared error between predicted and true values
-2. **Prediction fairness** (fair): Mean absolute deviation (MAD) of group-wise MSE — measures disparity in prediction quality across groups
-3. **Decision regret** (dec): Normalized difference between the optimal objective value (using true parameters) and the achieved objective value (using predicted parameters)
+### 1.4 Three Objectives
+
+| Objective | Symbol | Formula | Differentiable? |
+|-----------|--------|---------|----------------|
+| Prediction MSE | L_pred | mean((f(x) - y)^2) | Yes (analytic) |
+| Prediction fairness | L_fair | MAD of per-group MSEs (see §6) | Yes (smooth approx.) |
+| Decision regret | L_dec | max(obj_true - obj_pred, 0) | Via SPSA or KKT |
 
 ---
 
 ## 2. Experiment 1: Healthcare Resource Allocation
 
-### Dataset
+### 2.1 Dataset
 
-- **Source:** Obermeyer et al. (2019) — algorithmic bias in healthcare risk prediction
-- **Full dataset:** 48,784 patients (not the 5,000-sample subset from prior work)
+- **Source:** Obermeyer et al. (2019), *Science* — "Dissecting racial bias in an algorithm used to manage the health of populations"
+- **Population:** 48,784 patients (we use the full dataset, not the 5,000-sample subset from prior work)
 - **Data file:** `data/data_processed.csv`
-- **Split:** 50% train / 50% test (no validation split)
+- **Train/test split:** 50% / 50% (no validation split)
 - **Split seeds:** data_seed=42, split_seed=2
 
-### Features
+### 2.2 Target Variable
 
-The prediction model uses the following feature groups:
-- **Demographics:** All `dem_*` columns (excluding race)
-- **Comorbidities:** `gagne_sum_tm1`, Elixhauser indices (`*_elixhauser_tm1`), Romano indices (`*_romano_tm1`)
-- **Prior costs:** All `cost_*` columns (excluding `cost_t` and `cost_avoidable_t`)
-- **Lab results:** Test counts (`*_tests_tm1`), abnormal flags (`*-low_tm1`, `*-high_tm1`, `*-normal_tm1`)
-- **Medications:** Lasix-related features (`lasix_*`)
+The model predicts **total healthcare costs in the target year** (`cost_t`), expressed in dollars. This is the standard proxy used in the original Obermeyer et al. (2019) paper: higher predicted cost -> higher resource allocation priority.
 
-### Group Definition
+> Note: The original paper documents that using cost as a proxy for health need introduces racial bias because, at equal health need, Black patients historically had lower healthcare costs due to reduced access. This is the core unfairness we address.
 
-- Groups are defined by the **race** column in the dataset
-- Fairness is measured as disparity in prediction MSE between racial groups
+### 2.3 Features
 
-### Decision Problem
+Total feature count: **~130 features** across the following groups:
 
-- **Objective:** Allocate healthcare resources to patients to maximize alpha-fairness welfare
-- **Decision mode:** Group-level allocation (`decision_mode="group"`)
-- **Budget:** Dynamic, computed as `budget = budget_rho * sum(capped_costs)`, with `budget_rho = 0.35`
-- **Alpha-fairness values:** alpha in {0.5, 2.0}
-  - alpha=0.5: moderate inequality aversion (closer to utilitarian)
-  - alpha=2.0: strong inequality aversion (closer to Rawlsian)
+| Feature group | Examples | Count (approx.) |
+|---------------|----------|-----------------|
+| Demographics | `dem_age`, `dem_female`, all `dem_*` (excl. race) | ~10 |
+| Comorbidities | `gagne_sum_tm1`, Elixhauser indices, Romano indices | ~40 |
+| Prior costs | All `cost_*` (excl. `cost_t`, `cost_avoidable_t`) | ~15 |
+| Lab results | Test counts, abnormal flags (`*_tests_tm1`, `*-low/high/normal_tm1`) | ~60 |
+| Medications | Lasix-related features (`lasix_*`) | ~5 |
 
-### Decision Gradient
+Race is explicitly excluded from the feature set — fairness is imposed through the fairness loss, not by including group membership.
+
+### 2.4 Group Definition
+
+- **Groups:** Defined by the `race` column (binarized: Black vs. non-Black in the main experiment, matching Obermeyer et al.)
+- **Group sizes (approximate, 50% train split):** ~11% Black, ~89% non-Black, consistent with the original cohort
+- **Fairness target:** Equal prediction MSE across racial groups (disparity reduction, not demographic parity in allocations)
+
+### 2.5 Decision Problem
+
+**Objective:** Allocate healthcare program enrollment resources across patients to maximize alpha-fair welfare:
+
+```
+max_{d >= 0}  U_alpha(r * d)     [element-wise product r_i * d_i]
+subject to:   sum_i d_i <= B
+```
+
+where:
+- r_i = predicted cost for patient i (the model output)
+- d_i = fraction of resources allocated to patient i
+- B = total budget = `budget_rho * sum(min(cost_t, cap))`, with `budget_rho = 0.35`
+
+**Budget rationale:** `budget_rho = 0.35` means the program can serve approximately 35% of the total need (sum of capped costs). This reflects a realistic resource-constrained setting where the algorithm must prioritize.
+
+**Decision mode:** Group-level allocation (`decision_mode="group"`). Within each racial group, resources are allocated proportionally to individual predicted costs. The group-level aggregate allocation is the decision variable. This reduces the problem size from n_patients to n_groups while preserving the alpha-fair welfare objective.
+
+### 2.6 Decision Gradient
 
 - **Backend:** Analytic (KKT-based implicit differentiation)
-- Healthcare has a closed-form solution structure, enabling exact gradient computation
+- The group-level allocation problem has a closed-form KKT structure that enables exact computation of d∂L_dec/∂y-hat via the envelope theorem
+- No finite differences or SPSA required for healthcare
 
-### Experimental Grid
+### 2.7 Experimental Grid
 
 | Factor | Values | Count |
 |--------|--------|-------|
@@ -83,66 +148,116 @@ The prediction model uses the following feature groups:
 | Alpha | {0.5, 2.0} | 2 |
 | Hidden dim | 64 | 1 |
 | Seeds | {11, 22, 33, 44, 55} | 5 |
-| **Total runs** | 7 x 2 x 1 x 5 | **70** |
+| **Total runs** | 7 × 2 × 1 × 5 | **70** |
 
-Each run with lambda-sweep methods (FPTO, FDFL-Scal) produces 4 stage rows (one per lambda value). Other methods produce 1 stage row.
+Each run with lambda-sweep methods (FPTO, FDFL-Scal) produces 4 stage rows (one per lambda). Other methods produce 1 stage row.
 
 ---
 
 ## 3. Experiment 2: Synthetic Multi-Dimensional Knapsack
 
-### Problem Formulation
+### 3.1 Problem Formulation
 
-- **Type:** Multi-dimensional knapsack with alpha-fairness utility
-- **Items:** 20 items with group labels
-- **Constraints:** 3 knapsack constraints
-- **Constraint matrix:** A ~ Uniform[0.5, 1.5], shape (3, 20)
-- **Budget:** b = 0.3 * A.sum(axis=1) (budget_tightness = 0.3, tight budget forces selective allocation)
+**Optimization problem:**
+```
+max_{d >= 0}  U_alpha(r * d)
+subject to:   A d <= b
+              d_i >= 1e-6  for all i
+```
 
-### Data Generation
+where:
+- r in R^20: true item benefits (unknown at decision time)
+- d in R^20: fractional allocation per item
+- A in R^{3 x 20}: resource consumption matrix, A_ij ~ Uniform[0.5, 1.5]
+- b in R^3: resource capacities, b_k = 0.3 * sum_j A_kj (budget_tightness = 0.3)
+- The small lower bound 1e-6 on d ensures the alpha-fair objective remains finite
 
-**Feature-to-cost mapping** (PyEPO-style nonlinear):
-- Features: z_i ~ N(0, I_5) for each sample
-- True costs: degree-3 polynomial mapping
-  - For each degree d in {1, 2, 3}: W_d ~ N(0, 1/d), shape (5, 20)
-  - raw = sum_{d=1}^{3} z^d @ W_d
-- Positive transform: y = softplus(raw + group_shift + noise) + 0.05
+**Why 20 items:** Large enough that prediction quality meaningfully affects which items are selected under a tight budget, but small enough for SPSA to be computationally feasible within Colab's time limits.
 
-**Unfairness mechanisms** (three parameters):
+**Why budget_tightness = 0.3:** With 30% of total capacity, approximately 6 of 20 items receive meaningful allocation. This creates genuine selection pressure — the algorithm must discriminate between items — so prediction quality directly impacts decision quality. A looser budget (e.g., 0.5) spreads resources more uniformly, reducing sensitivity to prediction errors.
 
-1. **Group bias** (`group_bias`): Additive mean shift
-   - Group 0 items: shifted by +group_bias
-   - Group 1 items: shifted by -group_bias
+### 3.2 Data Generation
 
-2. **Noise heterogeneity** (`noise_std_lo`, `noise_std_hi`): Differential noise variance
-   - Group 0 items: noise ~ N(0, noise_std_lo)
-   - Group 1 items: noise ~ N(0, noise_std_hi)
+**Feature-to-benefit mapping** (following PyEPO's nonlinear generation scheme):
 
-3. **Group size imbalance** (`group_ratio`): Fraction of items in group 0
-   - n_group0 = round(group_ratio * n_items)
-   - n_group1 = n_items - n_group0
+```
+x_i ~ N(0, I_5)                          [5-dim features per sample]
+W_d ~ N(0, 1/d),  d in {1,2,3},  W_d in R^{5 x 20}   [weight matrices, fixed per seed]
+raw = x @ W_1 + x^2 @ W_2 + x^3 @ W_3   [element-wise powers]
+y_raw = raw + group_shift + noise
+y = softplus(y_raw) + 0.05               [ensures y > 0]
+```
 
-### Three Unfairness Levels
+where:
+- `group_shift[i] = +group_bias` if item i in group 0, `-group_bias` if in group 1
+- `noise[i] ~ N(0, noise_std_lo)` for group 0 items, `N(0, noise_std_hi)` for group 1
+- `softplus(x) = log(1 + exp(x))`, the +0.05 floor ensures strict positivity
 
-| Level | group_bias | noise_std_lo | noise_std_hi | group_ratio | Group split | Unfairness source |
-|-------|-----------|-------------|-------------|------------|------------|-------------------|
-| **Mild** | 0.1 | 0.1 | 0.3 | 0.5 | 10/10 | Small bias, small noise gap |
-| **Medium** | 0.3 | 0.1 | 0.8 | 0.6 | 12/8 | Larger bias + noise gap + mild imbalance |
-| **High** | 0.5 | 0.1 | 1.0 | 0.75 | 15/5 | Large bias + noise gap + strong imbalance |
+**Weight matrix scaling** (1/d): higher-degree terms have smaller coefficients, making the cubic terms a smaller perturbation on the linear signal. This creates a nonlinear mapping that an MLP with standard initialization can learn but not trivially fit.
 
-The progression increases all three unfairness mechanisms simultaneously:
-- Mild -> Medium: increases mean shift (0.1 -> 0.3), noise gap (0.3 -> 0.8), adds mild group imbalance (50/50 -> 60/40)
-- Medium -> High: further increases bias (0.3 -> 0.5), noise gap (0.8 -> 1.0), and strong imbalance (60/40 -> 75/25)
+**Training/test samples:** 200 train, 80 test, no validation split.
 
-### Decision Gradient
+### 3.3 Unfairness Mechanisms
 
-- **Backend:** SPSA (Simultaneous Perturbation Stochastic Approximation)
-- The multi-dimensional knapsack solver (CVXPY with ECOS/SCS) does not provide analytic gradients
-- SPSA perturbs all prediction dimensions simultaneously with a random Rademacher vector, requiring only 2 solver calls per sample per direction (vs 2 * dim for element-wise finite differences)
-- Perturbation step size: eps = 5e-3, n_dirs = 1
-- Reference: Spall (1992), IEEE Trans. Automatic Control
+Three independent sources of unfairness are combined:
 
-### Experimental Grid
+1. **Group bias** (`group_bias`): Systematic mean shift in benefit values.
+   - Majority group (group 0): benefits shifted up by +group_bias → over-represented in allocation
+   - Minority group (group 1): benefits shifted down by -group_bias → under-represented
+   - Represents a structural advantage for the majority group
+
+2. **Noise heterogeneity** (`noise_std_lo`, `noise_std_hi`): Differential prediction difficulty.
+   - Majority group: low noise → easier to predict accurately
+   - Minority group: high noise → harder to predict → more prediction error
+   - Represents data quality disparities (less historical data for minority group)
+
+3. **Group size imbalance** (`group_ratio`): Fraction of items in the majority group.
+   - Larger majority → minority items have fewer representatives
+   - Exacerbates fairness violations because MAD is sensitive to group size asymmetry
+
+### 3.4 Three Unfairness Levels
+
+| Level | group_bias | noise_std_lo | noise_std_hi | group_ratio | Majority/Minority | Primary mechanism |
+|-------|-----------|-------------|-------------|------------|-------------------|-------------------|
+| **Mild** | 0.1 | 0.1 | 0.3 | 0.5 | 10 / 10 | Small bias, small noise gap |
+| **Medium** | 0.3 | 0.1 | 0.8 | 0.6 | 12 / 8 | Larger bias + noise gap + mild imbalance |
+| **High** | 0.5 | 0.1 | 1.0 | 0.75 | 15 / 5 | Large bias + noise gap + strong imbalance |
+
+The three levels increase all unfairness mechanisms simultaneously:
+- **Mild → Medium:** Bias doubles (0.1→0.3), noise gap nearly triples (0.3→0.8), group ratio shifts from 50/50 to 60/40
+- **Medium → High:** Bias increases further (0.3→0.5), noise hits ceiling (1.0), ratio becomes 75/25
+
+The simultaneous increase is intentional: in practice, data quality, representation, and historical advantage are correlated. Disentangling each mechanism is a secondary analysis.
+
+### 3.5 Decision Gradient
+
+The alpha-fair knapsack objective does not satisfy CVXPY's DPP requirements, preventing the use of differentiable solvers (cvxpylayers, fold-opt). We use **SPSA** (Simultaneous Perturbation Stochastic Approximation):
+
+**SPSA gradient estimator:**
+For each sample b in the batch:
+1. Sample Rademacher vector: Delta_b in {-1, +1}^n (each element iid)
+2. Solve: d_+ = d*(y-hat_b + eps * Delta_b), d_- = d*(y-hat_b - eps * Delta_b)
+3. Compute: regret_+ = max(obj_true_b - U(d_+, y_b), 0), regret_- = max(obj_true_b - U(d_-, y_b), 0)
+4. Gradient estimate: g_b = (regret_+ - regret_-) / (2 * eps * Delta_b)   [element-wise]
+
+**Parameters:** eps = 5e-3 (perturbation magnitude), n_dirs = 1 (single random direction per step).
+
+**Unbiasedness:** The SPSA estimator is an unbiased estimator of the gradient of the expected regret w.r.t. the prediction, provided the regret function is smooth in y-hat. The Rademacher perturbation satisfies E[1/Delta_j^2] = 1, so the estimator correctly scales the gradient.
+
+**Computational cost:**
+- SPSA: bsz × (1 + 2 × n_dirs) solver calls per step = **96 calls/step** (batch=32, n_dirs=1)
+- Element-wise FD: bsz × (1 + 2 × dim) = 32 × 41 = **1,312 calls/step** (dim=20)
+- **Speedup: ~14x** vs. finite differences, independent of problem dimension
+
+**Solver chain (in order of preference):**
+1. MOSEK (requires license; most accurate for power objectives)
+2. CLARABEL (no license; modern power-cone solver, CVXPY default since v1.3)
+3. ECOS (fast but can return inaccurate solutions for tight-budget power objectives)
+4. SCS (last resort; less accurate but always terminates)
+
+**Reference:** Spall, J.C. (1992). "Multivariate Stochastic Approximation Using a Simultaneous Perturbation Gradient Approximation." IEEE Trans. Automatic Control, 37(3), 332-341.
+
+### 3.6 Experimental Grid
 
 | Factor | Values | Count |
 |--------|--------|-------|
@@ -150,245 +265,327 @@ The progression increases all three unfairness mechanisms simultaneously:
 | Alpha | {0.5, 2.0} | 2 |
 | Unfairness | {mild, medium, high} | 3 |
 | Seeds | {11, 22, 33, 44, 55} | 5 |
-| **Total runs** | 7 x 2 x 3 x 5 | **210** |
+| **Total runs** | 7 × 2 × 3 × 5 | **210** |
 
 ---
 
 ## 4. Training Configuration (Shared)
 
-### Prediction Model
+### 4.1 Prediction Model
+
+All methods (except SAA) use the same MLP architecture:
 
 | Parameter | Healthcare | Knapsack |
 |-----------|-----------|----------|
 | Architecture | MLP | MLP |
-| Hidden dimensions | 64 | 64 |
+| Input dim | ~130 features | 5 features |
+| Hidden dim | 64 | 64 |
 | Hidden layers | 2 | 2 |
 | Activation | ReLU | ReLU |
 | Dropout | 0.0 | 0.0 |
 | Batch normalization | No | No |
-| Weight initialization | Default (PyTorch) | Default |
-| Post-processing | Softplus (healthcare) | Softplus |
+| Weight initialization | PyTorch default (Kaiming uniform) | same |
+| Output activation | Softplus | Softplus |
+| Output dim | n_groups (2) | n_items (20) |
 
-### Optimization
+**Output activation (Softplus):** ensures predictions are strictly positive before being passed to the alpha-fair optimizer, which requires positive benefits.
+
+### 4.2 Optimization
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
-| Learning rate | 0.0005 | |
-| LR decay | 0.0005 | lr(t) = lr / (1 + lr_decay * t) |
-| Batch size (HC) | Full batch | Required for global budget constraint |
-| Batch size (KN, non-FDFL) | Full batch (-1) | n_train = 200 |
-| Batch size (KN, FDFL) | 32 | Mini-batch limits SPSA solver calls |
-| Gradient clip norm | 10,000 | Safety threshold |
-| Exploding threshold | 1,000,000 | Step skipped if norm exceeds this |
-| Steps per lambda (HC) | 70 | Per lambda stage |
-| Steps per lambda (KN) | 40 | Per lambda stage |
+| Optimizer | Adam | default betas (0.9, 0.999) |
+| Learning rate | 5×10⁻⁴ | |
+| LR schedule | Inverse time decay | lr(t) = lr₀ / (1 + lr_decay × t) |
+| LR decay coefficient | 5×10⁻⁴ | |
+| Batch size (HC) | Full batch (~24,000) | Global budget constraint requires all patients |
+| Batch size (KN, non-FDFL) | Full batch (200) | FPTO/SAA/WDRO use full training set |
+| Batch size (KN, FDFL) | 32 | Mini-batch limits SPSA solver calls per step |
+| Gradient clip norm | 10,000 | Safety; rarely active |
+| Exploding threshold | 1,000,000 | Step skipped if gradient norm exceeds this |
+| Steps per lambda (HC) | 70 | Per lambda stage; 4 stages → 280 total steps |
+| Steps per lambda (KN) | 40 | Per lambda stage; 4 stages → 160 total steps |
 
-### Prediction Weight Schedule (alpha_t)
+**Lambda values:** {0.0, 0.5, 1.0, 5.0}. These were chosen to span a practical range:
+- 0.0: fairness-blind baseline
+- 0.5, 1.0: moderate fairness emphasis
+- 5.0: strong fairness emphasis (where accuracy-fairness tradeoff is visible)
+Values beyond 5.0 showed excessive accuracy degradation in pilot experiments.
 
-For methods using both prediction and decision gradients (PLG-style), the prediction loss weight decays over training:
+### 4.3 Prediction Weight Schedule (alpha_t)
 
-- Schedule type: Inverse square root
-- Formula: `alpha(t) = max(alpha_min, alpha0 / sqrt(t + 1))`
-- alpha0 = 1.0, alpha_min = 0.0
-- Early training emphasizes prediction accuracy; later training emphasizes decision quality
+For FDFL methods, prediction and decision gradients are combined using a decaying prediction weight:
 
-### Warmstart
+```
+alpha(t) = max(alpha_min, alpha0 / sqrt(t + 1))
+alpha0 = 1.0,  alpha_min = 0.0
+```
 
-- Applied to: FPLG-based methods (FDFL-Scal, FDFL-PCGrad, FDFL-MGDA, FDFL-CAGrad)
-- Warmstart fraction: 25% of steps_per_lambda
-- During warmstart: method runs as FPTO (prediction + fairness only, no decision gradient)
-- After warmstart: switches to full method specification
-- Rationale: Provides a reasonable initial predictor before introducing decision gradients
+This is the PLG (Prediction-then-Learning-to-Generalize) schedule from [CITE]. Early training emphasizes prediction accuracy (warm start); as t increases, the weight shifts toward decision quality. At convergence, alpha(t) → 0 and the method is effectively pure decision-focused learning.
 
-### Lambda Sweep (Continuation Mode)
+### 4.4 Warmstart (FDFL Methods)
 
-For FPTO and FDFL-Scal, training proceeds through lambda stages [0.0, 0.5, 1.0, 5.0] sequentially with **continuation** — the model state carries over from one lambda to the next, rather than reinitializing.
+All FDFL methods use a warmstart period:
+
+- **Duration:** 25% of steps_per_lambda (10 steps for knapsack, 18 steps for healthcare)
+- **During warmstart:** method runs as FPTO (prediction + fairness gradients only, no decision gradient)
+- **After warmstart:** switches to full method specification (adds decision gradient)
+- **Rationale:** Starting from a reasonable predictor prevents the SPSA gradient estimator from operating in a degenerate high-regret region where gradient estimates are noisy and uninformative
+
+### 4.5 Lambda Sweep (Continuation Mode)
+
+For FPTO and FDFL-Scal, training proceeds through lambda stages [0.0, 0.5, 1.0, 5.0] sequentially:
+
+- **Continuation:** model weights carry over from one lambda stage to the next
+- **Effect:** traces an approximate Pareto frontier (regret vs. fairness) more efficiently than independent restarts from scratch
+- **Interpretation:** each stage is a fine-tuning of the previous model with a stronger fairness constraint
+
+MOO methods (PCGrad, MGDA, CAGrad) do not use a lambda sweep — they handle all three objectives jointly within a single training run.
 
 ---
 
 ## 5. Method Implementation Details
 
-### SAA (Sample Average Approximation)
+### 5.1 SAA (Sample Average Approximation)
 
-- **No training:** The "prediction" is simply the mean of training labels
-- Steps = 0; evaluation uses `pred(x) = mean(y_train)` for all inputs
-- Serves as a no-ML baseline: what happens if we use population statistics directly
+- **No neural network training.** The "prediction" for every test point is the **training set mean**: y-hat(x) = mean(y_train)
+- Represents a no-ML baseline: what happens if we use population statistics rather than individual predictions?
+- The decision is then made by solving the optimization problem with these constant predictions
+- Steps = 0 (no gradient descent)
 
-### WDRO (Wasserstein Distributionally Robust Optimization)
+### 5.2 WDRO (Wasserstein Distributionally Robust Optimization)
 
-- Trains the same MLP predictor as other methods, but with importance-weighted MSE
-- **DRO epsilon:** 0.1
-- Per-sample loss: `L_i = (pred_i - true_i)^2`
-- DRO weights: `w_i = 1 + epsilon * (L_i - mean(L)) / std(L)`
-- Effective loss: `mean(L) + epsilon * std(L)`
-- Gradients are multiplied by the DRO weights, upweighting high-loss samples
-- This provides a form of worst-case robustness without explicit group information
+Our WDRO implementation trains the same MLP with an importance-weighted MSE objective:
 
-### PCGrad (Yu et al. 2020)
+```
+L_WDRO = mean_i(L_i) + epsilon * std_i(L_i)
+```
 
-- For each objective gradient g_i, check for conflict with all other g_j
-- Conflict detected when: `cos(g_i, g_j) < 0`
-- If conflict: project g_i onto the normal plane of g_j
-  - `g_i = g_i - (g_i . g_j / ||g_j||^2) * g_j`
-- Uses original g_i for conflict detection but applies projection to running state
-- Final direction: sum of all projected gradients
+where L_i = (f(x_i) - y_i)^2 is the per-sample squared error. This is equivalent to optimizing the mean plus epsilon times the standard deviation of the loss distribution, which provides a first-order approximation to the Wasserstein DRO ball objective.
 
-### MGDA (Sener & Koltun 2018)
+- **DRO epsilon:** 0.1 (controls robustness radius; chosen as a round number in [0.05, 0.2] range standard in the DRO literature)
+- Upweights high-loss samples, providing worst-case robustness without explicit group labels
+- Does **not** use a fairness loss term — robustness is distributional, not group-specific
 
-- Finds the minimum-norm point in the convex hull of objective gradients
-- Solves: `min_{lambda in simplex} ||sum_i lambda_i * g_i||^2`
-- Equivalent QP: `min lambda^T M lambda` where `M_ij = g_i . g_j`
-- Solved via SLSQP (scipy), maxiter=200, ftol=1e-12
-- Falls back to equal weights if optimization fails
+### 5.3 PCGrad (Yu et al. 2020, NeurIPS)
 
-### CAGrad (Liu et al. ICLR 2021)
+Resolves gradient conflicts by projecting each objective's gradient onto the normal plane of conflicting gradients:
 
-- Computes mean gradient g_0 = (1/m) sum g_i
-- Finds weights w that solve:
-  - `min_{w in simplex} w^T b + c * ||g_0|| * sqrt(w^T M w)`
-  - where b_i = g_i . g_0 and M = G G^T
-- **Conflict-aversion coefficient c = 0.5** (default)
-  - c=0: reduces to mean gradient
-  - c large: approaches MGDA-like behavior
-- Final direction: g_0 + G^T w
+For each pair (i, j) where cos(g_i, g_j) < 0:
+```
+g_i <- g_i - (g_i · g_j / ||g_j||²) * g_j
+```
+Final direction: sum of projected gradients. The projection is applied to the "running" gradient while using the original g_i for conflict detection (preventing cascading modifications).
+
+Reference: Yu, T., et al. (2020). "Gradient Surgery for Multi-Task Learning." NeurIPS.
+
+### 5.4 MGDA (Sener & Koltun 2018, NeurIPS)
+
+Finds the minimum-norm update direction that does not increase any objective:
+
+```
+min_{w in Delta^m}  ||sum_i w_i * g_i||²
+```
+
+where Delta^m is the m-dimensional simplex. This is solved as a QP:
+
+```
+min_{w}  w^T M w,   M_ij = g_i · g_j
+subject to: sum w_i = 1, w_i >= 0
+```
+
+Solved via SLSQP (scipy), maxiter=200, ftol=1e-12. Falls back to equal weights (w_i = 1/m) if optimization fails.
+
+Reference: Sener, O. & Koltun, V. (2018). "Multi-Task Learning as Multi-Objective Optimization." NeurIPS.
+
+### 5.5 CAGrad (Liu et al. 2021, ICLR)
+
+Computes a conflict-averse update direction that stays close to the mean gradient while reducing the worst-case objective increase:
+
+```
+g0 = (1/m) sum_i g_i                         [mean gradient]
+min_{w in Delta^m}  w^T b + c * ||g0|| * sqrt(w^T M w)
+    where b_i = g_i · g0,  M_ij = g_i · g_j
+Final direction: g0 + G^T w
+```
+
+- **Conflict-aversion coefficient c = 0.5** (default from original paper)
+  - c = 0: reduces to mean gradient (no conflict aversion)
+  - c → ∞: approaches MGDA behavior (maximum conflict aversion)
 - Solved via SLSQP, same settings as MGDA
 
-### SPSA Decision Gradient (Knapsack)
-
-Decision-focused methods on the knapsack problem require differentiating through the CVXPY solver. Since the alpha-fair knapsack objective violates CVXPY's DPP requirements (preventing cvxpylayers / fold-opt), we use SPSA:
-
-- **Perturbation:** Rademacher vector Delta where each Delta_j ~ {-1, +1} uniformly
-- **Gradient estimate:** For each sample b:
-  - Solve knapsack with pred[b] + eps * Delta[b] -> obj_plus
-  - Solve knapsack with pred[b] - eps * Delta[b] -> obj_minus
-  - grad[b, j] = (regret_plus - regret_minus) / (2 * eps * Delta[b, j])
-- **Cost per step:** bsz * (1 + 2 * n_dirs) solver calls = 96 with batch=32, n_dirs=1
-- **vs element-wise FD:** Would require bsz * (1 + 2 * dim) = 1,312 calls (dim=20)
-
-This achieves a ~14x reduction in solver calls per step while providing an unbiased gradient estimator. The SPSA cost is independent of problem dimension, making it crucial for scaling to n_items=20.
+Reference: Liu, B., et al. (2021). "Conflict-Averse Gradient Descent for Multi-task Learning." ICLR.
 
 ---
 
 ## 6. Metrics
 
-### Primary Metrics (reported in tables)
+### 6.1 Normalized Decision Regret (primary)
 
-1. **Normalized Decision Regret** (lower is better)
-   - `regret = max(obj_true - obj_pred, 0) / (|obj_true| + |obj_pred| + epsilon)`
-   - Where obj_true uses the oracle decision (true parameters), obj_pred uses the predicted parameters
-   - Averaged across test samples
+```
+regret_i = max(obj_true_i - obj_pred_i, 0)
+regret_normalized_i = regret_i / (|obj_true_i| + |obj_pred_i| + 1e-8)
+Regret = mean_i(regret_normalized_i)
+```
 
-2. **Prediction Fairness Violation** (lower is better)
-   - Type: Mean Absolute Deviation (MAD) of group MSEs
-   - For each group g: `mse_g = mean((pred_g - true_g)^2)`
-   - Deviations: `gap_g = mse_g - mean(mse_all_groups)`
-   - Loss: `mean_g(sqrt(gap_g^2 + smoothing))` where smoothing = 1e-6
-   - Measures disparity in prediction quality across groups
+where:
+- obj_true_i = U_alpha(d*(y_i), y_i): objective achieved by the **oracle** decision (using true benefits)
+- obj_pred_i = U_alpha(d*(y-hat_i), y_i): objective achieved by the **predicted** decision, evaluated on **true** benefits
 
-3. **Prediction MSE** (lower is better)
-   - Standard mean squared error between predictions and true values
+The normalization `|obj_true| + |obj_pred|` accounts for scale variation across alpha values and problem instances (alpha-fair objectives can be negative for alpha > 1). Lower is better.
 
-### Gradient Diagnostics (knapsack only)
+> Note: We also track `regret_normalized_true = regret / |obj_true|` (normalized by oracle only) as a secondary metric. The main tables use the symmetric normalization above.
 
-- **Cosine similarity** between gradient pairs:
-  - cos(grad_dec, grad_pred) — decision vs prediction alignment
-  - cos(grad_dec, grad_fair) — decision vs fairness alignment
-  - cos(grad_pred, grad_fair) — prediction vs fairness alignment
-- Averaged over training iterations; captures gradient conflict dynamics
+### 6.2 Prediction Fairness Violation (primary)
+
+Mean Absolute Deviation (MAD) of per-group prediction MSEs:
+
+```
+mse_g = mean_{i in group g} (f(x_i) - y_i)²
+gap_g = mse_g - mean_g(mse_g)
+L_fair = mean_g(sqrt(gap_g² + 1e-6))
+```
+
+The `sqrt(gap² + eps)` smoothing makes the loss differentiable near zero (subgradient at 0 is 0 without smoothing, which blocks gradient flow). Lower is better.
+
+**Why MAD:** Symmetric (agnostic to which group has higher MSE), smooth, and additive over groups. Alternative: max-group-gap is non-smooth; Atkinson index requires a reference distribution.
+
+### 6.3 Prediction MSE (secondary)
+
+```
+MSE = mean_i ||f(x_i) - y_i||²
+```
+
+Reported to diagnose accuracy-fairness-regret tradeoffs. A method can achieve good regret by learning decision-relevant features at the cost of overall MSE.
+
+### 6.4 Statistical Reporting
+
+- All metrics reported as **mean ± standard deviation** over 5 random seeds
+- Seeds control: training data shuffle order, model weight initialization, and (for knapsack) SPSA perturbation directions
+- The knapsack data generation (A matrix, W matrices) is fixed by `data_seed=42` across all method runs, so all methods see the same underlying problem instance
+- No formal significance testing is performed; the 5-seed std provides a visual uncertainty indicator
 
 ---
 
 ## 7. Computational Details
 
-### Parallelization Strategy
+### 7.1 Parallelization Strategy
 
-Experiments are split across 3 parallel Colab workers:
-
-| Worker | Experiment | Grid | Est. Time |
+| Worker | Experiment | Grid | Est. Colab Time |
 |--------|-----------|------|-----------|
-| A | Healthcare (all) | 7 methods x 2 alpha x 5 seeds = 70 runs | ~30-45 min |
-| B | Knapsack alpha=0.5 | 7 methods x 3 uf x 5 seeds = 105 runs | ~30-60 min |
-| C | Knapsack alpha=2.0 | 7 methods x 3 uf x 5 seeds = 105 runs | ~30-60 min |
+| A | Healthcare (all) | 7 methods × 2 alpha × 5 seeds = 70 runs | ~30-45 min |
+| B | Knapsack alpha=0.5 | 7 methods × 3 uf × 5 seeds = 105 runs | ~60-90 min |
+| C | Knapsack alpha=2.0 | 7 methods × 3 uf × 5 seeds = 105 runs | ~60-90 min |
 
-Healthcare uses analytic gradients (fast). Knapsack uses SPSA decision gradients with mini-batch, split across 2 workers by alpha.
+Healthcare uses analytic gradients (fast). Knapsack FDFL methods use SPSA with batch=32; baseline methods (FPTO, SAA, WDRO) use full batch (200 samples, no solver calls during training).
 
-### Checkpoint/Resume
+### 7.2 Computational Environment
 
-- Each run saves results to: `{experiment}/{method}/alpha_{a}_hd_{h}/seed_{s}/stage_results.csv`
-- Existing results are automatically skipped on re-run
-- No experiment needs to be rerun for analysis changes
-
-### Reproducibility
-
-| Parameter | Value |
+| Component | Value |
 |-----------|-------|
-| Data seed | 42 |
-| Split seed | 2 (healthcare) |
+| Platform | Google Colab (free tier / Pro) |
+| GPU | T4 (16 GB VRAM) — healthcare uses GPU; knapsack uses CPU (CVXPY not GPU-compatible) |
+| Python | 3.12 |
+| PyTorch | 2.x |
+| CVXPY | 1.4+ |
+| Solvers | MOSEK 10.x (licensed), CLARABEL (bundled with CVXPY 1.4+), ECOS, SCS |
+
+**Note on GPU usage:** The knapsack task is CPU-bound due to CVXPY solver calls. Using GPU for PyTorch forward/backward passes provides minimal speedup over the solver bottleneck. Healthcare can use GPU since it has analytic gradients.
+
+### 7.3 Checkpoint and Resume
+
+- Each run saves to: `results/final/{experiment}/{method}/alpha_{a}_uf_{u}/seed_{s}/stage_results.csv`
+- The checkpoint check (`_done()`) reads for the presence of `stage_results.csv`
+- Re-running any notebook cell automatically skips completed runs
+- Results directories are versioned (`knapsack_v2/`) when problem parameters change, so old results are not overwritten
+
+### 7.4 Reproducibility
+
+| Component | Seed / Value |
+|-----------|-------------|
+| Knapsack data generation (A, W) | `data_seed = 42` |
+| Healthcare train/test split | `data_seed = 42`, `split_seed = 2` |
+| Model weight initialization | PyTorch default; controlled by training seed |
 | Training seeds | {11, 22, 33, 44, 55} |
-| Model init seed | 13,579 + seed * 101 + 1 |
-| Framework | PyTorch |
-| Solver | CVXPY (ECOS primary, SCS fallback) |
+| SPSA perturbation directions | Controlled by training seed via `np.random.default_rng(seed)` |
+| Framework | PyTorch 2.x, CVXPY 1.4+ |
+
+All random state is seeded before each run. The knapsack constraint matrix A and weight matrices W are generated once from `data_seed` and shared across all methods, ensuring methods face identical problem instances.
 
 ---
 
 ## 8. Design Rationale
 
-### Why no validation split?
+### 8.1 Why No Validation Split?
 
-1. All lambda values are reported as separate table rows (no model selection via validation)
-2. Fixed training steps — no early stopping
-3. MOO methods do not use lambda at all
-4. Maximizes training data for the full Obermeyer dataset
+1. All lambda values are reported as separate rows in the results table — no model selection is performed using a held-out set
+2. Training uses fixed steps (no early stopping criterion)
+3. MOO methods do not have a lambda hyperparameter to tune
+4. Maximizes training data (especially for the 48,784-patient healthcare dataset)
 
-### Why 5 seeds for all methods?
+### 8.2 Why 5 Seeds for All Methods?
 
-Standard for INFORMS JoC computational experiments. Provides reliable mean +/- std estimates while keeping total compute manageable. SPSA-based decision gradients make FDFL methods fast enough to run all 5 seeds (previously limited to 2 seeds with element-wise finite differences).
+Standard for INFORMS JoC computational experiments. The SPSA-based decision gradient makes FDFL methods fast enough to run all 5 seeds within Colab session limits. Previous implementations using element-wise finite differences limited FDFL to 2 seeds due to solver cost.
 
-### Why alpha in {0.5, 2.0}?
+### 8.3 Why Alpha in {0.5, 2.0}?
 
-- alpha=0.5: Moderate inequality aversion — favors efficiency with some equity concern
-- alpha=2.0: Strong inequality aversion — closer to max-min fairness (Rawlsian)
-- These bracket the most policy-relevant range for resource allocation
+- **alpha=0.5:** Moderate inequality aversion — favors efficiency with some equity concern. Corresponds to a concave but relatively flat utility function.
+- **alpha=2.0:** Strong inequality aversion — closer to Rawlsian max-min fairness. Methods that ignore fairness perform notably worse at alpha=2.0 since the objective penalizes low allocations more severely.
+- These two values are sufficient to show how the fairness-accuracy tradeoff sharpens with stronger equity preferences.
 
-### Why MAD fairness (not gap or Atkinson)?
+### 8.4 Why MAD Fairness (Not Gap or Atkinson)?
 
-- MAD (mean absolute deviation of group MSEs) is smooth, differentiable, and symmetric
-- Agnostic to which group has higher MSE (unlike "gap" which is directional)
-- The smoothing parameter (1e-6) ensures differentiability near zero
+- **MAD** is symmetric (no reference group), differentiable (with smoothing), and decomposable across groups
+- **Group gap** (max_group - min_group MSE) is non-smooth, sensitive to a single extreme group, and directional
+- **Atkinson index** requires specifying an inequality-aversion parameter (an additional hyperparameter)
+- MAD is the simplest fairness metric that is both group-agnostic and smoothly differentiable
 
-### Why continuation mode for lambda sweep?
+### 8.5 Why Continuation Mode for Lambda Sweep?
 
-- Lambda stages run sequentially with model state carried over
-- This traces an approximate Pareto frontier more efficiently than independent restarts
-- Each stage refines the previous solution rather than starting from scratch
+- Sequential lambda training (0 → 0.5 → 1 → 5) traces the Pareto frontier while reusing computation
+- Each stage fine-tunes the previous model — a natural warm start for increasing fairness pressure
+- Independent restarts from scratch are more expensive and produce disconnected Pareto points
+- Continuation is a standard approach in multi-objective scalarization (e.g., penalty parameter methods in constrained optimization)
+
+### 8.6 Why SPSA Instead of Finite Differences?
+
+Element-wise finite differences require 2 × n_items solver calls per sample per gradient step. At n_items=20, batch=32:
+- FD cost: 32 × 41 = 1,312 calls/step
+- SPSA cost: 32 × 3 = 96 calls/step (~14× faster)
+
+More importantly, SPSA cost is **dimension-independent** — scaling to n_items=50 or n_items=100 does not increase the per-step cost beyond the solver's own scaling.
+
+The eps=5e-3 perturbation magnitude was chosen to balance:
+- Too small: solver output is effectively constant → gradient estimate is pure noise
+- Too large: the gradient estimate is biased (finite-difference bias of O(eps²))
+- 5e-3 is in the range where the alpha-fair objective changes measurably but the perturbation is small relative to typical prediction magnitudes (~O(1) after softplus)
 
 ---
 
-## 9. Expected Result Structure
+## 9. Output Structure
 
-### Table Layout
+### 9.1 Table Layout
 
-**Table 1 (Healthcare):**
+**Table 1 (Healthcare Results):**
 - Rows: 13 method-lambda configurations
-- Columns: Norm. Regret, Pred. Fair. Viol., Pred. MSE
+- Columns: Norm. Regret (↓), Pred. Fairness Viol. (↓), Pred. MSE (↓)
 - Panels: alpha=0.5 and alpha=2.0
-- Best values bolded per column per panel
+- Format: mean ± std (bold = best per column per panel)
 
-**Table 2 (Knapsack):**
-- Rows: 13 method-lambda configurations
-- Columns: Same 3 metrics
-- Panels: Mild / Medium / High unfairness
-- Separate table per alpha value
+**Table 2 (Knapsack Results):**
+- Same column structure as Table 1
+- Panels: Mild / Medium / High unfairness level
+- Separate table for each alpha value (two tables total)
 
-**Table 3 (Summary):**
-- Average method rank across all conditions
-- Columns: Regret rank, Fairness rank, MSE rank (per experiment)
+**Table 3 (Method Summary):**
+- Average rank across all experimental conditions
+- Columns: Avg. Regret Rank, Avg. Fairness Rank, Avg. MSE Rank
 
-### Figure Layout
+### 9.2 Figure Layout
 
-1. **Pareto front (Healthcare):** 2D scatter of regret vs fairness, each point is a method-lambda combo, subplots per alpha
-2. **Regret by unfairness (Knapsack):** Grouped bar chart, methods on x-axis, bars colored by unfairness level
-3. **Gradient conflict (Knapsack):** Heatmap of pairwise gradient cosine similarities, rows = MOO methods, columns = unfairness levels
+1. **Pareto front (Healthcare):** 2D scatter of regret vs. fairness violation. Each point = one method-lambda combination. Subplots per alpha. FDFL methods should trace a frontier extending to better fairness than FPTO at similar regret.
+2. **Regret by unfairness level (Knapsack):** Grouped bar chart. Methods on x-axis, bars colored by unfairness level. Shows how regret gaps grow as unfairness increases.
+3. **Gradient conflict heatmap (Knapsack):** Pairwise cosine similarities among (grad_dec, grad_pred, grad_fair) for each MOO method and unfairness level. Motivates the need for MOO gradient combination.
 
 ---
 
@@ -396,18 +593,19 @@ Standard for INFORMS JoC computational experiments. Provides reliable mean +/- s
 
 | File | Purpose |
 |------|---------|
-| `experiments/run_healthcare_final.py` | Healthcare experiment runner |
-| `experiments/run_knapsack_final.py` | Knapsack experiment runner |
-| `experiments/colab_runner.py` | Shared module for Colab workers |
-| `experiments/configs.py` | Method registry and defaults |
+| `experiments/run_healthcare_final.py` | Local healthcare experiment runner |
+| `experiments/run_knapsack_final.py` | Local knapsack experiment runner |
+| `experiments/colab_runner.py` | Shared module for Colab workers (all overrides) |
+| `experiments/configs.py` | Method registry and training defaults |
 | `experiments/generate_tables.py` | LaTeX table generator |
 | `experiments/generate_figures.py` | Publication figure generator |
 | `notebooks/worker_a_healthcare.ipynb` | Colab worker: healthcare |
 | `notebooks/worker_b_knapsack_alpha05.ipynb` | Colab worker: knapsack alpha=0.5 |
 | `notebooks/worker_c_knapsack_alpha20.ipynb` | Colab worker: knapsack alpha=2.0 |
-| `notebooks/results.ipynb` | Aggregation + analysis + export |
-| `src/fair_dfl/tasks/md_knapsack.py` | Knapsack task implementation |
-| `src/fair_dfl/tasks/medical_resource_allocation.py` | Healthcare task implementation |
-| `src/fair_dfl/algorithms/mo_handler.py` | MOO gradient handlers |
-| `src/fair_dfl/training/loop.py` | Unified training loop |
-| `src/fair_dfl/losses.py` | Loss functions (MSE, fairness) |
+| `notebooks/results.ipynb` | Aggregation + analysis + figure/table export |
+| `src/fair_dfl/tasks/md_knapsack.py` | Knapsack task: data generation, solver, SPSA |
+| `src/fair_dfl/tasks/medical_resource_allocation.py` | Healthcare task: data loading, KKT gradient |
+| `src/fair_dfl/decision/strategies/spsa.py` | SPSA decision gradient strategy |
+| `src/fair_dfl/algorithms/mo_handler.py` | PCGrad / MGDA / CAGrad implementations |
+| `src/fair_dfl/training/loop.py` | Unified training loop (skip_regret, warmstart) |
+| `src/fair_dfl/losses.py` | MSE loss, MAD fairness loss (with smoothing) |
