@@ -41,6 +41,7 @@ class MultiDimKnapsackTask(BaseTask):
     fairness_type: str = "mad"
     fairness_ge_alpha: float = 2.0
     group_ratio: float = 0.5
+    decision_mode: str = "group"  # "group" = two-level group alpha-fair (like healthcare), "item" = item-level
     _current_groups: np.ndarray = field(default=None, repr=False, init=False)
     _current_A: np.ndarray = field(default=None, repr=False, init=False)
     _current_b: np.ndarray = field(default=None, repr=False, init=False)
@@ -55,6 +56,8 @@ class MultiDimKnapsackTask(BaseTask):
             raise ValueError("alpha_fair must be positive.")
         if not (0.0 < self.group_ratio <= 1.0):
             raise ValueError(f"group_ratio must be in (0, 1], got {self.group_ratio}")
+        if self.decision_mode not in {"group", "item"}:
+            raise ValueError(f"decision_mode must be 'group' or 'item', got {self.decision_mode!r}")
         self.name = "md_knapsack"
         self.n_outputs = self.n_items
 
@@ -117,12 +120,47 @@ class MultiDimKnapsackTask(BaseTask):
             alpha = self.alpha_fair
             utility = cp.multiply(r, d)
             constraints.append(d >= 1e-6)
-            if abs(alpha - 1.0) < 1e-12:
-                objective = cp.Maximize(cp.sum(cp.log(utility)))
-            elif alpha < 1.0:
-                objective = cp.Maximize(cp.sum(cp.power(utility, 1.0 - alpha)) / (1.0 - alpha))
+
+            use_group = (
+                self.decision_mode == "group"
+                and self._current_groups is not None
+                and len(np.unique(self._current_groups)) > 1
+                and alpha < 1.0  # see note below
+            )
+
+            if use_group:
+                # Two-level group alpha-fairness (matches healthcare formulation).
+                # Inner: G_k = sum_{i in k} (r_i*d_i)^{1-alpha} / (1-alpha)
+                # Outer: Phi = sum_k G_k^{1-alpha} / (1-alpha)
+                #
+                # DCP: inner atoms are concave (power of affine, 0<p<1),
+                # G_k is concave; outer power(concave, 0<p<1) = concave.
+                #
+                # NOTE: For alpha >= 1 we fall through to item-level atoms.
+                # At alpha=2 specifically, the two-level formulation is
+                # mathematically identical to item-level (the inner reciprocal
+                # and outer power cancel). For other alpha>1 the two-level
+                # objective is not DCP-expressible in CVXPY, but the numpy
+                # evaluator (_objective_batch) always uses the full two-level
+                # formula for all alpha values.
+                groups = self._current_groups
+                group_utilities = []
+                for g in np.unique(groups):
+                    mask = groups == g
+                    G_k = cp.sum(cp.power(utility[mask], 1.0 - alpha)) / (1.0 - alpha)
+                    group_utilities.append(G_k)
+                terms = [cp.power(G_k, 1.0 - alpha) for G_k in group_utilities]
+                objective = cp.Maximize(cp.sum(terms) / (1.0 - alpha))
             else:
-                objective = cp.Maximize(-cp.sum(cp.power(utility, 1.0 - alpha)) / (alpha - 1.0))
+                # Item-level alpha-fairness (original formulation).
+                # Also used as fallback for alpha >= 1 in group mode
+                # (equivalent to two-level at alpha=2; see note above).
+                if abs(alpha - 1.0) < 1e-12:
+                    objective = cp.Maximize(cp.sum(cp.log(utility)))
+                elif alpha < 1.0:
+                    objective = cp.Maximize(cp.sum(cp.power(utility, 1.0 - alpha)) / (1.0 - alpha))
+                else:
+                    objective = cp.Maximize(-cp.sum(cp.power(utility, 1.0 - alpha)) / (alpha - 1.0))
 
         self._cvx_problem = cp.Problem(objective, constraints)
         self._cvx_r_param = r
@@ -169,11 +207,50 @@ class MultiDimKnapsackTask(BaseTask):
         eps = 1e-10
         alpha = self.alpha_fair
         utility = np.clip(true_2d * decision_2d, eps, None)
+
+        use_group = (
+            self.decision_mode == "group"
+            and self._current_groups is not None
+            and len(np.unique(self._current_groups)) > 1
+        )
+
+        if not use_group:
+            # Item-level alpha-fair evaluation
+            if abs(alpha - 1.0) < 1e-12:
+                return np.sum(np.log(utility), axis=1)
+            if alpha < 1.0:
+                return np.sum(np.power(utility, 1.0 - alpha) / (1.0 - alpha), axis=1)
+            return np.sum(-np.power(utility, 1.0 - alpha) / (alpha - 1.0), axis=1)
+
+        # Two-level group alpha-fairness (matches healthcare _group_objective).
+        # Inner: G_k = per-group alpha-fair aggregate of item utilities.
+        # Outer: Phi = alpha-fair aggregate across groups.
+        groups = self._current_groups
+        unique_groups = np.unique(groups)
+        batch = utility.shape[0]
+
+        gk_arr = np.zeros((batch, len(unique_groups)), dtype=float)
+        for idx, g in enumerate(unique_groups):
+            mask = groups == g
+            yk = utility[:, mask]  # (batch, n_items_in_group)
+            if abs(alpha - 1.0) < 1e-12:
+                gk_arr[:, idx] = np.sum(np.log(yk), axis=1)
+            elif 0.0 < alpha < 1.0:
+                gk_arr[:, idx] = np.sum(np.power(yk, 1.0 - alpha), axis=1) / (1.0 - alpha)
+            elif alpha > 1.0:
+                gk_arr[:, idx] = (alpha - 1.0) / np.clip(
+                    np.sum(np.power(yk, 1.0 - alpha), axis=1), eps, None
+                )
+            else:  # alpha == 0
+                gk_arr[:, idx] = np.sum(yk, axis=1)
+
+        gk_arr = np.clip(gk_arr, eps, None)
+
         if abs(alpha - 1.0) < 1e-12:
-            return np.sum(np.log(utility), axis=1)
-        if alpha < 1.0:
-            return np.sum(np.power(utility, 1.0 - alpha) / (1.0 - alpha), axis=1)
-        return np.sum(-np.power(utility, 1.0 - alpha) / (alpha - 1.0), axis=1)
+            return np.sum(np.log(gk_arr), axis=1)
+        if abs(alpha) < 1e-12:
+            return np.sum(gk_arr, axis=1)
+        return np.sum(np.power(gk_arr, 1.0 - alpha) / (1.0 - alpha), axis=1)
 
     def _decision_regret(
         self,

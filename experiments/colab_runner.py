@@ -387,6 +387,7 @@ def run_knapsack_slice(
                             "noise_std_hi": uf["noise_std_hi"],
                             "group_ratio": uf["group_ratio"],
                             "budget_tightness": t_ovr.get("budget_tightness", 0.5),
+                            "decision_mode": t_ovr.get("decision_mode", "group"),
                             "data_seed": 42, "fairness_type": "mad",
                         }
 
