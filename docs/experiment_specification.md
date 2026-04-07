@@ -158,23 +158,49 @@ Each run with lambda-sweep methods (FPTO, FDFL-Scal) produces 4 stage rows (one 
 
 ### 3.1 Problem Formulation
 
-**Optimization problem:**
+**Optimization problem (group-level alpha-fairness, matching healthcare):**
+
+The knapsack uses the same two-level group alpha-fair objective as the healthcare experiment. Items are partitioned into groups (group 0 = majority, group 1 = minority). The decision solver maximizes:
+
 ```
-max_{d >= 0}  U_alpha(r * d)
-subject to:   A d <= b
-              d_i >= 1e-6  for all i
+Inner level:  G_k = sum_{i in group k} (r_i * d_i)^{1-alpha} / (1-alpha)   [per-group alpha-fair utility]
+Outer level:  Phi = sum_k G_k^{1-alpha} / (1-alpha)                        [alpha-fair across groups]
+```
+
+subject to:
+```
+A d <= b          [resource constraints]
+d_i >= 1e-6       [positivity for power objectives]
 ```
 
 where:
-- r in R^20: true item benefits (unknown at decision time)
-- d in R^20: fractional allocation per item
-- A in R^{3 x 20}: resource consumption matrix, A_ij ~ Uniform[0.5, 1.5]
-- b in R^3: resource capacities, b_k = 0.3 * sum_j A_kj (budget_tightness = 0.3)
-- The small lower bound 1e-6 on d ensures the alpha-fair objective remains finite
+- r in R^7: true item benefits (unknown at decision time; predicted by the model)
+- d in R^7: fractional allocation per item
+- A in R^{3 x 7}: resource consumption matrix, A_ij ~ Uniform[0.5, 1.5]
+- b in R^3: resource capacities, b_k = 0.5 * sum_j A_kj (budget_tightness = 0.5)
+- Both inner and outer levels use the **same alpha** (matching healthcare)
 
-**Why 20 items:** Large enough that prediction quality meaningfully affects which items are selected under a tight budget, but small enough for SPSA to be computationally feasible within Colab's time limits.
+**Group-level objective:** The two-level structure ensures that the solver accounts for group welfare balance. Without it, the objective is purely item-level and does not "see" group membership — making the decision gradient group-blind and preventing FDFL methods from differentiating themselves from FPTO (see §3.1.1).
 
-**Why budget_tightness = 0.3:** With 30% of total capacity, approximately 6 of 20 items receive meaningful allocation. This creates genuine selection pressure — the algorithm must discriminate between items — so prediction quality directly impacts decision quality. A looser budget (e.g., 0.5) spreads resources more uniformly, reducing sensitivity to prediction errors.
+**CVXPY implementation:** For alpha < 1, the two-level objective is expressed directly in CVXPY (DCP-compliant: power of affine is concave, power of concave with 0 < p < 1 is concave). For alpha >= 1, item-level atoms are used in the solver (see §3.1.1 for why). The numpy evaluator always uses the full two-level formula for all alpha values.
+
+**Parameter:** `decision_mode="group"` (default). Set to `"item"` for the original item-level formulation.
+
+#### 3.1.1 Note: Alpha=2 Collapse
+
+At alpha=2 specifically, the two-level group formulation is **mathematically equivalent** to the item-level formulation. This is because the inner-level reciprocal (G_k = 1/sum(1/y_i)) and the outer-level power (G_k^{-1}) cancel exactly:
+
+```
+Phi = -sum_k 1/G_k = -sum_k sum_{i in k} 1/y_i = -sum_i 1/y_i = item-level objective
+```
+
+This means:
+- **alpha=0.5:** Group objective is genuinely different from item-level → creates method differentiation
+- **alpha=2.0:** Group objective collapses to item-level → methods behave similarly to the item-level case
+
+For alpha >= 1, the two-level objective is also not DCP-expressible in CVXPY (the outer power of a reciprocal-sum expression violates DCP rules). Since it's equivalent to item-level at alpha=2 anyway, the solver uses item-level atoms.
+
+**Why 7 items:** Small enough for SPSA to be computationally fast (~96 solver calls/step), but large enough with 2 groups (4/3 or 5/2 split) to create meaningful group allocation tradeoffs.
 
 ### 3.2 Data Generation
 
@@ -182,8 +208,8 @@ where:
 
 ```
 x_i ~ N(0, I_5)                          [5-dim features per sample]
-W_d ~ N(0, 1/d),  d in {1,2,3},  W_d in R^{5 x 20}   [weight matrices, fixed per seed]
-raw = x @ W_1 + x^2 @ W_2 + x^3 @ W_3   [element-wise powers]
+W_d ~ N(0, 1/d),  d in {1,2},  W_d in R^{5 x 7}   [weight matrices, fixed per seed]
+raw = x @ W_1 + x^2 @ W_2                [degree-2 polynomial]
 y_raw = raw + group_shift + noise
 y = softplus(y_raw) + 0.05               [ensures y > 0]
 ```
@@ -217,15 +243,15 @@ Three independent sources of unfairness are combined:
 
 ### 3.4 Three Unfairness Levels
 
-| Level | group_bias | noise_std_lo | noise_std_hi | group_ratio | Majority/Minority | Primary mechanism |
+| Level | group_bias | noise_std_lo | noise_std_hi | group_ratio | Group split (n=7) | Primary mechanism |
 |-------|-----------|-------------|-------------|------------|-------------------|-------------------|
-| **Mild** | 0.1 | 0.1 | 0.3 | 0.5 | 10 / 10 | Small bias, small noise gap |
-| **Medium** | 0.3 | 0.1 | 0.8 | 0.6 | 12 / 8 | Larger bias + noise gap + mild imbalance |
-| **High** | 0.5 | 0.1 | 1.0 | 0.75 | 15 / 5 | Large bias + noise gap + strong imbalance |
+| **Mild** | 0.1 | 0.1 | 0.2 | 0.5 | 4 / 3 | Small bias, small noise gap |
+| **Medium** | 0.3 | 0.1 | 0.5 | 0.5 | 4 / 3 | Larger bias + noise gap |
+| **High** | 0.3 | 0.1 | 0.5 | 0.67 | 5 / 2 | Bias + noise gap + group imbalance |
 
-The three levels increase all unfairness mechanisms simultaneously:
-- **Mild → Medium:** Bias doubles (0.1→0.3), noise gap nearly triples (0.3→0.8), group ratio shifts from 50/50 to 60/40
-- **Medium → High:** Bias increases further (0.3→0.5), noise hits ceiling (1.0), ratio becomes 75/25
+The progression isolates unfairness mechanisms:
+- **Mild → Medium:** Bias triples (0.1→0.3), noise gap widens (0.2→0.5), group sizes unchanged
+- **Medium → High:** Adds group size imbalance (4/3→5/2) while keeping bias and noise fixed
 
 The simultaneous increase is intentional: in practice, data quality, representation, and historical advantage are correlated. Disentangling each mechanism is a secondary analysis.
 
@@ -246,8 +272,8 @@ For each sample b in the batch:
 
 **Computational cost:**
 - SPSA: bsz × (1 + 2 × n_dirs) solver calls per step = **96 calls/step** (batch=32, n_dirs=1)
-- Element-wise FD: bsz × (1 + 2 × dim) = 32 × 41 = **1,312 calls/step** (dim=20)
-- **Speedup: ~14x** vs. finite differences, independent of problem dimension
+- Element-wise FD: bsz × (1 + 2 × dim) = 32 × 15 = **480 calls/step** (dim=7)
+- **Speedup: ~5x** vs. finite differences, independent of problem dimension
 
 **Solver chain (in order of preference):**
 1. MOSEK (requires license; most accurate for power objectives)
@@ -286,7 +312,7 @@ All methods (except SAA) use the same MLP architecture:
 | Batch normalization | No | No |
 | Weight initialization | PyTorch default (Kaiming uniform) | same |
 | Output activation | Softplus | Softplus |
-| Output dim | n_groups (2) | n_items (20) |
+| Output dim | n_groups (2) | n_items (7) |
 
 **Output activation (Softplus):** ensures predictions are strictly positive before being passed to the alpha-fair optimizer, which requires positive benefits.
 
@@ -304,7 +330,7 @@ All methods (except SAA) use the same MLP architecture:
 | Gradient clip norm | 10,000 | Safety; rarely active |
 | Exploding threshold | 1,000,000 | Step skipped if gradient norm exceeds this |
 | Steps per lambda (HC) | 70 | Per lambda stage; 4 stages → 280 total steps |
-| Steps per lambda (KN) | 40 | Per lambda stage; 4 stages → 160 total steps |
+| Steps per lambda (KN) | 200 | Per lambda stage; 4 stages → 800 total steps |
 
 **Lambda values:** {0.0, 0.5, 1.0, 5.0}. These were chosen to span a practical range:
 - 0.0: fairness-blind baseline
@@ -549,11 +575,11 @@ Standard for INFORMS JoC computational experiments. The SPSA-based decision grad
 
 ### 8.6 Why SPSA Instead of Finite Differences?
 
-Element-wise finite differences require 2 × n_items solver calls per sample per gradient step. At n_items=20, batch=32:
-- FD cost: 32 × 41 = 1,312 calls/step
-- SPSA cost: 32 × 3 = 96 calls/step (~14× faster)
+Element-wise finite differences require 2 × n_items solver calls per sample per gradient step. At n_items=7, batch=32:
+- FD cost: 32 × 15 = 480 calls/step
+- SPSA cost: 32 × 3 = 96 calls/step (~5× faster)
 
-More importantly, SPSA cost is **dimension-independent** — scaling to n_items=50 or n_items=100 does not increase the per-step cost beyond the solver's own scaling.
+More importantly, SPSA cost is **dimension-independent** — scaling to larger n_items does not increase the per-step cost beyond the solver's own scaling.
 
 The eps=5e-3 perturbation magnitude was chosen to balance:
 - Too small: solver output is effectively constant → gradient estimate is pure noise
