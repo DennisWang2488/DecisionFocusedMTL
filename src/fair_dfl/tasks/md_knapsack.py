@@ -125,24 +125,15 @@ class MultiDimKnapsackTask(BaseTask):
                 self.decision_mode == "group"
                 and self._current_groups is not None
                 and len(np.unique(self._current_groups)) > 1
-                and alpha < 1.0  # see note below
             )
 
-            if use_group:
-                # Two-level group alpha-fairness (matches healthcare formulation).
-                # Inner: G_k = sum_{i in k} (r_i*d_i)^{1-alpha} / (1-alpha)
-                # Outer: Phi = sum_k G_k^{1-alpha} / (1-alpha)
-                #
-                # DCP: inner atoms are concave (power of affine, 0<p<1),
-                # G_k is concave; outer power(concave, 0<p<1) = concave.
-                #
-                # NOTE: For alpha >= 1 we fall through to item-level atoms.
-                # At alpha=2 specifically, the two-level formulation is
-                # mathematically identical to item-level (the inner reciprocal
-                # and outer power cancel). For other alpha>1 the two-level
-                # objective is not DCP-expressible in CVXPY, but the numpy
-                # evaluator (_objective_batch) always uses the full two-level
-                # formula for all alpha values.
+            if use_group and alpha < 1.0:
+                # Two-level group alpha-fairness, 0 < alpha < 1.
+                # Paper Eq: g_k = sum_{i in k} u_i^{1-a}/(1-a), then
+                #           Phi = sum_k g_k^{1-a}/(1-a).
+                # DCP: power(affine, 0<p<1) = concave;
+                #      G_k = sum(concave)/pos = concave;
+                #      power(concave, 0<p<1) = concave.
                 groups = self._current_groups
                 group_utilities = []
                 for g in np.unique(groups):
@@ -151,10 +142,35 @@ class MultiDimKnapsackTask(BaseTask):
                     group_utilities.append(G_k)
                 terms = [cp.power(G_k, 1.0 - alpha) for G_k in group_utilities]
                 objective = cp.Maximize(cp.sum(terms) / (1.0 - alpha))
+
+            elif use_group and alpha >= 2.0 - 1e-12:
+                # Two-level group alpha-fairness, alpha >= 2.
+                # Direct g_k = (a-1)/S_k is not DCP, but algebraic expansion
+                # yields a DCP form:
+                #   Phi = c * sum_k S_k^{a-1}
+                # where S_k = sum_{i in k} u_i^{1-a}, c = (a-1)^{1-a}/(1-a) < 0.
+                #
+                # DCP: power(affine, p<0) = convex;
+                #      S_k = sum(convex) = convex, nonneg;
+                #      power(convex_nonneg, p>=1) = convex  (since a-1 >= 1);
+                #      c * sum(convex) with c<0 = concave.
+                #
+                # NOTE: At alpha=2, this is equivalent to item-level
+                # (the inner reciprocal and outer power cancel exactly).
+                groups = self._current_groups
+                c = (alpha - 1.0) ** (1.0 - alpha) / (1.0 - alpha)
+                S_k_list = []
+                for g in np.unique(groups):
+                    mask = groups == g
+                    S_k = cp.sum(cp.power(utility[mask], 1.0 - alpha))
+                    S_k_list.append(S_k)
+                terms = cp.hstack([cp.power(S_k, alpha - 1.0) for S_k in S_k_list])
+                objective = cp.Maximize(c * cp.sum(terms))
+
             else:
-                # Item-level alpha-fairness (original formulation).
-                # Also used as fallback for alpha >= 1 in group mode
-                # (equivalent to two-level at alpha=2; see note above).
+                # Item-level alpha-fairness.
+                # Used for: decision_mode="item", single group, alpha=1,
+                # or 1 < alpha < 2 (two-level not DCP for that range).
                 if abs(alpha - 1.0) < 1e-12:
                     objective = cp.Maximize(cp.sum(cp.log(utility)))
                 elif alpha < 1.0:
