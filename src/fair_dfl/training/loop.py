@@ -1,8 +1,9 @@
 """Unified training loop for all DFL methods.
 
-Merges the core (FPTO, DFL, FDFL, PLG, FPLG, SAA, WDRO) and advanced
-(FFO, NCE, LANCER) training paths into a single train_single_stage()
-that handles all methods, MOO handlers, and task types.
+Handles all method types (FPTO, DFL, FDFL, PLG, FPLG, SAA, WDRO),
+MOO handlers (PCGrad, MGDA, CAGrad, FAMO), and pluggable decision
+gradient backends (finite-diff, SPSA, SPO+, etc.) through a single
+train_single_stage() function.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from ..algorithms.mo_handler import (
     CAGradHandler,
     PLGHandler3Obj,
     FAMOHandler,
+    NestedPLGDecPrimaryHandler,
     NestedPLGFairPrimaryHandler,
     NestedPLGPredPrimaryHandler,
 )
@@ -117,6 +119,12 @@ def _build_mo_handler(
             gamma=float(train_cfg.get("mo_famo_gamma", 1e-3)),
             w_lr=float(train_cfg.get("mo_famo_w_lr", 0.025)),
             min_loss=float(train_cfg.get("mo_famo_min_loss", 1e-8)),
+        )
+    if mo_method == "plg_dp":
+        return NestedPLGDecPrimaryHandler(
+            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
+            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
+            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
         )
     if mo_method == "plg_fp":
         return NestedPLGFairPrimaryHandler(
@@ -227,7 +235,7 @@ def train_single_stage(
     """Train one lambda stage for any method.
 
     Handles all method types: base (FPTO, DFL, FDFL, PLG, FPLG), SAA, WDRO,
-    MOO handlers, and advanced decision gradient backends (FFO, NCE, LANCER, finite-diff).
+    MOO handlers, and pluggable decision gradient backends (finite-diff, SPSA, SPO+).
     """
     device = predictor.device
     dtype = predictor.dtype
@@ -249,10 +257,19 @@ def train_single_stage(
 
     # --- Optimizer ---
     optimizer_name = str(train_cfg.get("optimizer", "sgd")).strip().lower()
-    if optimizer_name == "adam":
-        optimizer = torch.optim.Adam(predictor.parameters(), lr=lr0)
+    weight_decay = float(train_cfg.get("weight_decay", 0.0))
+    momentum = float(train_cfg.get("momentum", 0.9))
+    if optimizer_name == "adamw":
+        optimizer = torch.optim.AdamW(predictor.parameters(), lr=lr0, weight_decay=weight_decay)
+    elif optimizer_name == "adam":
+        optimizer = torch.optim.Adam(predictor.parameters(), lr=lr0, weight_decay=weight_decay)
+    elif optimizer_name == "sgd_momentum":
+        optimizer = torch.optim.SGD(predictor.parameters(), lr=lr0, weight_decay=weight_decay, momentum=momentum)
     else:
-        optimizer = torch.optim.SGD(predictor.parameters(), lr=lr0)
+        optimizer = torch.optim.SGD(predictor.parameters(), lr=lr0, weight_decay=weight_decay)
+
+    # --- LR warmup ---
+    lr_warmup_steps = int(train_cfg.get("lr_warmup_steps", 0))
 
     # --- Orthogonalization ---
     orth_cfg = train_cfg.get("orthogonalization", {})
@@ -368,7 +385,7 @@ def train_single_stage(
         decision_ms_iter = float(out.get("decision_ms", 0.0))
 
         if dec_grad_computer is not None and iter_spec.use_dec:
-            # Use DecisionGradientComputer (FFO, NCE, LANCER, finite-diff, etc.)
+            # Use DecisionGradientComputer (finite-diff, SPSA, SPO+, etc.)
             dec_result = dec_grad_computer.compute(
                 pred=pred_np, true=yb, task=task,
                 need_grads=True, fairness_smoothing=fairness_smoothing,
@@ -504,8 +521,11 @@ def train_single_stage(
                    for k in ["loss_dec", "loss_pred", "loss_fair"])
         )
 
-        # --- LR schedule ---
-        lr_t = lr_value(t=t, lr=lr0, lr_decay=lr_decay)
+        # --- LR schedule (with optional warmup) ---
+        if t < lr_warmup_steps:
+            lr_t = lr0 * (t + 1) / lr_warmup_steps  # linear warmup
+        else:
+            lr_t = lr_value(t=t - lr_warmup_steps, lr=lr0, lr_decay=lr_decay)
         for group in optimizer.param_groups:
             group["lr"] = lr_t
 

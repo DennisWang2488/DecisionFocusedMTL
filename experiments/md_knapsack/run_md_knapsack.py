@@ -26,7 +26,7 @@ DEFAULT_TASK_CFG = {
     "n_samples_test": 48,
     "n_features": 5,
     "n_items": 12,
-    "n_constraints": 3,
+    "n_budget_dims": 3,
     "scenario": "alpha_fair",
     "alpha_fair": 2.0,
     "poly_degree": 2,
@@ -38,7 +38,7 @@ DEFAULT_TASK_CFG = {
     "fairness_type": "mad",
 }
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
-UNSUPPORTED_METHOD_BACKENDS = {"ffo", "nce", "lancer"}
+UNSUPPORTED_METHOD_BACKENDS: set[str] = set()
 SUPPORTED_METHOD_CONFIGS = {
     name: spec
     for name, spec in ALL_METHOD_CONFIGS.items()
@@ -86,7 +86,7 @@ def _make_task_cfg(args: argparse.Namespace, alpha: float) -> dict:
     cfg["scenario"] = str(args.scenario)
     cfg["alpha_fair"] = float(alpha)
     cfg["n_items"] = int(args.n_items)
-    cfg["n_constraints"] = int(args.n_constraints)
+    cfg["n_budget_dims"] = int(args.n_budget_dims)
     cfg["n_features"] = int(args.n_features)
     cfg["poly_degree"] = int(args.poly_degree)
     cfg["group_bias"] = float(args.group_bias)
@@ -134,7 +134,7 @@ def _run_single(
         stage_df["poly_degree"] = task_cfg["poly_degree"]
         stage_df["group_bias"] = task_cfg["group_bias"]
         stage_df["n_items"] = task_cfg["n_items"]
-        stage_df["n_constraints"] = task_cfg["n_constraints"]
+        stage_df["n_budget_dims"] = task_cfg["n_budget_dims"]
         stage_df["dec_grad_backend"] = cfg["training"].get("decision_grad_backend", "finite_diff")
         if tag:
             stage_df["tag"] = tag
@@ -211,7 +211,7 @@ def main() -> None:
     print("=" * 70)
     print(f"Scenario: {args.scenario}")
     print(f"Alphas:   {args.alphas}")
-    print(f"Items:    {args.n_items}, Constraints: {args.n_constraints}")
+    print(f"Items:    {args.n_items}, Constraints: {args.n_budget_dims}")
     print(f"Methods:  {list(method_configs.keys())}")
     print(f"Backend:  {args.decision_grad_backend}")
     print(f"Seeds:    {args.seeds}")

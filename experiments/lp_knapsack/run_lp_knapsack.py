@@ -106,7 +106,7 @@ def _make_task_cfg(unfairness: str) -> dict:
         "n_samples_test": N_TEST,
         "n_features": N_FEATURES,
         "n_items": N_ITEMS,
-        "n_constraints": N_CONSTRAINTS,
+        "n_budget_dims": N_CONSTRAINTS,
         "scenario": "lp",
         "alpha_fair": 1.0,  # unused for LP, required by dataclass
         "poly_degree": POLY_DEGREE,

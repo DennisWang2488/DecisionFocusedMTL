@@ -98,7 +98,7 @@ METHOD_GRID = {
     "FDFL-CAGrad":  {"config": "CAGrad",   "lambdas": [0.0]},
 }
 
-UNSUPPORTED_BACKENDS = {"ffo", "nce", "lancer"}
+UNSUPPORTED_BACKENDS: set[str] = set()
 
 
 def _result_path(base_dir: str, method_label: str, alpha: float,
@@ -122,7 +122,7 @@ def _make_task_cfg(alpha: float, unfairness: str) -> dict:
         "n_samples_test": N_TEST,
         "n_features": N_FEATURES,
         "n_items": N_ITEMS,
-        "n_constraints": N_CONSTRAINTS,
+        "n_budget_dims": N_CONSTRAINTS,
         "scenario": "alpha_fair",
         "alpha_fair": alpha,
         "poly_degree": POLY_DEGREE,

@@ -1,12 +1,11 @@
-"""Algorithm components — gradient handlers, utilities, and legacy trainers.
+"""Algorithm components — gradient handlers and utilities.
 
 Active modules (used by training/loop.py):
   - mo_handler.py   — MOO gradient handlers (PCGrad, MGDA, CAGrad, FAMO, etc.)
   - torch_utils.py  — gradient manipulation utilities
 
-Legacy trainer wrappers (used by runner.py's old code path):
-  - core_methods.py      — 5-method trainer (fpto, dfl, fdfl, plg, fplg)
-  - advanced_methods.py  — FFO/NCE/LANCER trainer
+Legacy trainer wrapper (used by runner.py's old code path):
+  - core_methods.py  — 5-method trainer (fpto, dfl, fdfl, plg, fplg)
 
 The unified training pipeline in training/loop.py supersedes the legacy trainers.
 """
@@ -17,9 +16,7 @@ __all__ = [
     "METHOD_SPECS",
     "METHOD_ALIASES",
     "REVERSE_ALIASES",
-    "ADVANCED_METHODS",
     "run_core_methods",
-    "run_advanced_methods",
 ]
 
 _EXPORT_MAP = {
@@ -27,8 +24,6 @@ _EXPORT_MAP = {
     "METHOD_ALIASES": ".core_methods",
     "REVERSE_ALIASES": ".core_methods",
     "run_core_methods": ".core_methods",
-    "ADVANCED_METHODS": ".advanced_methods",
-    "run_advanced_methods": ".advanced_methods",
 }
 
 

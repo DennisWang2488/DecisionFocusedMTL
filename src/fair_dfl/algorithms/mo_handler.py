@@ -795,7 +795,74 @@ class NestedPLGFairPrimaryHandler(MultiObjectiveGradientHandler):
 
 
 # ======================================================================
-# 8. NestedPLGPredPrimaryHandler  (PLG-PP)
+# 8. NestedPLGDecPrimaryHandler  (PLG-DP)
+# ======================================================================
+
+class NestedPLGDecPrimaryHandler(MultiObjectiveGradientHandler):
+    """Nested PLG with decision-primary (PLG-DP).
+
+    Two-step prediction-loss-guided direction:
+
+    Step 1 (dec-space):  d_dec_space = g_dec + kappa1 * orth(g_pred, g_dec)
+        Decision regret is primary; prediction guides via its orthogonal component.
+
+    Step 2 (final):      d_final = d_dec_space + kappa2 * orth(g_fair, d_dec_space)
+        Dec-space direction is primary; fairness guides.
+
+    Both kappa values decay over training:
+        kappa_i(t) = kappa_i_0 / (1 + kappa_decay * t)
+    """
+
+    def __init__(
+        self,
+        kappa1_0: float = 1.0,
+        kappa2_0: float = 1.0,
+        kappa_decay: float = 0.01,
+    ) -> None:
+        self._kappa1_0 = kappa1_0
+        self._kappa2_0 = kappa2_0
+        self._kappa_decay = kappa_decay
+        self._last_diag: Dict[str, float] = {}
+
+    def compute_direction(
+        self,
+        grads: Dict[str, np.ndarray],
+        losses: Dict[str, float],
+        step: int,
+        epsilon: float = 1e-4,
+    ) -> np.ndarray:
+        g_dec = grads["decision_regret"].ravel()
+        g_pred = grads["pred_loss"].ravel()
+        g_fair = grads["pred_fairness"].ravel()
+
+        kappa1_t = self._kappa1_0 / (1.0 + self._kappa_decay * step)
+        kappa2_t = self._kappa2_0 / (1.0 + self._kappa_decay * step)
+
+        # Step 1: decision primary, prediction guides
+        orth_step1 = project_orthogonal(g_pred, g_dec)
+        d_dec_space = g_dec + kappa1_t * orth_step1
+
+        # Step 2: dec-space primary, fairness guides
+        orth_step2 = project_orthogonal(g_fair, d_dec_space)
+        d_final = d_dec_space + kappa2_t * orth_step2
+
+        # Diagnostics
+        self._last_diag = self._compute_common_diagnostics(grads, d_final)
+        self._last_diag["kappa1_t"] = kappa1_t
+        self._last_diag["kappa2_t"] = kappa2_t
+        self._last_diag["d_dec_space_norm"] = l2_norm(d_dec_space)
+        self._last_diag["d_final_norm"] = l2_norm(d_final)
+        self._last_diag["orth_component_step1_norm"] = l2_norm(orth_step1)
+        self._last_diag["orth_component_step2_norm"] = l2_norm(orth_step2)
+
+        return d_final
+
+    def extra_logs(self) -> Dict[str, float]:
+        return dict(self._last_diag)
+
+
+# ======================================================================
+# 9. NestedPLGPredPrimaryHandler  (PLG-PP)
 # ======================================================================
 
 class NestedPLGPredPrimaryHandler(MultiObjectiveGradientHandler):

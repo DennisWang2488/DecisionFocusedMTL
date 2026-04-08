@@ -63,7 +63,7 @@ DEFAULT_DATA_CSV = str(REPO_ROOT / "data" / "data_processed.csv")
 DEFAULT_RESULTS_DIR = str(REPO_ROOT / "results" / "ablation")
 ABLATION_VAL_FRACTION = 0.0
 
-ABLATION_METHODS = ["FPTO", "FDFL", "FFO", "WS-equal", "WS-dec", "MGDA", "PCGrad"]
+ABLATION_METHODS = ["FPTO", "FDFL", "WS-equal", "WS-dec", "MGDA", "PCGrad"]
 
 # ---------------------------------------------------------------------------
 # Hyperparameter grids for Exp 4-6

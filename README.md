@@ -107,9 +107,6 @@ colab_upload/
                 finite_diff.py  # Finite difference approximation
                 spsa.py         # SPSA (simultaneous perturbation)
                 spo_plus.py     # SPO+ (LP surrogate, Elmachtoub & Grigas 2022)
-                fold_opt.py     # FFO (solver unrolling)
-                nce.py          # Noise-contrastive estimation
-                lancer.py       # LANCER surrogate
 
         training/               # Unified training loop
             loop.py             # train_single_stage(), run_method_seed(), run_methods()
@@ -130,12 +127,6 @@ colab_upload/
             mo_handler.py       # WeightedSum, PCGrad, MGDA, CAGrad, FAMO, PLG variants
             torch_utils.py      # Gradient manipulation utilities
             core_methods.py     # Legacy core trainer (used by runner.py old path)
-            advanced_methods.py # Legacy advanced trainer (used by runner.py old path)
-
-        advanced/               # FFO/NCE/LANCER implementation details
-            ffolayer_local/     # FFO layer implementation
-            nce.py              # NCE solution pool
-            lancer.py           # LANCER trainer
 
     tests/                     # Lightweight regression and semantics checks
         test_losses.py
@@ -155,14 +146,6 @@ colab_upload/
 | FDFL   | dec+fair  | Fair DFL |
 | PLG    | dec+pred  | Predict-and-Learn with Gradients |
 | FPLG   | dec+pred+fair | Fair PLG (full 3-objective) |
-
-### Advanced Decision Gradient Methods
-
-| Method | Backend | Description |
-|--------|---------|-------------|
-| FFO    | ffo     | Fold-and-optimize (solver unrolling) |
-| NCE    | nce     | Noise-contrastive estimation |
-| LANCER | lancer  | Learned surrogate gradients |
 
 ### MOO Methods (Multi-Objective Optimization)
 
@@ -194,7 +177,7 @@ Method configs in `experiments/configs.py` declare:
 - **Objective flags**: `use_dec`, `use_pred`, `use_fair`
 - **Prediction weight mode**: `pred_weight_mode` (`fixed1`, `schedule`, `zero`)
 - **Continuation**: whether to carry model state across lambda stages
-- **Decision gradient backend**: `decision_grad_backend` (for FFO/NCE/LANCER)
+- **Decision gradient backend**: `decision_grad_backend` (analytic, finite_diff, spsa, spo_plus)
 - **MOO handler**: `mo_method` (for multi-objective gradient combination)
 
 Training defaults in `DEFAULT_TRAIN_CFG`:
@@ -228,9 +211,6 @@ Set `decision_grad_backend` in method config:
 | `finite_diff` | Finite differences | Any task with a solver |
 | `spsa` | Simultaneous perturbation (Spall 1992) | Black-box solvers, dim-independent cost |
 | `spo_plus` | SPO+ convex surrogate (Elmachtoub & Grigas 2022) | LP tasks only, 2 calls/sample |
-| `ffo` | Solver unrolling | Differentiable solvers |
-| `nce` | Noise-contrastive estimation | Black-box solvers |
-| `lancer` | Learned surrogate | Black-box solvers |
 
 ## CLI Options
 

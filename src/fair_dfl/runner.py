@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from .algorithms.core_methods import METHOD_SPECS as CORE_METHOD_SPECS, METHOD_ALIASES, run_core_methods
-from .algorithms.advanced_methods import ADVANCED_METHODS, run_advanced_methods
 from .training import run_methods as _run_methods_unified, resolve_method_spec
 from .tasks import (
     MedicalResourceAllocationTask,
@@ -37,9 +36,6 @@ PUBLIC_METHODS = [
     "fdfl",
     "plg",
     "fplg",
-    "ffo",
-    "nce",
-    "lancer",
     "saa",
     "wdro",
 ]
@@ -255,7 +251,7 @@ def _build_task(task_cfg: Dict[str, Any]) -> Tuple[BaseTask, TaskData]:
             n_samples_test=int(task_cfg["n_samples_test"]),
             n_features=int(task_cfg["n_features"]),
             n_items=int(task_cfg["n_items"]),
-            n_constraints=int(task_cfg["n_constraints"]),
+            n_budget_dims=int(task_cfg["n_budget_dims"]),
             scenario=str(task_cfg.get("scenario", "alpha_fair")),
             alpha_fair=float(task_cfg.get("alpha_fair", 2.0)),
             group_bias=float(task_cfg.get("group_bias", 0.3)),
@@ -318,7 +314,6 @@ def run_experiment(
     data = _apply_subset_fraction(task=task, data=data, train_subset_fraction=subset_fraction, subset_seed=subset_seed)
 
     core_methods = [m for m in selected_methods if m in CORE_METHOD_SPECS]
-    advanced_methods = [m for m in selected_methods if m in ADVANCED_METHODS]
 
     stage_rows: List[Dict[str, Any]] = []
     iter_rows: List[Dict[str, Any]] = []
@@ -333,17 +328,6 @@ def run_experiment(
         stage_rows.extend(stg)
         iter_rows.extend(itr)
 
-    if advanced_methods:
-        if not bool(train_cfg.get("advanced_backend", True)):
-            raise ValueError("Advanced methods requested but training.advanced_backend is false.")
-        stg, itr = run_advanced_methods(
-            task=task,  # type: ignore[arg-type]
-            train_cfg=train_cfg,
-            methods=advanced_methods,
-        )
-        stage_rows.extend(stg)
-        iter_rows.extend(itr)
-
     return pd.DataFrame(stage_rows), pd.DataFrame(iter_rows)
 
 
@@ -353,9 +337,9 @@ def run_experiment_unified(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run experiments using the unified training loop.
 
-    Unlike run_experiment(), this accepts the full method_configs dict
-    from configs.py (with inline use_dec/use_pred/use_fair flags) and
-    uses the unified training loop for ALL methods including FFO/NCE/LANCER.
+    Accepts the full method_configs dict from configs.py (with inline
+    use_dec/use_pred/use_fair flags) and uses the unified training loop
+    for all methods.
 
     Args:
         cfg: Experiment config with "task" and "training" keys.

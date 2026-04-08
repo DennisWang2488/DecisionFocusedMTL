@@ -505,7 +505,17 @@ def _train_single_stage(
     dual_lr = float(train_cfg.get("dual_lr", 0.01))
     warmstart_fraction = float(train_cfg.get("warmstart_fraction", 0.25))
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr0)
+    weight_decay = float(train_cfg.get("weight_decay", 0.0))
+    momentum = float(train_cfg.get("momentum", 0.9))
+    optimizer_name = str(train_cfg.get("optimizer", "sgd")).strip().lower()
+    if optimizer_name == "adamw":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr0, weight_decay=weight_decay)
+    elif optimizer_name == "adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr0, weight_decay=weight_decay)
+    elif optimizer_name == "sgd_momentum":
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr0, weight_decay=weight_decay, momentum=momentum)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr0, weight_decay=weight_decay)
 
     orth_cfg = train_cfg.get("orthogonalization", {})
     orth_enabled = bool(orth_cfg.get("enabled", False)) and base_spec.allow_orthogonalization

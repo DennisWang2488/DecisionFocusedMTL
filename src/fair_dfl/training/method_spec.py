@@ -50,19 +50,6 @@ _LEGACY_METHOD_SPECS: Dict[str, MethodSpec] = {
         use_dec=False, use_pred=True, use_fair=False,
         pred_weight_mode="fixed1", continuation=False, allow_orthogonalization=False,
     ),
-    # Advanced methods
-    "ffo": MethodSpec(
-        use_dec=True, use_pred=True, use_fair=True,
-        pred_weight_mode="schedule", continuation=True, allow_orthogonalization=True,
-    ),
-    "nce": MethodSpec(
-        use_dec=True, use_pred=True, use_fair=True,
-        pred_weight_mode="schedule", continuation=True, allow_orthogonalization=True,
-    ),
-    "lancer": MethodSpec(
-        use_dec=True, use_pred=True, use_fair=True,
-        pred_weight_mode="schedule", continuation=True, allow_orthogonalization=True,
-    ),
 }
 
 
@@ -94,6 +81,6 @@ def resolve_method_spec(method_cfg: Dict[str, Any]) -> MethodSpec:
 def resolve_method_backend(method_cfg: Dict[str, Any]) -> str:
     """Return the training backend name for dispatch.
 
-    Returns the 'method' key value (e.g., 'fplg', 'ffo', 'nce', 'lancer').
+    Returns the 'method' key value (e.g., 'fplg', 'fpto', 'dfl', 'saa', 'wdro').
     """
     return str(method_cfg.get("method", "fplg")).strip().lower()

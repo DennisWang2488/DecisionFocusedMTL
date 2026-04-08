@@ -56,7 +56,7 @@ METHOD_GRID = {
     "FPTO":        {"config": "FPTO",    "lambdas": LAMBDAS_SWEEP},
     "SAA":         {"config": "SAA",     "lambdas": [0.0]},
     "WDRO":        {"config": "WDRO",    "lambdas": [0.0]},
-    "FDFL-Scal":   {"config": "FPLG",    "lambdas": LAMBDAS_SWEEP},
+    "FDFL-Scal":   {"config": "FDFL-Scal", "lambdas": LAMBDAS_SWEEP},
     "FDFL-PCGrad": {"config": "PCGrad",  "lambdas": [0.0]},
     "FDFL-MGDA":   {"config": "MGDA",    "lambdas": [0.0]},
     "FDFL-CAGrad": {"config": "CAGrad",  "lambdas": [0.0]},
@@ -304,7 +304,7 @@ def run_knapsack_slice(
         values are dicts with group_bias, noise_std_lo, noise_std_hi, group_ratio.
     task_overrides : dict, optional
         Override task-level parameters (n_items, budget_tightness, poly_degree,
-        n_samples_train, n_samples_test, n_features, n_constraints, etc.).
+        n_samples_train, n_samples_test, n_features, n_budget_dims, etc.).
     train_overrides : dict, optional
         Override training parameters. Model-level keys (hidden_dim, n_layers,
         activation, dropout, batch_norm) are routed into the model sub-config.
@@ -378,7 +378,7 @@ def run_knapsack_slice(
                             "n_samples_test": t_ovr.get("n_samples_test", 80),
                             "n_features": t_ovr.get("n_features", 5),
                             "n_items": t_ovr.get("n_items", 7),
-                            "n_constraints": t_ovr.get("n_constraints", 3),
+                            "n_budget_dims": t_ovr.get("n_budget_dims", 3),
                             "scenario": "alpha_fair",
                             "alpha_fair": alpha,
                             "poly_degree": t_ovr.get("poly_degree", 2),
@@ -391,23 +391,21 @@ def run_knapsack_slice(
                             "data_seed": 42, "fairness_type": "mad",
                         }
 
-                        fdfl_bsz = tr_ovr.get("fdfl_batch_size", 32)
+                        batch_sz = tr_ovr.get("batch_size", 32)
                         dec_backend = tr_ovr.get("decision_grad_backend", "spsa")
 
                         train_cfg = copy.deepcopy(DEFAULT_TRAIN_CFG)
                         train_cfg["seeds"] = [seed]
                         train_cfg["lambdas"] = lambdas
                         train_cfg["steps_per_lambda"] = steps
-                        train_cfg["batch_size"] = (
-                            fdfl_bsz if method_label in DECISION_GRAD_METHODS else -1
-                        )
+                        train_cfg["batch_size"] = batch_sz  # same batch for all methods
                         train_cfg["decision_grad_backend"] = dec_backend
                         train_cfg["device"] = device
                         train_cfg["model"]["hidden_dim"] = 64
                         train_cfg["log_every"] = 2
                         _apply_train_overrides(train_cfg, {
                             k: v for k, v in tr_ovr.items()
-                            if k not in ("fdfl_batch_size", "decision_grad_backend")
+                            if k not in ("batch_size", "decision_grad_backend")
                         })
 
                         for k, v in method_spec.items():
@@ -559,7 +557,7 @@ def run_lp_knapsack_slice(
                         "n_samples_test": t_ovr.get("n_samples_test", 80),
                         "n_features": t_ovr.get("n_features", 5),
                         "n_items": t_ovr.get("n_items", 10),
-                        "n_constraints": t_ovr.get("n_constraints", 3),
+                        "n_budget_dims": t_ovr.get("n_budget_dims", 3),
                         "scenario": "lp",
                         "alpha_fair": 1.0,
                         "poly_degree": t_ovr.get("poly_degree", 2),

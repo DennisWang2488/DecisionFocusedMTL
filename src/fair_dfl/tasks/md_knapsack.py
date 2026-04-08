@@ -6,19 +6,22 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Any, Dict, List
 
+import warnings
+
 import cvxpy as cp
 import numpy as np
 
 from ..losses import group_fairness_loss_and_grad, mse_loss_and_grad, softplus_with_grad
 from .base import BaseTask, SplitData, TaskData
 
-# Solver preference: CLARABEL (modern, bundled with CVXPY 1.4+) → MOSEK
-# (if installed and licensed) → SCS (last resort).
+# Solver preference: MOSEK (most accurate, requires license) → CLARABEL
+# (bundled with CVXPY 1.4+) → SCS (last resort, may be inaccurate).
 _SOLVER_CHAIN = [
-    (cp.CLARABEL, {}),
     (cp.MOSEK,    {}),
-    (cp.SCS,      {}),
+    (cp.CLARABEL, {}),
+    (cp.SCS,      {"eps": 1e-6, "max_iters": 10000}),
 ]
+_SCS_WARNED = False
 
 
 @dataclass
@@ -30,7 +33,7 @@ class MultiDimKnapsackTask(BaseTask):
     n_samples_test: int
     n_features: int
     n_items: int
-    n_constraints: int
+    n_budget_dims: int
     scenario: str
     alpha_fair: float = 2.0
     group_bias: float = 0.3
@@ -69,7 +72,7 @@ class MultiDimKnapsackTask(BaseTask):
         groups = np.zeros(self.n_items, dtype=int)
         groups[n_group0:] = 1
 
-        A = rng.uniform(0.5, 1.5, size=(self.n_constraints, self.n_items))
+        A = rng.uniform(0.5, 1.5, size=(self.n_budget_dims, self.n_items))
         b = self.budget_tightness * A.sum(axis=1)
 
         rng_w = np.random.default_rng(seed + 1000)
@@ -198,10 +201,18 @@ class MultiDimKnapsackTask(BaseTask):
         return self._run_solver()
 
     def _run_solver(self) -> np.ndarray:
+        global _SCS_WARNED
         for solver, kwargs in _SOLVER_CHAIN:
             try:
                 self._cvx_problem.solve(solver=solver, **kwargs)
                 if self._cvx_d_var.value is not None:
+                    if solver == cp.SCS and not _SCS_WARNED:
+                        warnings.warn(
+                            "Knapsack solver fell back to SCS (MOSEK and CLARABEL unavailable "
+                            "or failed). Results may be inaccurate. Install MOSEK for best results.",
+                            stacklevel=2,
+                        )
+                        _SCS_WARNED = True
                     return np.clip(np.asarray(self._cvx_d_var.value, dtype=float), 0.0, None)
             except cp.SolverError:
                 continue

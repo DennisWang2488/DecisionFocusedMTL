@@ -36,10 +36,9 @@ class DecisionGradientStrategy(ABC):
     Each strategy implements a different approach to computing
     the gradient of the decision loss w.r.t. model predictions:
     - Analytic: task provides closed-form Jacobian
-    - FiniteDiff: numerical perturbation
-    - FoldOpt: differentiable CVXPY layer (FFO)
-    - NCE: contrastive surrogate loss
-    - LANCER: learned surrogate
+    - FiniteDiff: numerical perturbation (element-wise)
+    - SPSA: simultaneous perturbation stochastic approximation
+    - SPO+: convex surrogate for LP problems
     - CvxpyLayers: cvxpylayers backend
     - TorchAutograd: end-to-end differentiable solver
     """

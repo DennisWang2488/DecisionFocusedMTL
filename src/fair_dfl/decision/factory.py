@@ -43,9 +43,8 @@ def build_decision_gradient(
     Reads 'decision_grad_backend' from train_cfg:
         "analytic"    -> AnalyticStrategy (default)
         "finite_diff" -> FiniteDiffStrategy
-        "ffo"         -> FoldOptStrategy
-        "nce"         -> NCEStrategy
-        "lancer"      -> LancerStrategy
+        "spsa"        -> SPSAStrategy
+        "spo_plus"    -> SPOPlusStrategy
         "cvxpylayers" -> CvxpyLayersStrategy
         "autograd"    -> TorchAutogradStrategy
     """
@@ -64,35 +63,6 @@ def build_decision_gradient(
         n_dirs = int(train_cfg.get("decision_grad_spsa_n_dirs", 1))
         strategy = SPSAStrategy(eps=eps, n_dirs=n_dirs)
 
-    elif backend == "ffo":
-        from .strategies.fold_opt import FoldOptStrategy
-        ffo_cfg = dict(train_cfg.get("ffo", {}))
-        budget = getattr(task, "budget", 2500.0)
-        strategy = FoldOptStrategy(
-            ffo_cfg=ffo_cfg,
-            budget=float(budget),
-            device=device or torch.device("cpu"),
-        )
-
-    elif backend == "nce":
-        import numpy as np
-        from .strategies.nce import NCEStrategy
-        nce_cfg = dict(train_cfg.get("nce", {}))
-        strategy = NCEStrategy(
-            pool_size=int(nce_cfg.get("pool_size", 32)),
-            solve_ratio=float(nce_cfg.get("solve_ratio", 1.0)),
-            refresh_interval=int(nce_cfg.get("refresh_interval", 1)),
-        )
-
-    elif backend == "lancer":
-        from .strategies.lancer import LancerStrategy
-        lancer_cfg = dict(train_cfg.get("lancer", {}))
-        strategy = LancerStrategy(
-            z_dim=1,
-            device=device or torch.device("cpu"),
-            lancer_cfg=lancer_cfg,
-        )
-
     elif backend == "spo_plus":
         from .strategies.spo_plus import SPOPlusStrategy
         strategy = SPOPlusStrategy()
@@ -108,7 +78,7 @@ def build_decision_gradient(
     else:
         raise ValueError(
             f"Unknown decision_grad_backend: {backend!r}. "
-            f"Options: analytic, finite_diff, spsa, spo_plus, ffo, nce, lancer, cvxpylayers, autograd"
+            f"Options: analytic, finite_diff, spsa, spo_plus, cvxpylayers, autograd"
         )
 
     if not strategy.supports_task(task):
