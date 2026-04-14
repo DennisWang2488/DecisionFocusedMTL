@@ -26,8 +26,15 @@ from typing import Any
 import numpy as np
 
 from ...tasks.base import BaseTask
+from ...tasks.md_knapsack import MultiDimKnapsackTask
 from ...tasks.medical_resource_allocation import MedicalResourceAllocationTask
 from ..interface import DecisionGradientStrategy, DecisionResult
+
+
+def _softplus_np(x: np.ndarray) -> np.ndarray:
+    positive = np.maximum(x, 0.0)
+    exp_term = np.exp(-np.abs(x))
+    return positive + np.log1p(exp_term)
 
 
 class SPSAStrategy(DecisionGradientStrategy):
@@ -111,6 +118,20 @@ class SPSAStrategy(DecisionGradientStrategy):
         # --- SPSA gradient --------------------------------------------
         t0 = perf_counter()
 
+        # MD knapsack: the entire (n, n_resources) prediction matrix is ONE
+        # population-level optimization. Perturb the whole matrix at once
+        # with a Rademacher direction (2 solves per random direction).
+        if isinstance(task, MultiDimKnapsackTask):
+            grad, solver_calls = self._spsa_md_knapsack(pred, true, task)
+            decision_ms = (perf_counter() - t0) * 1000.0
+            return DecisionResult(
+                loss_dec=float(out["loss_dec"]),
+                grad_dec=grad,
+                solver_calls=base_solver_calls + solver_calls,
+                decision_ms=base_decision_ms + decision_ms,
+                task_output=out,
+            )
+
         if hasattr(task, "solve_decision") and hasattr(task, "evaluate_objective"):
             grad, solver_calls = self._spsa_generic(pred, true, task, **ctx)
             decision_ms = (perf_counter() - t0) * 1000.0
@@ -126,6 +147,73 @@ class SPSAStrategy(DecisionGradientStrategy):
             f"SPSA not implemented for {type(task).__name__}. "
             f"Implement solve_decision() and evaluate_objective() on the task."
         )
+
+    # ------------------------------------------------------------------
+    # MD-knapsack-specific SPSA (population-level, not per-row)
+    # ------------------------------------------------------------------
+    def _spsa_md_knapsack(
+        self,
+        raw_pred: np.ndarray,
+        true: np.ndarray,
+        task: MultiDimKnapsackTask,
+    ) -> tuple[np.ndarray, int]:
+        """SPSA over the whole (n, n_resources) matrix as ONE instance.
+
+        Per direction: 2 LP solves (vs n*nr*2 for full FD).
+        """
+        nr = int(task.n_resources)
+        raw = np.asarray(raw_pred, dtype=float).reshape(-1, nr)
+        y = np.asarray(true, dtype=float).reshape(-1, nr)
+        n = raw.shape[0]
+
+        if task.scenario == "lp":
+            pred_pos = raw.copy()
+        else:
+            pred_pos = _softplus_np(raw) + 1e-5
+
+        batch = getattr(task, "_active_batch", None)
+        if batch is None:
+            raise RuntimeError("MultiDimKnapsackTask: bind a batch before SPSA.")
+        groups = batch.groups
+
+        # Oracle objective (one solve over the whole population).
+        d_true = task._solve(np.clip(y, 1e-8, None))
+        obj_true = task._objective(d_true, y, groups)
+        solver_calls = 1
+
+        grad_acc = np.zeros_like(pred_pos, dtype=float)
+        for _d in range(self.n_dirs):
+            delta = self._rng.choice([-1.0, 1.0], size=pred_pos.shape)
+
+            if task.scenario == "lp":
+                pred_plus = pred_pos + self.eps * delta
+                pred_minus = pred_pos - self.eps * delta
+            else:
+                # Perturb the raw (pre-softplus) prediction so the gradient
+                # we return is wrt the model output, not the post-processed
+                # benefit. We then re-softplus before solving.
+                raw_plus = raw + self.eps * delta
+                raw_minus = raw - self.eps * delta
+                pred_plus = _softplus_np(raw_plus) + 1e-5
+                pred_minus = _softplus_np(raw_minus) + 1e-5
+
+            d_plus = task._solve(pred_plus)
+            d_minus = task._solve(pred_minus)
+            obj_plus = task._objective(d_plus, y, groups)
+            obj_minus = task._objective(d_minus, y, groups)
+
+            regret_plus = max(float(obj_true - obj_plus), 0.0)
+            regret_minus = max(float(obj_true - obj_minus), 0.0)
+            diff = regret_plus - regret_minus
+
+            # SPSA estimator: g_ij = diff / (2 * eps * delta_ij)
+            grad_acc += diff / (2.0 * self.eps * delta)
+            solver_calls += 2
+
+        if self.n_dirs > 1:
+            grad_acc /= self.n_dirs
+
+        return grad_acc.reshape(raw_pred.shape), solver_calls
 
     # ------------------------------------------------------------------
     # Core SPSA logic
