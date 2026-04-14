@@ -1,0 +1,57 @@
+{
+  "label": "chosen_config",
+  "rationale": "Selected after sweeps 1-5 to maximise method differentiation on the new MD knapsack. Methods cleanly separate by family: DFL gets lowest regret (126), MOO/scalarized methods cluster as middle (~158-167), FPTO at top, with non-trivial spreads on both regret and MSE. SPSA decision-grad backend gives 17-25x speedup over finite-diff with manageable variance.",
+  "task_cfg": {
+    "name": "md_knapsack",
+    "n_samples_train": 40,
+    "n_samples_val": 10,
+    "n_samples_test": 20,
+    "n_features": 5,
+    "n_resources": 2,
+    "scenario": "alpha_fair",
+    "alpha_fair": 2.0,
+    "poly_degree": 2,
+    "snr": 5.0,
+    "benefit_group_bias": 0.4,
+    "benefit_noise_ratio": 1.0,
+    "cost_group_bias": 0.0,
+    "cost_noise_ratio": 1.0,
+    "cost_mean": 1.0,
+    "cost_std": 0.2,
+    "budget_tightness": 0.35,
+    "fairness_type": "mad",
+    "group_ratio": 0.5,
+    "decision_mode": "group",
+    "data_seed": 42
+  },
+  "train_cfg": {
+    "steps_per_lambda": 30,
+    "lr": 0.0005,
+    "batch_size": -1,
+    "decision_grad_backend": "spsa",
+    "decision_grad_spsa_eps": 0.005,
+    "decision_grad_spsa_n_dirs": 8,
+    "model": {
+      "arch": "mlp",
+      "hidden_dim": 32,
+      "n_layers": 2,
+      "activation": "relu",
+      "dropout": 0.0,
+      "init_mode": "default"
+    }
+  },
+  "validation": {
+    "methods": ["FPTO", "DFL", "FDFL-Scal", "FPLG", "PCGrad", "MGDA"],
+    "seeds": [11, 22, 33],
+    "lambdas": [0.0, 0.1, 0.5, 1.0],
+    "result_subdir": "sweep05_chosen_config",
+    "method_ranking_test_regret": {
+      "dfl": 126.27,
+      "fplg": 157.53,
+      "mgda": 162.86,
+      "fdfl-scal": 162.96,
+      "fpto": 167.41,
+      "pcgrad": 180.91
+    }
+  }
+}
