@@ -78,6 +78,8 @@ def _make_train_cfg(args: argparse.Namespace) -> dict:
     cfg["lr"] = float(args.lr)
     cfg["batch_size"] = -1
     cfg["decision_grad_backend"] = str(args.decision_grad_backend)
+    cfg["decision_grad_spsa_eps"] = float(args.spsa_eps)
+    cfg["decision_grad_spsa_n_dirs"] = int(args.spsa_n_dirs)
     cfg["device"] = str(args.device)
     cfg["log_every"] = int(args.log_every)
     cfg["model"] = {
@@ -199,10 +201,17 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=5e-4)
     parser.add_argument(
         "--decision-grad-backend",
-        default="finite_diff",
-        choices=["finite_diff"],
-        help="Current md_knapsack integration supports finite-difference decision gradients only.",
+        default="spsa",
+        choices=["spsa", "finite_diff"],
+        help="Decision-gradient backend. SPSA (default) is ~20x faster than "
+             "finite_diff on the per-individual MD task at the cost of slightly "
+             "noisier gradients; finite_diff still available for full-FD checks.",
     )
+    parser.add_argument("--spsa-n-dirs", type=int, default=8,
+                        help="Number of Rademacher directions averaged per SPSA step. "
+                             "Higher = lower variance, linearly more solver calls.")
+    parser.add_argument("--spsa-eps", type=float, default=5e-3,
+                        help="SPSA perturbation magnitude.")
     parser.add_argument(
         "--model-arch",
         default="mlp",
