@@ -1,0 +1,86 @@
+{
+  "summary": [
+    {
+      "fairness_type": "mad",
+      "alpha": 0.5,
+      "elapsed_sec": 199.10584688186646,
+      "n_rows": 80
+    },
+    {
+      "fairness_type": "mad",
+      "alpha": 2.0,
+      "elapsed_sec": 217.57118248939514,
+      "n_rows": 80
+    },
+    {
+      "fairness_type": "dp",
+      "alpha": 0.5,
+      "elapsed_sec": 196.462881565094,
+      "n_rows": 80
+    },
+    {
+      "fairness_type": "dp",
+      "alpha": 2.0,
+      "elapsed_sec": 216.23060035705566,
+      "n_rows": 80
+    },
+    {
+      "fairness_type": "atkinson",
+      "alpha": 0.5,
+      "elapsed_sec": 196.12997198104858,
+      "n_rows": 80
+    },
+    {
+      "fairness_type": "atkinson",
+      "alpha": 2.0,
+      "elapsed_sec": 212.3080461025238,
+      "n_rows": 80
+    },
+    {
+      "fairness_type": "bias_parity",
+      "alpha": 0.5,
+      "elapsed_sec": 191.47879457473755,
+      "n_rows": 80
+    },
+    {
+      "fairness_type": "bias_parity",
+      "alpha": 2.0,
+      "elapsed_sec": 211.0434467792511,
+      "n_rows": 80
+    }
+  ],
+  "grand_total_sec": 1640.5309965610504,
+  "fairness_types": [
+    "mad",
+    "dp",
+    "atkinson",
+    "bias_parity"
+  ],
+  "alphas": [
+    0.5,
+    2.0
+  ],
+  "methods": [
+    "FPTO",
+    "FDFL-Scal",
+    "FPLG",
+    "PCGrad",
+    "MGDA",
+    "SAA",
+    "WDRO"
+  ],
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "lambdas": [
+    0.0,
+    0.5,
+    1.0,
+    5.0
+  ],
+  "steps": 70
+}

@@ -1,0 +1,11 @@
+{
+  "n_rows_total": 640,
+  "n_cells": 8,
+  "n_methods": 7,
+  "n_seeds": 5,
+  "n_lambdas_used": 4,
+  "nan_or_inf_steps_total": 0,
+  "exploding_steps_total": 0,
+  "max_train_test_gap": 0.006117177325251591,
+  "median_train_test_gap": 9.360492876535342e-05
+}
