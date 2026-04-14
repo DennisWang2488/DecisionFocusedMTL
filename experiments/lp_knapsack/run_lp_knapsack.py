@@ -47,10 +47,12 @@ STEPS_BASELINE = 200
 STEPS_FDFL = 80
 HIDDEN_DIM = 64
 N_TRAIN, N_TEST = 80, 80
-N_ITEMS = 10
-N_CONSTRAINTS = 3
+# 2026-04 redesign: per-individual layout. Old fields (n_items, n_budget_dims,
+# noise_std_*) are gone — see src/fair_dfl/tasks/md_knapsack.py.
+N_RESOURCES = 2
 N_FEATURES = 5
 POLY_DEGREE = 2
+SNR = 5.0
 BUDGET_TIGHTNESS = 0.3
 LR = 0.002
 RESULTS_BASE = str(REPO_ROOT / "results" / "final" / "lp_knapsack")
@@ -60,21 +62,21 @@ DECISION_GRAD_METHODS = {"FDFL-Scal", "FDFL-PCGrad", "FDFL-MGDA", "FDFL-CAGrad"}
 
 UNFAIRNESS_LEVELS = {
     "mild": {
-        "group_bias": 0.2,
-        "noise_std_lo": 0.05,
-        "noise_std_hi": 0.5,
+        "benefit_group_bias": 0.2,
+        "benefit_noise_ratio": 1.5,
+        "cost_group_bias": 0.0,
         "group_ratio": 0.5,
     },
     "medium": {
-        "group_bias": 0.4,
-        "noise_std_lo": 0.05,
-        "noise_std_hi": 1.0,
+        "benefit_group_bias": 0.4,
+        "benefit_noise_ratio": 2.0,
+        "cost_group_bias": 0.0,
         "group_ratio": 0.65,
     },
     "high": {
-        "group_bias": 0.6,
-        "noise_std_lo": 0.05,
-        "noise_std_hi": 1.5,
+        "benefit_group_bias": 0.6,
+        "benefit_noise_ratio": 3.0,
+        "cost_group_bias": 0.0,
         "group_ratio": 0.75,
     },
 }
@@ -105,14 +107,14 @@ def _make_task_cfg(unfairness: str) -> dict:
         "n_samples_val": 0,
         "n_samples_test": N_TEST,
         "n_features": N_FEATURES,
-        "n_items": N_ITEMS,
-        "n_budget_dims": N_CONSTRAINTS,
+        "n_resources": N_RESOURCES,
         "scenario": "lp",
         "alpha_fair": 1.0,  # unused for LP, required by dataclass
         "poly_degree": POLY_DEGREE,
-        "group_bias": uf["group_bias"],
-        "noise_std_lo": uf["noise_std_lo"],
-        "noise_std_hi": uf["noise_std_hi"],
+        "snr": SNR,
+        "benefit_group_bias": uf["benefit_group_bias"],
+        "benefit_noise_ratio": uf.get("benefit_noise_ratio", 1.0),
+        "cost_group_bias": uf.get("cost_group_bias", 0.0),
         "group_ratio": uf["group_ratio"],
         "budget_tightness": BUDGET_TIGHTNESS,
         "data_seed": 42,
@@ -148,7 +150,7 @@ def main():
     print(f"Methods:     {list(methods.keys())}")
     print(f"Unfairness:  {unfairness_levels}")
     print(f"Seeds:       {seeds}")
-    print(f"Items:       {N_ITEMS}, Budget: {BUDGET_TIGHTNESS}")
+    print(f"Resources:   {N_RESOURCES}, Budget: {BUDGET_TIGHTNESS}, SNR: {SNR}")
     print(f"Train/Test:  {N_TRAIN}/{N_TEST}, Poly: {POLY_DEGREE}")
     print(f"LR:          {LR}")
     print(f"Total runs:  {total_runs}")
@@ -221,7 +223,8 @@ def main():
                         if not df.empty:
                             df["method_label"] = method_label
                             df["unfairness_level"] = uf
-                            df["group_bias"] = uf_cfg["group_bias"]
+                            df["benefit_group_bias"] = uf_cfg["benefit_group_bias"]
+                            df["cost_group_bias"] = uf_cfg.get("cost_group_bias", 0.0)
                             df["group_ratio"] = uf_cfg["group_ratio"]
                             df["config_name"] = config_name
 

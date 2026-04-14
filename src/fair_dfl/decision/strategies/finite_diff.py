@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 
 from ...tasks.base import BaseTask
+from ...tasks.md_knapsack import MultiDimKnapsackTask
 from ...tasks.medical_resource_allocation import MedicalResourceAllocationTask
 from ...tasks.resource_allocation import ResourceAllocationTask
 from ..interface import DecisionGradientStrategy, DecisionResult
@@ -83,6 +84,20 @@ class FiniteDiffStrategy(DecisionGradientStrategy):
 
         # Compute finite-diff gradient
         t0 = perf_counter()
+
+        # MD knapsack treats the entire (n, n_resources) pred matrix as ONE
+        # population-level optimization, not as bsz independent instances —
+        # the generic path's per-row split would mis-shape the cvxpy problem.
+        if isinstance(task, MultiDimKnapsackTask):
+            grad, solver_calls = self._fd_md_knapsack(pred, true, task)
+            decision_ms = (perf_counter() - t0) * 1000.0
+            return DecisionResult(
+                loss_dec=float(out["loss_dec"]),
+                grad_dec=grad,
+                solver_calls=base_solver_calls + solver_calls,
+                decision_ms=base_decision_ms + decision_ms,
+                task_output=out,
+            )
 
         # Try generic interface first
         if hasattr(task, "solve_decision") and hasattr(task, "evaluate_objective"):
@@ -160,6 +175,65 @@ class FiniteDiffStrategy(DecisionGradientStrategy):
 
         return grad.reshape(pred.shape), solver_calls
 
+    def _fd_md_knapsack(
+        self,
+        raw_pred: np.ndarray,
+        true: np.ndarray,
+        task: MultiDimKnapsackTask,
+    ) -> tuple[np.ndarray, int]:
+        """Finite-diff over the population for the redesigned MD knapsack.
+
+        The whole (n, n_resources) prediction matrix is one optimization
+        instance, so we hold the active batch (cost, groups, budgets) fixed
+        and perturb each entry of ``raw_pred`` in turn, re-solving the LP
+        and re-evaluating the objective on the *true* benefits.
+        """
+        nr = int(task.n_resources)
+        raw = np.asarray(raw_pred, dtype=float).reshape(-1, nr)
+        y = np.asarray(true, dtype=float).reshape(-1, nr)
+        n = raw.shape[0]
+
+        if task.scenario == "lp":
+            pred_pos = raw.copy()
+        else:
+            pred_pos = _softplus_np(raw) + 1e-5
+
+        batch = getattr(task, "_active_batch", None)
+        if batch is None:
+            raise RuntimeError("MultiDimKnapsackTask: bind a batch before finite-diff.")
+        groups = batch.groups
+
+        # True-side objective (one solve over the whole population).
+        d_true = task._solve(np.clip(y, 1e-8, None))
+        obj_true = task._objective(d_true, y, groups)
+        solver_calls = 1
+
+        grad = np.zeros_like(pred_pos, dtype=float)
+        for i in range(n):
+            for j in range(nr):
+                base = pred_pos[i, j]
+                pred_plus = pred_pos.copy()
+                pred_minus = pred_pos.copy()
+                if task.scenario == "lp":
+                    pred_plus[i, j] = base + self.eps
+                    pred_minus[i, j] = base - self.eps
+                else:
+                    plus_raw = raw[i, j] + self.eps
+                    minus_raw = raw[i, j] - self.eps
+                    pred_plus[i, j] = float(_softplus_np(np.array([plus_raw]))[0]) + 1e-5
+                    pred_minus[i, j] = float(_softplus_np(np.array([minus_raw]))[0]) + 1e-5
+
+                d_plus = task._solve(pred_plus)
+                d_minus = task._solve(pred_minus)
+                obj_plus = task._objective(d_plus, y, groups)
+                obj_minus = task._objective(d_minus, y, groups)
+                regret_plus = max(float(obj_true - obj_plus), 0.0)
+                regret_minus = max(float(obj_true - obj_minus), 0.0)
+                grad[i, j] = (regret_plus - regret_minus) / (2.0 * self.eps)
+                solver_calls += 2
+
+        return grad.reshape(raw_pred.shape), solver_calls
+
     def _fd_resource_allocation(
         self,
         raw_pred: np.ndarray,
@@ -203,6 +277,8 @@ class FiniteDiffStrategy(DecisionGradientStrategy):
         return grad, int(solver_calls + bsz)
 
     def supports_task(self, task: BaseTask) -> bool:
+        if isinstance(task, MultiDimKnapsackTask):
+            return True
         if hasattr(task, "solve_decision") and hasattr(task, "evaluate_objective"):
             return True
         return isinstance(task, ResourceAllocationTask)

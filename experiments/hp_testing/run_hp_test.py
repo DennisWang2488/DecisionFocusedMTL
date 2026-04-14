@@ -50,22 +50,27 @@ from experiments.configs import ALL_METHOD_CONFIGS, DEFAULT_TRAIN_CFG  # noqa: E
 # ======================================================================
 
 # --- Task (knapsack problem structure) ---
+# NOTE (2026-04 redesign): the MD knapsack task is now per-individual with
+# multi-resource allocation. ``n_items`` no longer exists — replace with
+# ``n_resources`` (number of resource types, default 2). Per-group noise
+# is parameterised by ``snr`` and ``benefit_noise_ratio``; group means by
+# ``benefit_group_bias`` (and ``cost_group_bias`` for cost imbalance).
 TASK_CFG = {
-    "n_items": 7,
-    "n_budget_dims": 1,            # budget dimensions (rows of A matrix). 1 = classic knapsack
+    "n_resources": 2,              # number of resource types per individual
     "n_features": 5,
-    "budget_tightness": 0.3,       # b = tightness * A.sum(). Lower = tighter = more competition
+    "budget_tightness": 0.3,       # B_j = tightness * sum_i cost_{i,j}
     "poly_degree": 2,              # polynomial feature mapping degree
     "decision_mode": "group",      # "group" = two-level group alpha-fair
-    "n_samples_train": 400,        # training samples (need enough for MLP to generalize)
-    "n_samples_test": 200,         # test samples
+    "n_samples_train": 400,        # individuals in the training population
+    "n_samples_test": 200,         # individuals in the test population
+    "snr": 5.0,                    # signal-to-noise ratio for benefit
 }
 
-# --- Unfairness levels ---
+# --- Unfairness levels (translated to the new schema) ---
 UF_CONFIGS = {
-    "mild":   {"group_bias": 0.2, "noise_std_lo": 0.05, "noise_std_hi": 0.10, "group_ratio": 0.5},
-    "medium": {"group_bias": 0.4, "noise_std_lo": 0.05, "noise_std_hi": 0.20, "group_ratio": 0.6},
-    "high":   {"group_bias": 0.6, "noise_std_lo": 0.05, "noise_std_hi": 0.30, "group_ratio": 0.75},
+    "mild":   {"benefit_group_bias": 0.2, "benefit_noise_ratio": 1.0, "cost_group_bias": 0.0, "group_ratio": 0.5},
+    "medium": {"benefit_group_bias": 0.4, "benefit_noise_ratio": 1.5, "cost_group_bias": 0.0, "group_ratio": 0.6},
+    "high":   {"benefit_group_bias": 0.6, "benefit_noise_ratio": 2.0, "cost_group_bias": 0.0, "group_ratio": 0.75},
 }
 
 # --- Training ---
@@ -229,14 +234,14 @@ def run_hp_test(
                             "n_samples_val": 0,
                             "n_samples_test": TASK_CFG["n_samples_test"],
                             "n_features": TASK_CFG.get("n_features", 5),
-                            "n_items": TASK_CFG["n_items"],
-                            "n_budget_dims": TASK_CFG.get("n_budget_dims", 3),
+                            "n_resources": TASK_CFG.get("n_resources", 2),
                             "scenario": "alpha_fair",
                             "alpha_fair": alpha,
                             "poly_degree": TASK_CFG.get("poly_degree", 2),
-                            "group_bias": uf["group_bias"],
-                            "noise_std_lo": uf["noise_std_lo"],
-                            "noise_std_hi": uf["noise_std_hi"],
+                            "snr": TASK_CFG.get("snr", 5.0),
+                            "benefit_group_bias": uf["benefit_group_bias"],
+                            "benefit_noise_ratio": uf.get("benefit_noise_ratio", 1.0),
+                            "cost_group_bias": uf.get("cost_group_bias", 0.0),
                             "group_ratio": uf["group_ratio"],
                             "budget_tightness": TASK_CFG.get("budget_tightness", 0.5),
                             "decision_mode": TASK_CFG.get("decision_mode", "group"),
@@ -293,7 +298,8 @@ def run_hp_test(
                                 df["method_label"] = method_label
                                 df["alpha_fair"] = alpha
                                 df["unfairness_level"] = uf_name
-                                df["group_bias"] = uf["group_bias"]
+                                df["benefit_group_bias"] = uf["benefit_group_bias"]
+                                df["cost_group_bias"] = uf.get("cost_group_bias", 0.0)
                                 df["group_ratio"] = uf["group_ratio"]
 
                         _save(rdir, stage_df, iter_df, {
@@ -368,11 +374,11 @@ def main():
     parser.add_argument("--batch-size", type=int, default=None,
                         help="FDFL mini-batch size (default 32)")
     parser.add_argument("--n-train", type=int, default=None)
-    parser.add_argument("--n-items", type=int, default=None)
+    parser.add_argument("--n-resources", type=int, default=None)
     parser.add_argument("--budget", type=float, default=None,
                         help="Budget tightness (0-1)")
-    parser.add_argument("--noise-hi", type=float, default=None,
-                        help="Override noise_std_hi for ALL unfairness levels")
+    parser.add_argument("--snr", type=float, default=None,
+                        help="Override SNR for the task")
 
     args = parser.parse_args()
 
@@ -387,13 +393,12 @@ def main():
         TRAIN_CFG["fdfl_batch_size"] = args.batch_size
     if args.n_train is not None:
         TASK_CFG["n_samples_train"] = args.n_train
-    if args.n_items is not None:
-        TASK_CFG["n_items"] = args.n_items
+    if args.n_resources is not None:
+        TASK_CFG["n_resources"] = args.n_resources
     if args.budget is not None:
         TASK_CFG["budget_tightness"] = args.budget
-    if args.noise_hi is not None:
-        for uf in UF_CONFIGS.values():
-            uf["noise_std_hi"] = args.noise_hi
+    if args.snr is not None:
+        TASK_CFG["snr"] = args.snr
 
     if args.full:
         run_hp_test(

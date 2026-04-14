@@ -21,21 +21,32 @@ from fair_dfl.runner import run_experiment_unified  # noqa: E402
 
 DEFAULT_TASK_CFG = {
     "name": "md_knapsack",
+    # --- Population (per-individual layout) ---
     "n_samples_train": 120,
     "n_samples_val": 24,
     "n_samples_test": 48,
     "n_features": 5,
-    "n_items": 12,
-    "n_budget_dims": 3,
+    "n_resources": 2,
+    # --- Objective ---
     "scenario": "alpha_fair",
     "alpha_fair": 2.0,
     "poly_degree": 2,
-    "group_bias": 0.3,
-    "noise_std_lo": 0.1,
-    "noise_std_hi": 0.5,
+    # --- Signal-to-noise (decoupled from group bias) ---
+    "snr": 5.0,
+    # --- Group imbalance knobs (separate for benefit vs cost) ---
+    "benefit_group_bias": 0.3,
+    "benefit_noise_ratio": 1.0,
+    "cost_group_bias": 0.0,
+    "cost_noise_ratio": 1.0,
+    "cost_mean": 1.0,
+    "cost_std": 0.2,
+    # --- Constraint ---
     "budget_tightness": 0.5,
-    "data_seed": 42,
+    # --- Misc ---
     "fairness_type": "mad",
+    "data_seed": 42,
+    "group_ratio": 0.5,
+    "decision_mode": "group",
 }
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 UNSUPPORTED_METHOD_BACKENDS: set[str] = set()
@@ -85,13 +96,16 @@ def _make_task_cfg(args: argparse.Namespace, alpha: float) -> dict:
     cfg = copy.deepcopy(DEFAULT_TASK_CFG)
     cfg["scenario"] = str(args.scenario)
     cfg["alpha_fair"] = float(alpha)
-    cfg["n_items"] = int(args.n_items)
-    cfg["n_budget_dims"] = int(args.n_budget_dims)
+    cfg["n_resources"] = int(args.n_resources)
     cfg["n_features"] = int(args.n_features)
     cfg["poly_degree"] = int(args.poly_degree)
-    cfg["group_bias"] = float(args.group_bias)
-    cfg["noise_std_lo"] = float(args.noise_std_lo)
-    cfg["noise_std_hi"] = float(args.noise_std_hi)
+    cfg["snr"] = float(args.snr)
+    cfg["benefit_group_bias"] = float(args.benefit_group_bias)
+    cfg["benefit_noise_ratio"] = float(args.benefit_noise_ratio)
+    cfg["cost_group_bias"] = float(args.cost_group_bias)
+    cfg["cost_noise_ratio"] = float(args.cost_noise_ratio)
+    cfg["cost_mean"] = float(args.cost_mean)
+    cfg["cost_std"] = float(args.cost_std)
     cfg["budget_tightness"] = float(args.budget_tightness)
     cfg["fairness_type"] = str(args.fairness_type)
     cfg["n_samples_train"] = int(args.n_train)
@@ -132,9 +146,10 @@ def _run_single(
         stage_df["config_name"] = method_name
         stage_df["scenario"] = task_cfg["scenario"]
         stage_df["poly_degree"] = task_cfg["poly_degree"]
-        stage_df["group_bias"] = task_cfg["group_bias"]
-        stage_df["n_items"] = task_cfg["n_items"]
-        stage_df["n_budget_dims"] = task_cfg["n_budget_dims"]
+        stage_df["benefit_group_bias"] = task_cfg["benefit_group_bias"]
+        stage_df["cost_group_bias"] = task_cfg["cost_group_bias"]
+        stage_df["snr"] = task_cfg["snr"]
+        stage_df["n_resources"] = task_cfg["n_resources"]
         stage_df["dec_grad_backend"] = cfg["training"].get("decision_grad_backend", "finite_diff")
         if tag:
             stage_df["tag"] = tag
@@ -153,17 +168,26 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Multi-dimensional knapsack synthetic experiment")
     parser.add_argument("--scenario", default="alpha_fair", choices=["lp", "alpha_fair"])
     parser.add_argument("--alphas", nargs="+", type=float, default=[2.0])
-    parser.add_argument("--n-items", type=int, default=12)
-    parser.add_argument("--n-constraints", type=int, default=3)
+    parser.add_argument("--n-resources", type=int, default=2,
+                        help="Number of resource types per individual (default: 2 — 'a' and 'b').")
     parser.add_argument("--n-features", type=int, default=5)
     parser.add_argument("--poly-degree", type=int, default=2)
-    parser.add_argument("--group-bias", type=float, default=0.3)
-    parser.add_argument("--noise-std-lo", type=float, default=0.1)
-    parser.add_argument("--noise-std-hi", type=float, default=0.5)
+    parser.add_argument("--snr", type=float, default=5.0,
+                        help="Signal-to-noise ratio for benefit (decoupled from group bias).")
+    parser.add_argument("--benefit-group-bias", type=float, default=0.3,
+                        help="Per-resource additive shift to the benefit signal (+ for g0, - for g1).")
+    parser.add_argument("--benefit-noise-ratio", type=float, default=1.0,
+                        help="Per-group noise scaling for benefit (group-1 std relative to group-0).")
+    parser.add_argument("--cost-group-bias", type=float, default=0.0,
+                        help="Per-resource additive shift to the cost (+ for g0, - for g1). Affects decisions only.")
+    parser.add_argument("--cost-noise-ratio", type=float, default=1.0)
+    parser.add_argument("--cost-mean", type=float, default=1.0)
+    parser.add_argument("--cost-std", type=float, default=0.2)
     parser.add_argument("--budget-tightness", type=float, default=0.5)
     parser.add_argument("--group-ratio", type=float, default=0.5,
-                        help="Fraction of items in group 0 (default: 0.5 = equal groups)")
-    parser.add_argument("--fairness-type", default="mad", choices=["mad", "gap", "atkinson"])
+                        help="Fraction of individuals in group 0 (default: 0.5 = equal groups)")
+    parser.add_argument("--fairness-type", default="mad",
+                        choices=["mad", "gap", "atkinson", "dp", "demographic_parity"])
     parser.add_argument("--data-seed", type=int, default=42)
     parser.add_argument("--n-train", type=int, default=120)
     parser.add_argument("--n-val", type=int, default=24)
@@ -211,7 +235,9 @@ def main() -> None:
     print("=" * 70)
     print(f"Scenario: {args.scenario}")
     print(f"Alphas:   {args.alphas}")
-    print(f"Items:    {args.n_items}, Constraints: {args.n_budget_dims}")
+    print(f"Population: {args.n_train} train / {args.n_val} val / {args.n_test} test")
+    print(f"Resources: {args.n_resources} (one budget each), SNR={args.snr}")
+    print(f"Imbalance: benefit_bias={args.benefit_group_bias}, cost_bias={args.cost_group_bias}")
     print(f"Methods:  {list(method_configs.keys())}")
     print(f"Backend:  {args.decision_grad_backend}")
     print(f"Seeds:    {args.seeds}")

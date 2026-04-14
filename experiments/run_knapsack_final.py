@@ -11,10 +11,10 @@ Experimental grid:
 Note: FPTO(lambda=0) = PTO, FDFL-Scal(lambda=0) = DFL.
 No validation split — train/test only.
 
-Unfairness levels (n_items=7):
-  mild   : group_bias=0.1, noise_std_lo=0.1, noise_std_hi=0.2, group_ratio=0.5 (4/3)
-  medium : group_bias=0.3, noise_std_lo=0.1, noise_std_hi=0.5, group_ratio=0.5 (4/3)
-  high   : group_bias=0.3, noise_std_lo=0.1, noise_std_hi=0.5, group_ratio=0.67 (5/2)
+Unfairness levels (per-individual layout, 2026-04 redesign):
+  mild   : benefit_group_bias=0.1, benefit_noise_ratio=1.0, group_ratio=0.5
+  medium : benefit_group_bias=0.3, benefit_noise_ratio=2.0, group_ratio=0.5
+  high   : benefit_group_bias=0.3, benefit_noise_ratio=2.0, group_ratio=0.67
 
 Usage:
   python experiments/run_knapsack_final.py
@@ -49,35 +49,37 @@ ALPHAS = [0.5, 2.0]
 STEPS_PER_LAMBDA = 20
 HIDDEN_DIM = 64
 N_TRAIN, N_TEST = 200, 80   # no validation
-N_ITEMS = 7
-N_CONSTRAINTS = 3
+# Per-individual layout (2026-04 redesign): N_RESOURCES is the number of
+# resource types. Old fields (n_items, n_budget_dims, noise_std_*) are gone.
+N_RESOURCES = 2
 N_FEATURES = 5
 POLY_DEGREE = 2
+SNR = 5.0
 RESULTS_BASE = str(REPO_ROOT / "results" / "final" / "knapsack")
 LAMBDAS_SWEEP = [0.0, 0.5, 1.0, 5.0]
 
-# Unfairness level definitions
+# Unfairness level definitions (translated to the new schema)
 UNFAIRNESS_LEVELS = {
     "mild": {
-        "group_bias": 0.1,
-        "noise_std_lo": 0.1,
-        "noise_std_hi": 0.2,
+        "benefit_group_bias": 0.1,
+        "benefit_noise_ratio": 1.0,
+        "cost_group_bias": 0.0,
         "group_ratio": 0.5,
-        "label": "Mild (small bias, small noise gap)",
+        "label": "Mild (small bias)",
     },
     "medium": {
-        "group_bias": 0.3,
-        "noise_std_lo": 0.1,
-        "noise_std_hi": 0.5,
+        "benefit_group_bias": 0.3,
+        "benefit_noise_ratio": 2.0,
+        "cost_group_bias": 0.0,
         "group_ratio": 0.5,
-        "label": "Medium (larger bias + noise gap)",
+        "label": "Medium (larger bias + noise asymmetry)",
     },
     "high": {
-        "group_bias": 0.3,
-        "noise_std_lo": 0.1,
-        "noise_std_hi": 0.5,
+        "benefit_group_bias": 0.3,
+        "benefit_noise_ratio": 2.0,
+        "cost_group_bias": 0.0,
         "group_ratio": 0.67,
-        "label": "High (bias + noise gap + group imbalance)",
+        "label": "High (bias + noise + group imbalance)",
     },
 }
 
@@ -121,14 +123,14 @@ def _make_task_cfg(alpha: float, unfairness: str) -> dict:
         "n_samples_val": 0,       # no validation
         "n_samples_test": N_TEST,
         "n_features": N_FEATURES,
-        "n_items": N_ITEMS,
-        "n_budget_dims": N_CONSTRAINTS,
+        "n_resources": N_RESOURCES,
         "scenario": "alpha_fair",
         "alpha_fair": alpha,
         "poly_degree": POLY_DEGREE,
-        "group_bias": uf["group_bias"],
-        "noise_std_lo": uf["noise_std_lo"],
-        "noise_std_hi": uf["noise_std_hi"],
+        "snr": SNR,
+        "benefit_group_bias": uf["benefit_group_bias"],
+        "benefit_noise_ratio": uf.get("benefit_noise_ratio", 1.0),
+        "cost_group_bias": uf.get("cost_group_bias", 0.0),
         "group_ratio": uf["group_ratio"],
         "budget_tightness": 0.5,
         "data_seed": 42,
@@ -178,9 +180,9 @@ def run_single(
             df["method_label"] = method_label
             df["alpha_fair"] = alpha
             df["unfairness_level"] = unfairness
-            df["group_bias"] = uf_cfg["group_bias"]
-            df["noise_std_lo"] = uf_cfg["noise_std_lo"]
-            df["noise_std_hi"] = uf_cfg["noise_std_hi"]
+            df["benefit_group_bias"] = uf_cfg["benefit_group_bias"]
+            df["benefit_noise_ratio"] = uf_cfg.get("benefit_noise_ratio", 1.0)
+            df["cost_group_bias"] = uf_cfg.get("cost_group_bias", 0.0)
             df["group_ratio"] = uf_cfg["group_ratio"]
             df["config_name"] = config_name
 
@@ -244,8 +246,8 @@ def main():
     print(f"Results:     {args.results_dir}")
     for name in unfairness_levels:
         uf = UNFAIRNESS_LEVELS[name]
-        print(f"  {name:8s}: bias={uf['group_bias']}, "
-              f"noise=[{uf['noise_std_lo']},{uf['noise_std_hi']}], "
+        print(f"  {name:8s}: benefit_bias={uf['benefit_group_bias']}, "
+              f"noise_ratio={uf.get('benefit_noise_ratio', 1.0)}, "
               f"ratio={uf['group_ratio']}")
     print("=" * 70)
 

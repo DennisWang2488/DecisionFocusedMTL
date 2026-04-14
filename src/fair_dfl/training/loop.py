@@ -40,6 +40,7 @@ from ..models import build_predictor, PredictorHandle
 from ..models.registry import _resolve_model_config
 from ..schedules import alpha_value, lr_value
 from ..tasks.base import BaseTask, SplitData, TaskData
+from ..tasks.md_knapsack import MultiDimKnapsackTask
 from ..tasks.medical_resource_allocation import MedicalResourceAllocationTask
 
 from .eval import evaluate_model
@@ -313,6 +314,8 @@ def train_single_stage(
     if method_name == "saa":
         if isinstance(task, MedicalResourceAllocationTask):
             saa_mean = float(np.mean(task._splits["train"].y))
+        elif isinstance(task, MultiDimKnapsackTask):
+            saa_mean = float(np.mean(task._splits["train"].y))
         else:
             saa_mean = float(np.mean(data.train.y))
         steps = 0
@@ -334,6 +337,18 @@ def train_single_stage(
             pred_np = pred_t.detach().cpu().numpy().reshape(-1)
             yb = batch.y
             batch_ctx = {"cost": batch.cost, "race": batch.race}
+        elif isinstance(task, MultiDimKnapsackTask):
+            # MD knapsack: sample_batch also (re)binds the task's cvxpy
+            # problem to the active sub-population so compute() solves the
+            # right LP. Cost/groups are stored on the task — no batch_ctx.
+            batch = task.sample_batch("train", batch_size=batch_size, rng=rng)
+            xb_t = to_torch(batch.x, device=device, dtype=dtype)
+            pred_t = predictor.module(xb_t)
+            if predictor.post_processor.transform != "none":
+                pred_t = predictor.post_processor(pred_t)
+            pred_np = pred_t.detach().cpu().numpy()
+            yb = batch.y
+            batch_ctx = {}
         else:
             xb, yb = _sample_batch(data.train, batch_size=batch_size, rng=rng)
             xb_t = to_torch(xb, device=device, dtype=dtype)
@@ -564,10 +579,13 @@ def train_single_stage(
                         if predictor.post_processor.transform != "none":
                             new_pred = predictor.post_processor(new_pred)
                         new_pred_np = new_pred.detach().cpu().numpy()
-                        new_out = task.compute(
+                        new_compute_kwargs = dict(
                             raw_pred=new_pred_np, true=yb,
                             need_grads=False, fairness_smoothing=fairness_smoothing,
                         )
+                        if hasattr(task, "compute") and "skip_regret" in task.compute.__code__.co_varnames:
+                            new_compute_kwargs["skip_regret"] = True
+                        new_out = task.compute(**new_compute_kwargs)
                 predictor.train()
                 _, new_losses = _build_active_moo_payload(
                     iter_spec=iter_spec,
@@ -658,6 +676,11 @@ def train_single_stage(
             saa_override_test = np.full(task._splits["test"].y.shape[0], saa_mean)
             if eval_train:
                 saa_override_train = np.full(task._splits["train"].y.shape[0], saa_mean)
+        elif isinstance(task, MultiDimKnapsackTask):
+            saa_override_val = np.full(task._splits["val"].y.shape, saa_mean)
+            saa_override_test = np.full(task._splits["test"].y.shape, saa_mean)
+            if eval_train:
+                saa_override_train = np.full(task._splits["train"].y.shape, saa_mean)
         else:
             saa_override_val = np.full(data.val.y.shape, saa_mean)
             saa_override_test = np.full(data.test.y.shape, saa_mean)
@@ -728,10 +751,12 @@ def train_single_stage(
             stage_row[metric.replace("val_", "test_")] = _metric_or_nan(test_metrics, key)
             stage_row[metric.replace("val_", "train_")] = _metric_or_nan(train_metrics, key)
 
-    # Forward decision-level fairness metrics (decision_alloc_gap, etc.)
+    # Forward decision-level fairness metrics (decision_alloc_gap, etc.) and
+    # per-group descriptive statistics (group_*_benefit_mean_r0, etc.) so the
+    # stage CSV carries enough info to inspect benefit/cost imbalance effects.
     for prefix, m_dict in [("train_", train_metrics), ("val_", val_metrics), ("test_", test_metrics)]:
         for key, value in m_dict.items():
-            if key.startswith("decision_"):
+            if key.startswith("decision_") or key.startswith("group_"):
                 stage_row[prefix + key] = value
 
     return stage_row, iter_logs

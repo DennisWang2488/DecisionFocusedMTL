@@ -9,6 +9,7 @@ import torch
 
 from ..models import PredictorHandle
 from ..tasks.base import BaseTask, SplitData
+from ..tasks.md_knapsack import MultiDimKnapsackTask
 from ..tasks.medical_resource_allocation import MedicalResourceAllocationTask
 
 
@@ -65,6 +66,28 @@ def eval_split_medical(
         )
     split = task._splits[split_name]
     pred = predictor.predict_numpy(split.x).reshape(-1)
+    return task.evaluate_split(
+        split=split_name, pred=pred, fairness_smoothing=fairness_smoothing,
+    )
+
+
+def eval_split_md_knapsack(
+    task: MultiDimKnapsackTask,
+    predictor: PredictorHandle,
+    split_name: str,
+    fairness_smoothing: float,
+    override_pred: np.ndarray | None = None,
+) -> Dict[str, float]:
+    """Evaluate a predictor on a multi-dim knapsack split.
+
+    Binds the cvxpy problem to the requested split before solving so that
+    val/test evaluation uses the right population (different ``n``).
+    """
+    split = task._splits[split_name]
+    if override_pred is not None:
+        pred = np.asarray(override_pred, dtype=float).reshape(-1, task.n_resources)
+    else:
+        pred = predictor.predict_numpy(split.x).reshape(-1, task.n_resources)
     return task.evaluate_split(
         split=split_name, pred=pred, fairness_smoothing=fairness_smoothing,
     )
@@ -132,6 +155,36 @@ def evaluate_model(
                 train_metrics = dict(_EMPTY_METRICS)
         else:
             train_metrics = dict(_EMPTY_METRICS)
+    elif isinstance(task, MultiDimKnapsackTask):
+        # MD knapsack tasks own their split data and need explicit binding
+        # before each evaluation so the cvxpy problem is sized to the right
+        # population (train vs val vs test may all differ).
+        val_split = task._splits.get("val")
+        if val_split is not None and val_split.x.shape[0] > 0:
+            val_metrics = eval_split_md_knapsack(
+                task=task, predictor=predictor, split_name="val",
+                fairness_smoothing=fairness_smoothing, override_pred=saa_override_val,
+            )
+        else:
+            val_metrics = dict(_EMPTY_METRICS)
+        test_metrics = eval_split_md_knapsack(
+            task=task, predictor=predictor, split_name="test",
+            fairness_smoothing=fairness_smoothing, override_pred=saa_override_test,
+        )
+        if eval_train:
+            train_split = task._splits.get("train")
+            if train_split is not None and train_split.x.shape[0] > 0:
+                train_metrics = eval_split_md_knapsack(
+                    task=task, predictor=predictor, split_name="train",
+                    fairness_smoothing=fairness_smoothing, override_pred=saa_override_train,
+                )
+            else:
+                train_metrics = dict(_EMPTY_METRICS)
+        else:
+            train_metrics = dict(_EMPTY_METRICS)
+        # Restore the active split to "train" so subsequent training iterations
+        # see the right cvxpy problem on the next call.
+        task.bind_split("train")
     else:
         if data.val is not None and data.val.x.shape[0] > 0:
             val_metrics = eval_split(

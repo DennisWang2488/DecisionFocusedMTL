@@ -45,11 +45,11 @@ DECISION_GRAD_METHODS = {'FDFL-Scal', 'FDFL-PCGrad', 'FDFL-MGDA', 'FDFL-CAGrad'}
 HC_RESULTS_DEFAULT = "results/final/healthcare"
 KN_RESULTS_DEFAULT = "results/final/knapsack"
 
-# Unfairness levels for knapsack
+# Unfairness levels for knapsack (translated to the 2026-04 redesign).
 UNFAIRNESS_LEVELS = {
-    "mild":   {"group_bias": 0.1, "noise_std_lo": 0.1, "noise_std_hi": 0.2, "group_ratio": 0.5},
-    "medium": {"group_bias": 0.3, "noise_std_lo": 0.1, "noise_std_hi": 0.5, "group_ratio": 0.5},
-    "high":   {"group_bias": 0.3, "noise_std_lo": 0.1, "noise_std_hi": 0.5, "group_ratio": 0.67},
+    "mild":   {"benefit_group_bias": 0.1, "benefit_noise_ratio": 1.0, "cost_group_bias": 0.0, "group_ratio": 0.5},
+    "medium": {"benefit_group_bias": 0.3, "benefit_noise_ratio": 2.0, "cost_group_bias": 0.0, "group_ratio": 0.5},
+    "high":   {"benefit_group_bias": 0.3, "benefit_noise_ratio": 2.0, "cost_group_bias": 0.0, "group_ratio": 0.67},
 }
 
 METHOD_GRID = {
@@ -301,10 +301,11 @@ def run_knapsack_slice(
     ----------
     unfairness_configs : dict, optional
         Override the default UNFAIRNESS_LEVELS dict. Keys are level names,
-        values are dicts with group_bias, noise_std_lo, noise_std_hi, group_ratio.
+        values are dicts with benefit_group_bias, benefit_noise_ratio,
+        cost_group_bias, group_ratio.
     task_overrides : dict, optional
-        Override task-level parameters (n_items, budget_tightness, poly_degree,
-        n_samples_train, n_samples_test, n_features, n_budget_dims, etc.).
+        Override task-level parameters (n_resources, budget_tightness,
+        poly_degree, n_samples_train, n_samples_test, n_features, snr, etc.).
     train_overrides : dict, optional
         Override training parameters. Model-level keys (hidden_dim, n_layers,
         activation, dropout, batch_norm) are routed into the model sub-config.
@@ -377,14 +378,14 @@ def run_knapsack_slice(
                             "n_samples_val": 0,
                             "n_samples_test": t_ovr.get("n_samples_test", 80),
                             "n_features": t_ovr.get("n_features", 5),
-                            "n_items": t_ovr.get("n_items", 7),
-                            "n_budget_dims": t_ovr.get("n_budget_dims", 3),
+                            "n_resources": t_ovr.get("n_resources", 2),
                             "scenario": "alpha_fair",
                             "alpha_fair": alpha,
                             "poly_degree": t_ovr.get("poly_degree", 2),
-                            "group_bias": uf["group_bias"],
-                            "noise_std_lo": uf["noise_std_lo"],
-                            "noise_std_hi": uf["noise_std_hi"],
+                            "snr": t_ovr.get("snr", 5.0),
+                            "benefit_group_bias": uf.get("benefit_group_bias", uf.get("group_bias", 0.3)),
+                            "benefit_noise_ratio": uf.get("benefit_noise_ratio", 1.0),
+                            "cost_group_bias": uf.get("cost_group_bias", 0.0),
                             "group_ratio": uf["group_ratio"],
                             "budget_tightness": t_ovr.get("budget_tightness", 0.5),
                             "decision_mode": t_ovr.get("decision_mode", "group"),
@@ -427,7 +428,10 @@ def run_knapsack_slice(
                                 df["method_label"] = method_label
                                 df["alpha_fair"] = alpha
                                 df["unfairness_level"] = uf_name
-                                df["group_bias"] = uf["group_bias"]
+                                df["benefit_group_bias"] = uf.get(
+                                    "benefit_group_bias", uf.get("group_bias", 0.3)
+                                )
+                                df["cost_group_bias"] = uf.get("cost_group_bias", 0.0)
                                 df["group_ratio"] = uf["group_ratio"]
                                 df["config_name"] = config_name
 
@@ -472,9 +476,9 @@ def run_knapsack_slice(
 LP_RESULTS_DEFAULT = "results/final/lp_knapsack"
 
 LP_UNFAIRNESS_LEVELS = {
-    "mild":   {"group_bias": 0.2, "noise_std_lo": 0.05, "noise_std_hi": 0.5,  "group_ratio": 0.5},
-    "medium": {"group_bias": 0.4, "noise_std_lo": 0.05, "noise_std_hi": 1.0,  "group_ratio": 0.65},
-    "high":   {"group_bias": 0.6, "noise_std_lo": 0.05, "noise_std_hi": 1.5,  "group_ratio": 0.75},
+    "mild":   {"benefit_group_bias": 0.2, "benefit_noise_ratio": 1.5, "cost_group_bias": 0.0, "group_ratio": 0.5},
+    "medium": {"benefit_group_bias": 0.4, "benefit_noise_ratio": 2.0, "cost_group_bias": 0.0, "group_ratio": 0.65},
+    "high":   {"benefit_group_bias": 0.6, "benefit_noise_ratio": 3.0, "cost_group_bias": 0.0, "group_ratio": 0.75},
 }
 
 
@@ -556,14 +560,14 @@ def run_lp_knapsack_slice(
                         "n_samples_val": 0,
                         "n_samples_test": t_ovr.get("n_samples_test", 80),
                         "n_features": t_ovr.get("n_features", 5),
-                        "n_items": t_ovr.get("n_items", 10),
-                        "n_budget_dims": t_ovr.get("n_budget_dims", 3),
+                        "n_resources": t_ovr.get("n_resources", 2),
                         "scenario": "lp",
                         "alpha_fair": 1.0,
                         "poly_degree": t_ovr.get("poly_degree", 2),
-                        "group_bias": uf["group_bias"],
-                        "noise_std_lo": uf["noise_std_lo"],
-                        "noise_std_hi": uf["noise_std_hi"],
+                        "snr": t_ovr.get("snr", 5.0),
+                        "benefit_group_bias": uf.get("benefit_group_bias", uf.get("group_bias", 0.3)),
+                        "benefit_noise_ratio": uf.get("benefit_noise_ratio", 1.0),
+                        "cost_group_bias": uf.get("cost_group_bias", 0.0),
                         "group_ratio": uf["group_ratio"],
                         "budget_tightness": t_ovr.get("budget_tightness", 0.3),
                         "data_seed": 42, "fairness_type": "mad",
@@ -605,7 +609,10 @@ def run_lp_knapsack_slice(
                         if not df.empty:
                             df["method_label"] = method_label
                             df["unfairness_level"] = uf_name
-                            df["group_bias"] = uf["group_bias"]
+                            df["benefit_group_bias"] = uf.get(
+                                "benefit_group_bias", uf.get("group_bias", 0.3)
+                            )
+                            df["cost_group_bias"] = uf.get("cost_group_bias", 0.0)
                             df["group_ratio"] = uf["group_ratio"]
                             df["config_name"] = config_name
 

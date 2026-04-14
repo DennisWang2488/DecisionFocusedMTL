@@ -80,6 +80,20 @@ def _apply_subset_fraction(
                 race=med_split.race[idx],
             )
 
+    if isinstance(task, MultiDimKnapsackTask):
+        for split_name, idx in [("train", train_idx), ("val", val_idx)]:
+            sub = task._splits[split_name]
+            sub_cost = sub.cost[idx]
+            sub_budgets = float(task.budget_tightness) * sub_cost.sum(axis=0)
+            task._splits[split_name] = type(sub)(
+                x=sub.x[idx],
+                y=sub.y[idx],
+                cost=sub_cost,
+                groups=sub.groups[idx],
+                budgets=sub_budgets,
+            )
+        task.bind_split("train")
+
     meta = dict(data.meta)
     if "n_train" in meta:
         meta["n_train"] = np.asarray([train.x.shape[0]], dtype=np.int64)
@@ -250,22 +264,26 @@ def _build_task(task_cfg: Dict[str, Any]) -> Tuple[BaseTask, TaskData]:
             n_samples_val=int(task_cfg["n_samples_val"]),
             n_samples_test=int(task_cfg["n_samples_test"]),
             n_features=int(task_cfg["n_features"]),
-            n_items=int(task_cfg["n_items"]),
-            n_budget_dims=int(task_cfg["n_budget_dims"]),
+            n_resources=int(task_cfg.get("n_resources", 2)),
             scenario=str(task_cfg.get("scenario", "alpha_fair")),
             alpha_fair=float(task_cfg.get("alpha_fair", 2.0)),
-            group_bias=float(task_cfg.get("group_bias", 0.3)),
-            noise_std_lo=float(task_cfg.get("noise_std_lo", 0.1)),
-            noise_std_hi=float(task_cfg.get("noise_std_hi", 0.5)),
             poly_degree=int(task_cfg.get("poly_degree", 2)),
+            snr=float(task_cfg.get("snr", 5.0)),
+            benefit_group_bias=float(task_cfg.get("benefit_group_bias", task_cfg.get("group_bias", 0.3))),
+            benefit_noise_ratio=float(task_cfg.get("benefit_noise_ratio", 1.0)),
+            cost_group_bias=float(task_cfg.get("cost_group_bias", 0.0)),
+            cost_noise_ratio=float(task_cfg.get("cost_noise_ratio", 1.0)),
+            cost_mean=float(task_cfg.get("cost_mean", 1.0)),
+            cost_std=float(task_cfg.get("cost_std", 0.2)),
             budget_tightness=float(task_cfg.get("budget_tightness", 0.5)),
             fairness_type=fairness_type,
             fairness_ge_alpha=fairness_ge_alpha,
             group_ratio=float(task_cfg.get("group_ratio", 0.5)),
+            decision_mode=str(task_cfg.get("decision_mode", "group")),
         )
         data_seed = int(task_cfg.get("data_seed", 42))
         data = task.generate_data(seed=data_seed)
-        task.bind_context(groups=data.groups, A=data.meta["A"], b=data.meta["b"])
+        task.bind_split("train")
         return task, data
 
     if name == "medical_resource_allocation":

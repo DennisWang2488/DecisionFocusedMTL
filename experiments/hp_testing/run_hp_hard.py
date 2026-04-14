@@ -23,20 +23,27 @@ from experiments.configs import ALL_METHOD_CONFIGS, DEFAULT_TRAIN_CFG
 # HARD CONFIG — designed so DFL methods outperform prediction-only
 # ======================================================================
 
+# NOTE (2026-04 redesign): MD knapsack is now per-individual / multi-resource.
+# Old fields ``n_items`` / ``n_budget_dims`` / ``noise_std_*`` no longer exist.
 TASK_CFG = {
-    "n_items": 12,             # more items competing
-    "n_budget_dims": 1,        # classic knapsack
+    "n_resources": 2,          # number of resource types (a/b)
     "n_features": 5,
-    "budget_tightness": 0.15,  # very tight — only ~2 items selected
+    "budget_tightness": 0.15,  # very tight — high competition for budget
     "poly_degree": 3,          # harder function to learn
     "decision_mode": "group",
-    "n_samples_train": 150,    # less data — predictor generalizes poorly
+    "n_samples_train": 150,    # population sizes
     "n_samples_val": 40,
     "n_samples_test": 100,
+    "snr": 3.0,                # lower SNR -> harder prediction problem
 }
 
 UF_CONFIGS = {
-    "medium": {"group_bias": 0.4, "noise_std_lo": 0.05, "noise_std_hi": 0.20, "group_ratio": 0.6},
+    "medium": {
+        "benefit_group_bias": 0.4,
+        "benefit_noise_ratio": 1.5,
+        "cost_group_bias": 0.0,
+        "group_ratio": 0.6,
+    },
 }
 
 TRAIN_CFG = {
@@ -94,13 +101,14 @@ def main():
     print(f"Methods: {list(selected.keys())}")
     print(f"Alphas: {args.alphas}, Seeds: {args.seeds}")
     print(f"Total runs: {total}")
-    print(f"\nTask (HARD): n_items={TASK_CFG['n_items']}, budget={TASK_CFG['budget_tightness']}, "
+    print(f"\nTask (HARD): n_resources={TASK_CFG['n_resources']}, budget={TASK_CFG['budget_tightness']}, "
           f"n_train={TASK_CFG['n_samples_train']}, poly_deg={TASK_CFG['poly_degree']}")
     print(f"Model: hidden={TRAIN_CFG['hidden_dim']}, layers={TRAIN_CFG['n_layers']}")
     print(f"Steps: {TRAIN_CFG['steps_per_lambda']}")
     for k, v in UF_CONFIGS.items():
-        snr = v['group_bias'] / v['noise_std_hi']
-        print(f"  {k}: bias={v['group_bias']}, noise_hi={v['noise_std_hi']}, SNR~{snr:.1f}")
+        print(f"  {k}: benefit_bias={v['benefit_group_bias']}, "
+              f"noise_ratio={v['benefit_noise_ratio']}, "
+              f"snr={TASK_CFG.get('snr', 5.0)}")
     print("=" * 60)
 
     if args.dry_run:
@@ -134,14 +142,14 @@ def main():
                             "n_samples_val": TASK_CFG.get("n_samples_val", 0),
                             "n_samples_test": TASK_CFG["n_samples_test"],
                             "n_features": TASK_CFG.get("n_features", 5),
-                            "n_items": TASK_CFG["n_items"],
-                            "n_budget_dims": TASK_CFG.get("n_budget_dims", 1),
+                            "n_resources": TASK_CFG.get("n_resources", 2),
                             "scenario": "alpha_fair",
                             "alpha_fair": alpha,
                             "poly_degree": TASK_CFG.get("poly_degree", 3),
-                            "group_bias": uf["group_bias"],
-                            "noise_std_lo": uf["noise_std_lo"],
-                            "noise_std_hi": uf["noise_std_hi"],
+                            "snr": TASK_CFG.get("snr", 3.0),
+                            "benefit_group_bias": uf["benefit_group_bias"],
+                            "benefit_noise_ratio": uf.get("benefit_noise_ratio", 1.0),
+                            "cost_group_bias": uf.get("cost_group_bias", 0.0),
                             "group_ratio": uf["group_ratio"],
                             "budget_tightness": TASK_CFG.get("budget_tightness", 0.15),
                             "decision_mode": TASK_CFG.get("decision_mode", "group"),
