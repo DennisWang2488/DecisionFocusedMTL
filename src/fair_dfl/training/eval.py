@@ -89,12 +89,24 @@ def evaluate_model(
     fairness_smoothing: float,
     saa_override_val: np.ndarray | None = None,
     saa_override_test: np.ndarray | None = None,
-) -> tuple[Dict[str, float], Dict[str, float]]:
-    """Evaluate on both val and test splits, dispatching to the correct evaluator.
+    saa_override_train: np.ndarray | None = None,
+    eval_train: bool = False,
+) -> tuple[Dict[str, float], Dict[str, float], Dict[str, float]]:
+    """Evaluate on train (optional), val, and test splits.
+
+    Train evaluation is **expensive** for tasks where decision regret requires
+    solver calls — it is gated behind ``eval_train`` and intended to be called
+    once per lambda stage (not per training iteration). Val/test are always
+    computed.
 
     If the val split is empty (val_fraction=0.0), val_metrics returns NaNs
     for score columns so downstream analysis can distinguish "missing split"
-    from a genuine zero-valued metric.
+    from a genuine zero-valued metric. Train metrics return NaN sentinels when
+    ``eval_train=False``.
+
+    Returns
+    -------
+    (train_metrics, val_metrics, test_metrics) tuple.
     """
     if isinstance(task, MedicalResourceAllocationTask):
         val_split = task._splits.get("val")
@@ -109,6 +121,17 @@ def evaluate_model(
             task=task, predictor=predictor, split_name="test",
             fairness_smoothing=fairness_smoothing, override_pred=saa_override_test,
         )
+        if eval_train:
+            train_split = task._splits.get("train")
+            if train_split is not None and train_split.x.shape[0] > 0:
+                train_metrics = eval_split_medical(
+                    task=task, predictor=predictor, split_name="train",
+                    fairness_smoothing=fairness_smoothing, override_pred=saa_override_train,
+                )
+            else:
+                train_metrics = dict(_EMPTY_METRICS)
+        else:
+            train_metrics = dict(_EMPTY_METRICS)
     else:
         if data.val is not None and data.val.x.shape[0] > 0:
             val_metrics = eval_split(
@@ -121,4 +144,14 @@ def evaluate_model(
             task=task, predictor=predictor, split=data.test,
             fairness_smoothing=fairness_smoothing, override_pred=saa_override_test,
         )
-    return val_metrics, test_metrics
+        if eval_train:
+            if data.train is not None and data.train.x.shape[0] > 0:
+                train_metrics = eval_split(
+                    task=task, predictor=predictor, split=data.train,
+                    fairness_smoothing=fairness_smoothing, override_pred=saa_override_train,
+                )
+            else:
+                train_metrics = dict(_EMPTY_METRICS)
+        else:
+            train_metrics = dict(_EMPTY_METRICS)
+    return train_metrics, val_metrics, test_metrics

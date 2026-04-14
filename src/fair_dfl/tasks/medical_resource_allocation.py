@@ -43,8 +43,13 @@ class MedicalResourceAllocationTask(BaseTask):
             raise ValueError("decision_mode must be 'group' or 'individual'.")
         self.decision_mode = mode
         ft = str(self.fairness_type).strip().lower()
-        if ft not in {"gap", "mad", "atkinson"}:
-            raise ValueError("fairness_type must be 'gap', 'mad', or 'atkinson'.")
+        if ft == "demographic_parity":
+            ft = "dp"
+        if ft not in {"gap", "mad", "atkinson", "dp"}:
+            raise ValueError(
+                "fairness_type must be 'gap', 'mad', 'atkinson', or 'dp' "
+                "(alias 'demographic_parity')."
+            )
         self.fairness_type = ft
 
     def _resolve_data_csv(self) -> Path:
@@ -696,6 +701,55 @@ class MedicalResourceAllocationTask(BaseTask):
             grad[m] = d_A_d_mse[k] * 2.0 * (pred[m] - true[m]) / ng
         return loss, grad
 
+    @staticmethod
+    def _fair_loss_and_grad_dp(
+        pred: np.ndarray, true: np.ndarray, race: np.ndarray, smoothing: float
+    ) -> Tuple[float, np.ndarray]:
+        """Demographic parity on predictions: MAD of per-group mean predictions.
+
+        Equalises the per-group mean *predicted* benefit (not per-group MSE),
+        so the loss does not depend on ``true`` at all.
+
+        L = mean_g sqrt( (mu_g - mu_bar)^2 + smoothing )
+            mu_g   = mean(pred | race=g)
+            mu_bar = mean_g(mu_g)
+        """
+        del true  # unused; demographic parity ignores labels
+        groups = np.unique(race)
+        K = len(groups)
+        if K < 2:
+            return 0.0, np.zeros_like(pred)
+
+        group_means = np.zeros(K, dtype=np.float64)
+        group_masks: List[np.ndarray] = []
+        group_sizes = np.zeros(K, dtype=np.float64)
+        for i, g in enumerate(groups):
+            m = race == g
+            group_masks.append(m)
+            ng = float(m.sum())
+            group_sizes[i] = ng
+            group_means[i] = float(np.mean(pred[m])) if ng > 0 else 0.0
+
+        mean_of_means = float(group_means.mean())
+        dev = group_means - mean_of_means                       # (K,)
+        smooth_abs = np.sqrt(dev * dev + smoothing)             # (K,)
+        loss = float(np.mean(smooth_abs))
+
+        # Gradient: identical chain to MAD up to d(mu_g)/d(pred_i) instead of MSE.
+        # d(loss)/d(mu_g) = (1/K) * (dev_g/smooth_abs_g - mean_h(dev_h/smooth_abs_h))
+        # d(mu_g)/d(pred_i) = (1/n_g) * 1[i in g]
+        dphi = dev / smooth_abs                                 # (K,)
+        dloss_dmu = (dphi - dphi.mean()) / float(K)             # (K,)
+
+        grad = np.zeros_like(pred)
+        for i in range(K):
+            m = group_masks[i]
+            ng = group_sizes[i]
+            if ng == 0:
+                continue
+            grad[m] = dloss_dmu[i] / ng
+        return loss, grad
+
     def _compute_fairness(
         self, pred: np.ndarray, true: np.ndarray, race: np.ndarray, smoothing: float
     ) -> Tuple[float, np.ndarray]:
@@ -706,6 +760,8 @@ class MedicalResourceAllocationTask(BaseTask):
             return self._fair_loss_and_grad_mad(pred, true, race, smoothing)
         elif self.fairness_type == "atkinson":
             return self._fair_loss_and_grad_atkinson(pred, true, race, smoothing)
+        elif self.fairness_type in {"dp", "demographic_parity"}:
+            return self._fair_loss_and_grad_dp(pred, true, race, smoothing)
         else:
             raise ValueError(f"Unknown fairness_type: {self.fairness_type}")
 

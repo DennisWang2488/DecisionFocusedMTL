@@ -142,11 +142,44 @@ class TestFairnessMetrics:
         # Perfect prediction => all group MSEs equal (= smoothing) => Atkinson = 0
         assert loss == pytest.approx(0.0, abs=1e-6)
 
+    def test_dp_fd_check(self, task_and_data):
+        """Finite-difference check on demographic-parity gradient."""
+        task, _ = task_and_data
+        s = task._splits["train"]
+        # Use a small, reproducible perturbation of true labels for stable FD
+        rng = np.random.default_rng(2024)
+        n = min(60, s.y.shape[0])
+        pred = (s.y[:n] + 0.5 * rng.standard_normal(n)).astype(np.float64)
+        race = s.race[:n]
+
+        loss, grad = task._fair_loss_and_grad_dp(pred, s.y[:n], race, smoothing=1e-6)
+        eps = 1e-5
+        fd = np.zeros_like(pred)
+        for i in range(n):
+            p_plus = pred.copy(); p_plus[i] += eps
+            p_minus = pred.copy(); p_minus[i] -= eps
+            l_plus, _ = task._fair_loss_and_grad_dp(p_plus, s.y[:n], race, smoothing=1e-6)
+            l_minus, _ = task._fair_loss_and_grad_dp(p_minus, s.y[:n], race, smoothing=1e-6)
+            fd[i] = (l_plus - l_minus) / (2 * eps)
+        np.testing.assert_allclose(grad, fd, atol=1e-5)
+
+    def test_dp_independent_of_true(self, task_and_data):
+        """DP fairness only depends on predictions, not labels."""
+        task, _ = task_and_data
+        s = task._splits["train"]
+        pred = (s.y + 0.3 * np.random.default_rng(11).standard_normal(s.y.shape[0])).astype(float)
+        true_a = s.y
+        true_b = s.y + 100.0  # arbitrary shift
+        l_a, g_a = task._fair_loss_and_grad_dp(pred, true_a, s.race, smoothing=1e-6)
+        l_b, g_b = task._fair_loss_and_grad_dp(pred, true_b, s.race, smoothing=1e-6)
+        assert l_a == pytest.approx(l_b)
+        np.testing.assert_allclose(g_a, g_b)
+
     def test_fairness_dispatch(self, task_and_data):
         task, _ = task_and_data
         s = task._splits["train"]
         pred = s.y + np.random.randn(s.y.shape[0]) * 0.1
-        for ft in ["mad", "gap", "atkinson"]:
+        for ft in ["mad", "gap", "atkinson", "dp", "demographic_parity"]:
             task_ft = _make_task(fairness_type=ft)
             task_ft.generate_data(seed=42)
             loss, grad = task_ft._compute_fairness(pred[:len(task_ft._splits["train"].y)],

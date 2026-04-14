@@ -644,21 +644,33 @@ def train_single_stage(
     stage_wallclock = float(perf_counter() - stage_start)
 
     # === EVALUATION ===
+    # Train evaluation runs once per lambda stage (not per iteration) — it
+    # involves solver calls for decision regret and is too expensive to do
+    # inline. Toggle with train_cfg["eval_train"] (default: True so that
+    # stage-level CSVs always carry train_* columns for the Pareto plots).
+    eval_train = bool(train_cfg.get("eval_train", True))
     saa_override_val = None
     saa_override_test = None
+    saa_override_train = None
     if method_name == "saa":
         if isinstance(task, MedicalResourceAllocationTask):
             saa_override_val = np.full(task._splits["val"].y.shape[0], saa_mean)
             saa_override_test = np.full(task._splits["test"].y.shape[0], saa_mean)
+            if eval_train:
+                saa_override_train = np.full(task._splits["train"].y.shape[0], saa_mean)
         else:
             saa_override_val = np.full(data.val.y.shape, saa_mean)
             saa_override_test = np.full(data.test.y.shape, saa_mean)
+            if eval_train:
+                saa_override_train = np.full(data.train.y.shape, saa_mean)
 
-    val_metrics, test_metrics = evaluate_model(
+    train_metrics, val_metrics, test_metrics = evaluate_model(
         task=task, predictor=predictor, data=data,
         fairness_smoothing=fairness_smoothing,
         saa_override_val=saa_override_val,
         saa_override_test=saa_override_test,
+        saa_override_train=saa_override_train,
+        eval_train=eval_train,
     )
 
     # === BUILD STAGE ROW ===
@@ -672,6 +684,9 @@ def train_single_stage(
         "seed": seed,
         "stage_idx": stage_idx,
         "lambda": lambda_value,
+        "train_regret": _metric_or_nan(train_metrics, "regret"),
+        "train_fairness": _metric_or_nan(train_metrics, "fairness"),
+        "train_pred_mse": _metric_or_nan(train_metrics, "pred_mse"),
         "val_regret": _metric_or_nan(val_metrics, "regret"),
         "val_fairness": _metric_or_nan(val_metrics, "fairness"),
         "val_pred_mse": _metric_or_nan(val_metrics, "pred_mse"),
@@ -680,9 +695,17 @@ def train_single_stage(
         "test_pred_mse": _metric_or_nan(test_metrics, "pred_mse"),
         "stage_wallclock_sec": stage_wallclock,
         "solver_calls_train": solver_calls_total,
-        "solver_calls_eval": val_metrics.get("solver_calls_eval", 0) + test_metrics.get("solver_calls_eval", 0),
+        "solver_calls_eval": (
+            val_metrics.get("solver_calls_eval", 0)
+            + test_metrics.get("solver_calls_eval", 0)
+            + train_metrics.get("solver_calls_eval", 0)
+        ),
         "decision_ms_train": decision_ms_total,
-        "decision_ms_eval": val_metrics.get("decision_ms_eval", 0) + test_metrics.get("decision_ms_eval", 0),
+        "decision_ms_eval": (
+            val_metrics.get("decision_ms_eval", 0)
+            + test_metrics.get("decision_ms_eval", 0)
+            + train_metrics.get("decision_ms_eval", 0)
+        ),
         "nan_or_inf_steps": nan_or_inf_steps,
         "exploding_steps": exploding_steps,
         "avg_grad_norm_combined": _safe_mean(norm_combined_list),
@@ -700,12 +723,13 @@ def train_single_stage(
         ("regret_normalized_true", "val_regret_normalized_true"),
         ("regret_normalized_pred_obj", "val_regret_normalized_pred_obj"),
     ]:
-        if key in val_metrics or key in test_metrics:
+        if key in val_metrics or key in test_metrics or key in train_metrics:
             stage_row[metric] = _metric_or_nan(val_metrics, key)
             stage_row[metric.replace("val_", "test_")] = _metric_or_nan(test_metrics, key)
+            stage_row[metric.replace("val_", "train_")] = _metric_or_nan(train_metrics, key)
 
     # Forward decision-level fairness metrics (decision_alloc_gap, etc.)
-    for prefix, m_dict in [("val_", val_metrics), ("test_", test_metrics)]:
+    for prefix, m_dict in [("train_", train_metrics), ("val_", val_metrics), ("test_", test_metrics)]:
         for key, value in m_dict.items():
             if key.startswith("decision_"):
                 stage_row[prefix + key] = value

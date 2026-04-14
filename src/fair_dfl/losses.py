@@ -147,6 +147,59 @@ def group_mse_gap_loss_and_grad(
     return loss, grad
 
 
+def group_pred_mean_dp_loss_and_grad(
+    pred: np.ndarray,
+    true: np.ndarray,  # noqa: ARG001 - kept for API symmetry with other fairness losses
+    groups: np.ndarray,
+    smoothing: float = 1e-6,
+) -> tuple[float, np.ndarray]:
+    """Demographic parity on predictions: MAD of per-group mean predictions.
+
+    Loss
+    ----
+    L = mean_g sqrt( (mu_g - mu_bar)^2 + smoothing )
+        where mu_g    = mean(pred | group=g)        (per-group mean prediction)
+              mu_bar  = mean_g(mu_g)                (mean of per-group means)
+
+    Unlike ``group_mse_*`` losses (which equalise per-group MSE i.e. accuracy
+    parity), this targets demographic parity: it penalises differences in the
+    average predicted benefit across groups regardless of label values.
+    """
+    unique_groups = np.unique(groups)
+    K = len(unique_groups)
+    if K < 2:
+        return 0.0, np.zeros_like(pred)
+
+    group_means = np.zeros(K, dtype=np.float64)
+    group_sizes = np.zeros(K, dtype=np.float64)
+    for idx, g in enumerate(unique_groups):
+        mask = groups == g
+        n_g = float(mask.sum())
+        group_sizes[idx] = n_g
+        group_means[idx] = float(pred[:, mask].mean()) if n_g > 0 else 0.0
+
+    mean_of_means = float(group_means.mean())
+    dev = group_means - mean_of_means                          # (K,)
+    smooth_abs = np.sqrt(dev * dev + smoothing)                # (K,)
+    loss = float(smooth_abs.mean())
+
+    # d(loss)/d(mu_g) via chain rule (identical to MAD form):
+    #   d(loss)/d(mu_g) = (1/K) * (dev_g / smooth_abs_g - mean_h(dev_h / smooth_abs_h))
+    dphi = dev / smooth_abs                                    # (K,)
+    dloss_dmu = (dphi - dphi.mean()) / float(K)                # (K,)
+
+    # d(mu_g)/d(pred[b, i]) = 1 / (B * n_g)  if i in g else 0
+    grad = np.zeros_like(pred)
+    B = float(pred.shape[0])
+    for idx, g in enumerate(unique_groups):
+        mask = groups == g
+        n_g = group_sizes[idx]
+        if n_g == 0:
+            continue
+        grad[:, mask] = dloss_dmu[idx] / (B * n_g)
+    return loss, grad
+
+
 def group_mse_atkinson_loss_and_grad(
     pred: np.ndarray,
     true: np.ndarray,
@@ -231,6 +284,13 @@ def group_fairness_loss_and_grad(
         )
     if mode == "atkinson":
         return group_mse_atkinson_loss_and_grad(
+            pred=pred,
+            true=true,
+            groups=groups,
+            smoothing=smoothing,
+        )
+    if mode in {"demographic_parity", "dp"}:
+        return group_pred_mean_dp_loss_and_grad(
             pred=pred,
             true=true,
             groups=groups,

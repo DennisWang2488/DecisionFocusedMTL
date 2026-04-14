@@ -9,6 +9,7 @@ from fair_dfl.losses import (
     group_mse_gap_loss_and_grad,
     group_mse_generalized_entropy_loss_and_grad,
     group_mse_mad_loss_and_grad,
+    group_pred_mean_dp_loss_and_grad,
     mse_loss_and_grad,
     softplus_with_grad,
 )
@@ -194,6 +195,63 @@ class TestGroupMSEAtkinsonLossAndGrad:
         np.testing.assert_allclose(grad, fd, atol=1e-3)
 
 
+class TestGroupPredMeanDPLossAndGrad:
+    def test_single_group_returns_zero(self):
+        pred = np.random.randn(5, 10)
+        true = np.random.randn(5, 10)
+        groups = np.zeros(10, dtype=int)
+        loss, grad = group_pred_mean_dp_loss_and_grad(pred, true, groups)
+        assert loss == 0.0
+        np.testing.assert_allclose(grad, 0.0)
+
+    def test_equal_group_means_zero_loss(self):
+        # If per-group means are identical, demographic-parity loss ~= sqrt(smoothing)
+        pred = np.tile(np.array([1.0, 1.0, 1.0, 1.0]), (3, 1))
+        true = np.zeros_like(pred)
+        groups = np.array([0, 0, 1, 1])
+        loss, _ = group_pred_mean_dp_loss_and_grad(pred, true, groups)
+        assert loss < 1e-2  # ~ sqrt(1e-6)
+
+    def test_loss_increases_with_gap(self):
+        true = np.zeros((2, 4))
+        groups = np.array([0, 0, 1, 1])
+        small = np.array([[1.0, 1.0, 1.1, 1.1], [1.0, 1.0, 1.1, 1.1]])
+        big = np.array([[1.0, 1.0, 5.0, 5.0], [1.0, 1.0, 5.0, 5.0]])
+        loss_small, _ = group_pred_mean_dp_loss_and_grad(small, true, groups)
+        loss_big, _ = group_pred_mean_dp_loss_and_grad(big, true, groups)
+        assert loss_big > loss_small
+
+    def test_independent_of_true(self):
+        rng = np.random.default_rng(909)
+        pred = rng.standard_normal((4, 6))
+        groups = np.array([0, 0, 0, 1, 1, 1])
+        true_a = rng.standard_normal((4, 6))
+        true_b = rng.standard_normal((4, 6)) + 5.0
+        loss_a, grad_a = group_pred_mean_dp_loss_and_grad(pred, true_a, groups)
+        loss_b, grad_b = group_pred_mean_dp_loss_and_grad(pred, true_b, groups)
+        # DP only looks at predictions; ground truth must not enter.
+        assert loss_a == pytest.approx(loss_b)
+        np.testing.assert_allclose(grad_a, grad_b)
+
+    def test_fd_check_two_groups(self):
+        rng = np.random.default_rng(606)
+        pred = rng.standard_normal((4, 6))
+        true = rng.standard_normal((4, 6))
+        groups = np.array([0, 0, 0, 1, 1, 1])
+        loss, grad = group_pred_mean_dp_loss_and_grad(pred, true, groups)
+        fd = _fd_grad(lambda p: group_pred_mean_dp_loss_and_grad(p, true, groups)[0], pred)
+        np.testing.assert_allclose(grad, fd, atol=1e-4)
+
+    def test_fd_check_three_groups(self):
+        rng = np.random.default_rng(707)
+        pred = rng.standard_normal((3, 9))
+        true = rng.standard_normal((3, 9))
+        groups = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+        loss, grad = group_pred_mean_dp_loss_and_grad(pred, true, groups)
+        fd = _fd_grad(lambda p: group_pred_mean_dp_loss_and_grad(p, true, groups)[0], pred)
+        np.testing.assert_allclose(grad, fd, atol=1e-4)
+
+
 class TestGroupFairnessDispatcher:
     def test_mad_dispatches(self):
         rng = np.random.default_rng(1)
@@ -224,6 +282,17 @@ class TestGroupFairnessDispatcher:
         l2, g2 = group_mse_atkinson_loss_and_grad(pred, true, groups)
         assert l1 == pytest.approx(l2)
         np.testing.assert_allclose(g1, g2)
+
+    def test_dp_dispatches(self):
+        rng = np.random.default_rng(4)
+        pred = rng.standard_normal((3, 6))
+        true = rng.standard_normal((3, 6))
+        groups = np.array([0, 0, 0, 1, 1, 1])
+        for alias in ("dp", "demographic_parity"):
+            l1, g1 = group_fairness_loss_and_grad(pred, true, groups, fairness_type=alias)
+            l2, g2 = group_pred_mean_dp_loss_and_grad(pred, true, groups)
+            assert l1 == pytest.approx(l2)
+            np.testing.assert_allclose(g1, g2)
 
     def test_unknown_raises(self):
         pred = np.zeros((3, 4))
