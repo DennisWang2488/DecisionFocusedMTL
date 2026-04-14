@@ -45,10 +45,12 @@ class MedicalResourceAllocationTask(BaseTask):
         ft = str(self.fairness_type).strip().lower()
         if ft == "demographic_parity":
             ft = "dp"
-        if ft not in {"gap", "mad", "atkinson", "dp"}:
+        if ft == "bias_parity":
+            ft = "bp"
+        if ft not in {"gap", "mad", "atkinson", "dp", "bp"}:
             raise ValueError(
-                "fairness_type must be 'gap', 'mad', 'atkinson', or 'dp' "
-                "(alias 'demographic_parity')."
+                "fairness_type must be 'gap', 'mad', 'atkinson', 'dp' "
+                "(alias 'demographic_parity'), or 'bp' (alias 'bias_parity')."
             )
         self.fairness_type = ft
 
@@ -702,6 +704,55 @@ class MedicalResourceAllocationTask(BaseTask):
         return loss, grad
 
     @staticmethod
+    def _fair_loss_and_grad_bias_parity(
+        pred: np.ndarray, true: np.ndarray, race: np.ndarray, smoothing: float
+    ) -> Tuple[float, np.ndarray]:
+        """Bias parity (calibration first moment): MAD of per-group mean residuals.
+
+        Penalises systematic over- or under-prediction across groups while
+        ignoring symmetric noise. Sits in the calibration / sufficiency family
+        — distinct from ``mad`` (separation, equalised errors) and ``dp``
+        (independence, equalised raw predictions).
+
+        L = mean_g sqrt( (b_g - b_bar)^2 + smoothing )
+            b_g   = mean(pred - true | race=g)
+            b_bar = mean_g(b_g)
+        """
+        groups = np.unique(race)
+        K = len(groups)
+        if K < 2:
+            return 0.0, np.zeros_like(pred)
+
+        residual = pred - true
+        group_bias = np.zeros(K, dtype=np.float64)
+        group_masks: List[np.ndarray] = []
+        group_sizes = np.zeros(K, dtype=np.float64)
+        for i, g in enumerate(groups):
+            m = race == g
+            group_masks.append(m)
+            ng = float(m.sum())
+            group_sizes[i] = ng
+            group_bias[i] = float(np.mean(residual[m])) if ng > 0 else 0.0
+
+        mean_of_bias = float(group_bias.mean())
+        dev = group_bias - mean_of_bias
+        smooth_abs = np.sqrt(dev * dev + smoothing)
+        loss = float(np.mean(smooth_abs))
+
+        # Same chain as DP/MAD up to d(b_g)/d(pred_i) = 1/n_g for i in g.
+        dphi = dev / smooth_abs
+        dloss_db = (dphi - dphi.mean()) / float(K)
+
+        grad = np.zeros_like(pred)
+        for i in range(K):
+            m = group_masks[i]
+            ng = group_sizes[i]
+            if ng == 0:
+                continue
+            grad[m] = dloss_db[i] / ng
+        return loss, grad
+
+    @staticmethod
     def _fair_loss_and_grad_dp(
         pred: np.ndarray, true: np.ndarray, race: np.ndarray, smoothing: float
     ) -> Tuple[float, np.ndarray]:
@@ -762,6 +813,8 @@ class MedicalResourceAllocationTask(BaseTask):
             return self._fair_loss_and_grad_atkinson(pred, true, race, smoothing)
         elif self.fairness_type in {"dp", "demographic_parity"}:
             return self._fair_loss_and_grad_dp(pred, true, race, smoothing)
+        elif self.fairness_type in {"bp", "bias_parity"}:
+            return self._fair_loss_and_grad_bias_parity(pred, true, race, smoothing)
         else:
             raise ValueError(f"Unknown fairness_type: {self.fairness_type}")
 

@@ -200,6 +200,74 @@ def group_pred_mean_dp_loss_and_grad(
     return loss, grad
 
 
+def group_residual_mean_bias_parity_loss_and_grad(
+    pred: np.ndarray,
+    true: np.ndarray,
+    groups: np.ndarray,
+    smoothing: float = 1e-6,
+) -> tuple[float, np.ndarray]:
+    """Bias parity (calibration first moment): MAD of per-group mean residuals.
+
+    Loss
+    ----
+    L = mean_g sqrt( (b_g - b_bar)^2 + smoothing )
+        where b_g    = mean(pred - true | group=g)    (per-group mean signed residual)
+              b_bar  = mean_g(b_g)                    (mean of per-group biases)
+
+    Sits in the **calibration / sufficiency** family of fairness measures:
+
+    * Different from ``group_mse_*`` (separation / equalised errors): MSE-based
+      losses equalise the *magnitude* of error per group, but a group can have
+      low MSE while still being systematically over- or under-predicted (e.g.
+      MSE = variance + bias^2, and the variance can dominate).
+    * Different from ``group_pred_mean_dp`` (independence / demographic parity):
+      DP equalises raw prediction means without reference to labels, so it
+      penalises differences in the predicted distribution even when those
+      differences correctly reflect different ground truths. Bias parity only
+      penalises the *signed* prediction error per group, so a group with a
+      genuinely higher mean label is fine as long as the predictor isn't
+      systematically biased on it.
+
+    Both forms aggregate per-group statistics with the same MAD aggregator as
+    ``mad`` and ``dp``, so the only thing that changes is the per-group
+    statistic.
+    """
+    unique_groups = np.unique(groups)
+    K = len(unique_groups)
+    if K < 2:
+        return 0.0, np.zeros_like(pred)
+
+    residual = pred - true                                     # (B, N)
+    group_bias = np.zeros(K, dtype=np.float64)
+    group_sizes = np.zeros(K, dtype=np.float64)
+    for idx, g in enumerate(unique_groups):
+        mask = groups == g
+        n_g = float(mask.sum())
+        group_sizes[idx] = n_g
+        group_bias[idx] = float(residual[:, mask].mean()) if n_g > 0 else 0.0
+
+    mean_of_bias = float(group_bias.mean())
+    dev = group_bias - mean_of_bias                            # (K,)
+    smooth_abs = np.sqrt(dev * dev + smoothing)                # (K,)
+    loss = float(smooth_abs.mean())
+
+    # d(loss)/d(b_g) via the same chain as MAD/DP.
+    dphi = dev / smooth_abs                                    # (K,)
+    dloss_db = (dphi - dphi.mean()) / float(K)                 # (K,)
+
+    # d(b_g)/d(pred[b, i]) = 1 / (B * n_g) for i in g, since residual = pred - true
+    # and b_g is linear in pred. Identical denominator to dp.
+    grad = np.zeros_like(pred)
+    B = float(pred.shape[0])
+    for idx, g in enumerate(unique_groups):
+        mask = groups == g
+        n_g = group_sizes[idx]
+        if n_g == 0:
+            continue
+        grad[:, mask] = dloss_db[idx] / (B * n_g)
+    return loss, grad
+
+
 def group_mse_atkinson_loss_and_grad(
     pred: np.ndarray,
     true: np.ndarray,
@@ -291,6 +359,13 @@ def group_fairness_loss_and_grad(
         )
     if mode in {"demographic_parity", "dp"}:
         return group_pred_mean_dp_loss_and_grad(
+            pred=pred,
+            true=true,
+            groups=groups,
+            smoothing=smoothing,
+        )
+    if mode in {"bias_parity", "bp"}:
+        return group_residual_mean_bias_parity_loss_and_grad(
             pred=pred,
             true=true,
             groups=groups,

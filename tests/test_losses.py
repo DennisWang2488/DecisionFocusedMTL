@@ -10,6 +10,7 @@ from fair_dfl.losses import (
     group_mse_generalized_entropy_loss_and_grad,
     group_mse_mad_loss_and_grad,
     group_pred_mean_dp_loss_and_grad,
+    group_residual_mean_bias_parity_loss_and_grad,
     mse_loss_and_grad,
     softplus_with_grad,
 )
@@ -252,6 +253,74 @@ class TestGroupPredMeanDPLossAndGrad:
         np.testing.assert_allclose(grad, fd, atol=1e-4)
 
 
+class TestGroupResidualBiasParityLossAndGrad:
+    def test_single_group_returns_zero(self):
+        pred = np.random.randn(5, 10)
+        true = np.random.randn(5, 10)
+        groups = np.zeros(10, dtype=int)
+        loss, grad = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
+        assert loss == 0.0
+        np.testing.assert_allclose(grad, 0.0)
+
+    def test_zero_when_pred_equals_true(self):
+        # Perfect prediction -> per-group bias is exactly zero -> loss = sqrt(smoothing)
+        pred = np.array([[1.0, 2.0, 3.0, 4.0]])
+        true = pred.copy()
+        groups = np.array([0, 0, 1, 1])
+        loss, _ = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
+        assert loss < 1e-2
+
+    def test_zero_when_groups_have_equal_bias(self):
+        # Both groups over-predict by the same amount -> loss = 0
+        true = np.array([[1.0, 2.0, 3.0, 4.0]])
+        pred = true + 0.5  # uniform bias of +0.5 across all individuals
+        groups = np.array([0, 0, 1, 1])
+        loss, _ = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
+        assert loss < 1e-2
+
+    def test_nonzero_when_groups_have_different_bias(self):
+        true = np.array([[1.0, 2.0, 3.0, 4.0]])
+        pred = np.array([[1.5, 2.5, 3.0, 4.0]])  # group 0 over by 0.5, group 1 unbiased
+        groups = np.array([0, 0, 1, 1])
+        loss, _ = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
+        assert loss > 0.1
+
+    def test_distinct_from_dp_when_labels_have_group_shift(self):
+        """Bias parity ≠ DP: if true labels have a group shift, DP penalises a
+        prediction that matches them, but bias parity does not."""
+        rng = np.random.default_rng(8888)
+        # true labels: group 0 has higher mean (shift +2), group 1 has shift -2
+        true = rng.standard_normal((4, 6))
+        true[:, :3] += 2.0
+        true[:, 3:] -= 2.0
+        groups = np.array([0, 0, 0, 1, 1, 1])
+        pred = true.copy()  # perfect prediction
+        loss_dp, _ = group_pred_mean_dp_loss_and_grad(pred, true, groups)
+        loss_bp, _ = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
+        # DP penalises the per-group mean prediction gap (large here).
+        assert loss_dp > 1.0
+        # Bias parity penalises only signed residuals; perfect prediction => ~0.
+        assert loss_bp < 1e-2
+
+    def test_fd_check_two_groups(self):
+        rng = np.random.default_rng(1234)
+        pred = rng.standard_normal((4, 6))
+        true = rng.standard_normal((4, 6))
+        groups = np.array([0, 0, 0, 1, 1, 1])
+        loss, grad = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
+        fd = _fd_grad(lambda p: group_residual_mean_bias_parity_loss_and_grad(p, true, groups)[0], pred)
+        np.testing.assert_allclose(grad, fd, atol=1e-4)
+
+    def test_fd_check_three_groups(self):
+        rng = np.random.default_rng(5678)
+        pred = rng.standard_normal((3, 9))
+        true = rng.standard_normal((3, 9))
+        groups = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+        loss, grad = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
+        fd = _fd_grad(lambda p: group_residual_mean_bias_parity_loss_and_grad(p, true, groups)[0], pred)
+        np.testing.assert_allclose(grad, fd, atol=1e-4)
+
+
 class TestGroupFairnessDispatcher:
     def test_mad_dispatches(self):
         rng = np.random.default_rng(1)
@@ -291,6 +360,17 @@ class TestGroupFairnessDispatcher:
         for alias in ("dp", "demographic_parity"):
             l1, g1 = group_fairness_loss_and_grad(pred, true, groups, fairness_type=alias)
             l2, g2 = group_pred_mean_dp_loss_and_grad(pred, true, groups)
+            assert l1 == pytest.approx(l2)
+            np.testing.assert_allclose(g1, g2)
+
+    def test_bias_parity_dispatches(self):
+        rng = np.random.default_rng(5)
+        pred = rng.standard_normal((3, 6))
+        true = rng.standard_normal((3, 6))
+        groups = np.array([0, 0, 0, 1, 1, 1])
+        for alias in ("bp", "bias_parity"):
+            l1, g1 = group_fairness_loss_and_grad(pred, true, groups, fairness_type=alias)
+            l2, g2 = group_residual_mean_bias_parity_loss_and_grad(pred, true, groups)
             assert l1 == pytest.approx(l2)
             np.testing.assert_allclose(g1, g2)
 
