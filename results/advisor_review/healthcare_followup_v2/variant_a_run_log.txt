@@ -1,0 +1,70 @@
+(CVXPY) Apr 14 07:12:05 PM: Encountered unexpected exception importing solver GLOP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+(CVXPY) Apr 14 07:12:05 PM: Encountered unexpected exception importing solver PDLP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+Healthcare follow-up v2 — Variant A (baseline, 3 seeds, no val)
+==================================================================
+Output dir:      E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a
+Fairness types:  ['mad', 'dp', 'atkinson', 'bias_parity']
+Alphas:          [0.5, 2.0]
+Methods:         ['FPTO', 'FDFL-Scal', 'FPLG', 'PCGrad', 'MGDA', 'SAA', 'WDRO']
+Seeds:           [11, 22, 33]
+Lambdas:         [0.0, 0.5, 1.0, 2.0]
+Steps/lambda:    70
+Total cells:     8
+Runs:            24
+
+  [hc_v2_a_mad_a0.5_s11] 16 stages in 49.1s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\mad\alpha_0.5\seed_11\stage_results.csv
+[v2-a] mad alpha=0.5 seed=11: 49.1s, 16 rows
+  [hc_v2_a_mad_a0.5_s22] 16 stages in 48.4s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\mad\alpha_0.5\seed_22\stage_results.csv
+[v2-a] mad alpha=0.5 seed=22: 48.4s, 16 rows
+  [hc_v2_a_mad_a0.5_s33] 16 stages in 47.9s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\mad\alpha_0.5\seed_33\stage_results.csv
+[v2-a] mad alpha=0.5 seed=33: 47.9s, 16 rows
+  [hc_v2_a_mad_a2.0_s11] 16 stages in 53.7s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\mad\alpha_2.0\seed_11\stage_results.csv
+[v2-a] mad alpha=2.0 seed=11: 53.7s, 16 rows
+  [hc_v2_a_mad_a2.0_s22] 16 stages in 54.4s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\mad\alpha_2.0\seed_22\stage_results.csv
+[v2-a] mad alpha=2.0 seed=22: 54.4s, 16 rows
+  [hc_v2_a_mad_a2.0_s33] 16 stages in 60.2s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\mad\alpha_2.0\seed_33\stage_results.csv
+[v2-a] mad alpha=2.0 seed=33: 60.2s, 16 rows
+  [hc_v2_a_dp_a0.5_s11] 16 stages in 55.9s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\dp\alpha_0.5\seed_11\stage_results.csv
+[v2-a] dp alpha=0.5 seed=11: 55.9s, 16 rows
+  [hc_v2_a_dp_a0.5_s22] 16 stages in 54.5s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\dp\alpha_0.5\seed_22\stage_results.csv
+[v2-a] dp alpha=0.5 seed=22: 54.5s, 16 rows
+  [hc_v2_a_dp_a0.5_s33] 16 stages in 54.0s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\dp\alpha_0.5\seed_33\stage_results.csv
+[v2-a] dp alpha=0.5 seed=33: 54.0s, 16 rows
+  [hc_v2_a_dp_a2.0_s11] 16 stages in 59.3s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\dp\alpha_2.0\seed_11\stage_results.csv
+[v2-a] dp alpha=2.0 seed=11: 59.3s, 16 rows
+  [hc_v2_a_dp_a2.0_s22] 16 stages in 60.1s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\dp\alpha_2.0\seed_22\stage_results.csv
+[v2-a] dp alpha=2.0 seed=22: 60.1s, 16 rows
+  [hc_v2_a_dp_a2.0_s33] 16 stages in 59.1s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\dp\alpha_2.0\seed_33\stage_results.csv
+[v2-a] dp alpha=2.0 seed=33: 59.1s, 16 rows
+  [hc_v2_a_atkinson_a0.5_s11] 16 stages in 54.9s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\atkinson\alpha_0.5\seed_11\stage_results.csv
+[v2-a] atkinson alpha=0.5 seed=11: 54.9s, 16 rows
+  [hc_v2_a_atkinson_a0.5_s22] 16 stages in 54.4s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\atkinson\alpha_0.5\seed_22\stage_results.csv
+[v2-a] atkinson alpha=0.5 seed=22: 54.4s, 16 rows
+  [hc_v2_a_atkinson_a0.5_s33] 16 stages in 53.8s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\atkinson\alpha_0.5\seed_33\stage_results.csv
+[v2-a] atkinson alpha=0.5 seed=33: 53.8s, 16 rows
+  [hc_v2_a_atkinson_a2.0_s11] 16 stages in 60.4s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\atkinson\alpha_2.0\seed_11\stage_results.csv
+[v2-a] atkinson alpha=2.0 seed=11: 60.4s, 16 rows
+  [hc_v2_a_atkinson_a2.0_s22] 16 stages in 59.3s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\atkinson\alpha_2.0\seed_22\stage_results.csv
+[v2-a] atkinson alpha=2.0 seed=22: 59.3s, 16 rows
+  [hc_v2_a_atkinson_a2.0_s33] 16 stages in 59.8s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\atkinson\alpha_2.0\seed_33\stage_results.csv
+[v2-a] atkinson alpha=2.0 seed=33: 59.8s, 16 rows
+  [hc_v2_a_bias_parity_a0.5_s11] 16 stages in 54.9s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\bias_parity\alpha_0.5\seed_11\stage_results.csv
+[v2-a] bias_parity alpha=0.5 seed=11: 54.9s, 16 rows
+  [hc_v2_a_bias_parity_a0.5_s22] 16 stages in 53.8s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\bias_parity\alpha_0.5\seed_22\stage_results.csv
+[v2-a] bias_parity alpha=0.5 seed=22: 53.8s, 16 rows
+  [hc_v2_a_bias_parity_a0.5_s33] 16 stages in 54.9s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\bias_parity\alpha_0.5\seed_33\stage_results.csv
+[v2-a] bias_parity alpha=0.5 seed=33: 54.9s, 16 rows
+  [hc_v2_a_bias_parity_a2.0_s11] 16 stages in 60.2s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\bias_parity\alpha_2.0\seed_11\stage_results.csv
+[v2-a] bias_parity alpha=2.0 seed=11: 60.2s, 16 rows
+  [hc_v2_a_bias_parity_a2.0_s22] 16 stages in 57.9s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\bias_parity\alpha_2.0\seed_22\stage_results.csv
+[v2-a] bias_parity alpha=2.0 seed=22: 57.9s, 16 rows
+  [hc_v2_a_bias_parity_a2.0_s33] 16 stages in 58.6s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\bias_parity\alpha_2.0\seed_33\stage_results.csv
+[v2-a] bias_parity alpha=2.0 seed=33: 58.6s, 16 rows
+
+=== Variant A summary ===
+  runs:           24
+  total rows:     384
+  total elapsed:  1340.1s = 22.33 min
+[summary] E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a\grid_summary.json

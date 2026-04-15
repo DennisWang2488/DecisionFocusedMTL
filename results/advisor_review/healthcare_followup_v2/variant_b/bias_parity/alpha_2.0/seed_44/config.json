@@ -1,0 +1,78 @@
+{
+  "label": "hc_v2_b_bias_parity_a2.0_s44",
+  "timestamp": "2026-04-14T19:56:36",
+  "elapsed_sec": 77.16823172569275,
+  "task_cfg": {
+    "name": "medical_resource_allocation",
+    "data_csv": "data/data_processed.csv",
+    "n_sample": 0,
+    "data_seed": 42,
+    "split_seed": 44,
+    "test_fraction": 0.5,
+    "val_fraction": 0.2,
+    "alpha_fair": 2.0,
+    "budget": -1,
+    "budget_rho": 0.3,
+    "decision_mode": "group",
+    "fairness_type": "bias_parity"
+  },
+  "train_cfg": {
+    "lambdas": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "seeds": [
+      44
+    ],
+    "steps_per_lambda": 150,
+    "batch_size": -1,
+    "lr": 0.001,
+    "lr_decay": 0.005,
+    "optimizer": "sgd",
+    "weight_decay": 0.0,
+    "alpha_schedule": {
+      "type": "inv_sqrt",
+      "alpha0": 1.0,
+      "alpha_min": 0.0
+    },
+    "warmstart_fraction": 0.0,
+    "force_lambda_path_all_methods": false,
+    "grad_clip_norm": 10000.0,
+    "explode_threshold": 1000000.0,
+    "fairness_smoothing": 1e-06,
+    "log_every": 5,
+    "pareto_sweep_mode": true,
+    "lambda_train": 0.0,
+    "model": {
+      "arch": "mlp",
+      "hidden_dim": 64,
+      "n_layers": 2,
+      "activation": "relu",
+      "dropout": 0.0,
+      "batch_norm": false,
+      "init_mode": "default"
+    },
+    "device": "cpu",
+    "decision_grad_backend": "analytic",
+    "decision_grad_spsa_eps": 0.005,
+    "decision_grad_spsa_n_dirs": 4,
+    "eval_train": true,
+    "lr_warmup_steps": 5,
+    "eval_val_every_k_steps": 10,
+    "early_stop_metric": "val_regret",
+    "early_stop_min_steps": 20
+  },
+  "methods": [
+    "FPTO",
+    "FDFL-Scal",
+    "FPLG",
+    "PCGrad",
+    "MGDA",
+    "SAA",
+    "WDRO"
+  ],
+  "n_stage_rows": 16,
+  "n_iter_rows": 660
+}

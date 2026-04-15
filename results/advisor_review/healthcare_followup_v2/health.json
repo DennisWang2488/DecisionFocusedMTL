@@ -1,0 +1,13 @@
+{
+  "n_rows_total": 640,
+  "n_variants": 2,
+  "n_cells": 16,
+  "n_methods": 7,
+  "n_split_seeds": 5,
+  "nan_or_inf_steps_total": 0,
+  "exploding_steps_total": 0,
+  "max_train_test_gap": 0.01607688246171661,
+  "median_train_test_gap": 0.0005613908093012043,
+  "rows_with_early_stop_applied": 240,
+  "rows_with_early_stop_enabled": 256
+}
