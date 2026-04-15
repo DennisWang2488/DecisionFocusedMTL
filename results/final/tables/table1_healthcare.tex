@@ -1,0 +1,29 @@
+\begin{table}[htbp]
+\centering
+\caption{Healthcare resource allocation. Mean $\pm$ std over 5 seeds. Best in \textbf{bold}.}
+\label{tab:healthcare}
+\small
+\begin{tabular}{lccc|ccc}
+\toprule
+ & \multicolumn{3}{c}{$\alpha=0.5$} & \multicolumn{3}{c}{$\alpha=2.0$} \\
+Method & Norm. Regret & Pred. Fair. Viol. & Pred. MSE & Norm. Regret & Pred. Fair. Viol. & Pred. MSE \\
+\midrule
+FPTO ($\lambda=0$) $\equiv$ PTO & 0.0602 {\scriptsize$\pm$0.0021} & 51.4793 {\scriptsize$\pm$12.4308} & 264.3801 {\scriptsize$\pm$30.1340} & 0.1957 {\scriptsize$\pm$0.0076} & 51.4793 {\scriptsize$\pm$12.4308} & 264.3801 {\scriptsize$\pm$30.1340} \\
+FPTO ($\lambda=0.5$) & 0.0620 {\scriptsize$\pm$0.0016} & 33.4131 {\scriptsize$\pm$1.6858} & 202.0133 {\scriptsize$\pm$5.4546} & 0.1942 {\scriptsize$\pm$0.0093} & 33.4131 {\scriptsize$\pm$1.6858} & 202.0133 {\scriptsize$\pm$5.4546} \\
+FPTO ($\lambda=1$) & 0.0590 {\scriptsize$\pm$0.0011} & 31.1815 {\scriptsize$\pm$1.3250} & 187.3342 {\scriptsize$\pm$3.6011} & 0.1830 {\scriptsize$\pm$0.0067} & 31.1815 {\scriptsize$\pm$1.3250} & 187.3342 {\scriptsize$\pm$3.6011} \\
+FPTO ($\lambda=5$) & \textbf{0.0529 {\scriptsize$\pm$0.0007}} & 31.6324 {\scriptsize$\pm$10.2267} & \textbf{167.1269 {\scriptsize$\pm$5.6934}} & 0.1639 {\scriptsize$\pm$0.0041} & 31.6324 {\scriptsize$\pm$10.2267} & 167.1269 {\scriptsize$\pm$5.6934} \\
+\midrule
+SAA & 0.0752 {\scriptsize$\pm$0.0000} & 49.9257 {\scriptsize$\pm$0.0000} & 248.6879 {\scriptsize$\pm$0.0000} & 0.2789 {\scriptsize$\pm$0.0000} & 49.9257 {\scriptsize$\pm$0.0000} & 248.6879 {\scriptsize$\pm$0.0000} \\
+WDRO & 0.0606 {\scriptsize$\pm$0.0018} & 33.5736 {\scriptsize$\pm$1.2675} & 199.1288 {\scriptsize$\pm$7.2495} & 0.1905 {\scriptsize$\pm$0.0092} & 33.5736 {\scriptsize$\pm$1.2675} & 199.1288 {\scriptsize$\pm$7.2495} \\
+\midrule
+FDFL-Scal ($\lambda=0$) $\equiv$ DFL & 0.0717 {\scriptsize$\pm$0.0015} & 105.0643 {\scriptsize$\pm$0.8348} & 391.3291 {\scriptsize$\pm$2.3392} & 0.1379 {\scriptsize$\pm$0.0009} & 31.5454 {\scriptsize$\pm$0.8238} & 178.6958 {\scriptsize$\pm$2.3425} \\
+FDFL-Scal ($\lambda=0.5$) & 0.0647 {\scriptsize$\pm$0.0024} & 98.1194 {\scriptsize$\pm$3.5857} & 374.9953 {\scriptsize$\pm$7.4130} & 0.1286 {\scriptsize$\pm$0.0001} & 25.6359 {\scriptsize$\pm$0.4398} & 129.6880 {\scriptsize$\pm$0.5786} \\
+FDFL-Scal ($\lambda=1$) & 0.0622 {\scriptsize$\pm$0.0031} & 48.0175 {\scriptsize$\pm$12.7395} & 267.2084 {\scriptsize$\pm$30.7536} & \textbf{0.1278 {\scriptsize$\pm$0.0001}} & \textbf{24.5941 {\scriptsize$\pm$0.3282}} & \textbf{126.2614 {\scriptsize$\pm$0.1955}} \\
+FDFL-Scal ($\lambda=5$) & 0.0571 {\scriptsize$\pm$0.0008} & \textbf{28.0734 {\scriptsize$\pm$4.2809}} & 188.0454 {\scriptsize$\pm$5.2087} & 0.1280 {\scriptsize$\pm$0.0003} & 32.5143 {\scriptsize$\pm$8.3209} & 135.1008 {\scriptsize$\pm$5.3317} \\
+\midrule
+FDFL-PCGrad & 0.0576 {\scriptsize$\pm$0.0012} & 30.7071 {\scriptsize$\pm$1.3331} & 184.2034 {\scriptsize$\pm$4.9107} & 0.1295 {\scriptsize$\pm$0.0001} & 28.1490 {\scriptsize$\pm$2.0710} & 127.3259 {\scriptsize$\pm$0.5795} \\
+FDFL-MGDA & 0.0757 {\scriptsize$\pm$0.0015} & 106.8162 {\scriptsize$\pm$0.4985} & 396.6861 {\scriptsize$\pm$1.6030} & 0.1355 {\scriptsize$\pm$0.0025} & 34.0482 {\scriptsize$\pm$1.4590} & 215.2759 {\scriptsize$\pm$4.2579} \\
+FDFL-CAGrad & 0.0634 {\scriptsize$\pm$0.0031} & 94.9232 {\scriptsize$\pm$6.8542} & 369.9294 {\scriptsize$\pm$13.4026} & 0.1288 {\scriptsize$\pm$0.0002} & 28.2456 {\scriptsize$\pm$0.6297} & 140.5983 {\scriptsize$\pm$1.1703} \\
+\bottomrule
+\end{tabular}
+\end{table}

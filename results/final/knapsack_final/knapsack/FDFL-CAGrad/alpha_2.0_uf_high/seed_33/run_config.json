@@ -1,0 +1,11 @@
+{
+  "method_label": "FDFL-CAGrad",
+  "config_name": "CAGrad",
+  "alpha": 2.0,
+  "unfairness": "high",
+  "seed": 33,
+  "lambdas": [
+    0.0
+  ],
+  "elapsed_sec": 24.858322381973267
+}

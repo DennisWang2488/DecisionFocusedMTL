@@ -1,0 +1,11 @@
+{
+  "method_label": "FDFL-MGDA",
+  "config_name": "MGDA",
+  "alpha": 0.5,
+  "unfairness": "high",
+  "seed": 33,
+  "lambdas": [
+    0.0
+  ],
+  "elapsed_sec": 25.42289972305298
+}

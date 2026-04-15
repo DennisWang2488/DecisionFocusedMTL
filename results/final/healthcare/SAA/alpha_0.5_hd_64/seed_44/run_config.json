@@ -1,0 +1,11 @@
+{
+  "method_label": "SAA",
+  "config_name": "SAA",
+  "alpha": 0.5,
+  "hidden_dim": 64,
+  "seed": 44,
+  "lambdas": [
+    0.0
+  ],
+  "elapsed_sec": 0.8024559020996094
+}

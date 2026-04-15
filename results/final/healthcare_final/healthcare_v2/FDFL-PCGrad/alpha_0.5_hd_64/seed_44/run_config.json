@@ -1,0 +1,11 @@
+{
+  "method_label": "FDFL-PCGrad",
+  "config_name": "PCGrad",
+  "alpha": 0.5,
+  "hidden_dim": 64,
+  "seed": 44,
+  "lambdas": [
+    0.0
+  ],
+  "elapsed_sec": 5.309708833694458
+}
