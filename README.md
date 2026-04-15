@@ -156,8 +156,6 @@ colab_upload/
 | PCGrad | pcgrad  | Projecting conflicting gradients |
 | CAGrad | cagrad  | Conflict-averse gradient descent |
 | FAMO   | famo    | Fast adaptive MOO |
-| PLG-FP | plg_fp  | Nested PLG (fairness primary) |
-| PLG-PP | plg_pp  | Nested PLG (prediction primary) |
 
 ### Baselines
 

@@ -23,9 +23,6 @@ from ..algorithms.mo_handler import (
     CAGradHandler,
     PLGHandler3Obj,
     FAMOHandler,
-    NestedPLGDecPrimaryHandler,
-    NestedPLGFairPrimaryHandler,
-    NestedPLGPredPrimaryHandler,
 )
 from ..algorithms.torch_utils import (
     backward_param_grad_from_output_grad,
@@ -122,24 +119,6 @@ def _build_mo_handler(
             w_lr=float(train_cfg.get("mo_famo_w_lr", 0.025)),
             min_loss=float(train_cfg.get("mo_famo_min_loss", 1e-8)),
         )
-    if mo_method == "plg_dp":
-        return NestedPLGDecPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
-    if mo_method == "plg_fp":
-        return NestedPLGFairPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
-    if mo_method == "plg_pp":
-        return NestedPLGPredPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
     raise ValueError(f"Unknown mo_method: {mo_method}")
 
 
@@ -152,10 +131,6 @@ def _build_active_moo_payload(
     g_fair_param: np.ndarray,
     mo_handler: MultiObjectiveGradientHandler,
 ) -> tuple[Dict[str, np.ndarray], Dict[str, float]]:
-    if isinstance(mo_handler, (NestedPLGFairPrimaryHandler, NestedPLGPredPrimaryHandler)):
-        if not (iter_spec.use_dec and iter_spec.use_pred and iter_spec.use_fair):
-            raise ValueError("plg_fp/plg_pp require decision, prediction, and fairness objectives to all be enabled.")
-
     grads: Dict[str, np.ndarray] = {}
     losses: Dict[str, float] = {}
     if iter_spec.use_pred:

@@ -95,15 +95,6 @@ ALL_METHOD_CONFIGS = {
     "FAMO":   {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
                "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
                "mo_method": "famo"},
-    "PLG-DP": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "plg_dp"},
-    "PLG-FP": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "plg_fp"},
-    "PLG-PP": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "plg_pp"},
 
     # ----- No-fairness variants (2-objective) -----
     "PTO":        {"method": "fpto", "use_dec": False, "use_pred": True, "use_fair": False,
@@ -223,7 +214,7 @@ def compute_full_batch_size(data_csv: str, n_sample: int,
 COLOR_MAP = {
     "FPTO": "#1f77b4", "FDFL": "#ff7f0e",
     "WS-equal": "#9467bd", "WS-dec": "#8c564b", "WS-fair": "#e377c2", "WS-balanced": "#7f7f7f",
-    "MGDA": "#bcbd22", "PCGrad": "#17becf", "PLG-FP": "#aec7e8", "PLG-PP": "#ffbb78",
+    "MGDA": "#bcbd22", "PCGrad": "#17becf",
     "CAGrad": "#98df8a", "FAMO": "#ff9896",
     "DFL": "#c5b0d5", "PLG": "#c49c94", "FPLG": "#f7b6d2",
     "SAA": "#e6550d", "WDRO": "#756bb1",
@@ -233,7 +224,7 @@ COLOR_MAP = {
 MARKER_MAP = {
     "FPTO": "o", "FDFL": "s",
     "WS-equal": "v", "WS-dec": "<", "WS-fair": ">", "WS-balanced": "p",
-    "MGDA": "h", "PCGrad": "*", "PLG-FP": "X", "PLG-PP": "P",
+    "MGDA": "h", "PCGrad": "*",
     "CAGrad": "d", "FAMO": "H",
     "DFL": "8", "PLG": "+", "FPLG": "x",
     "SAA": "D", "WDRO": "p",

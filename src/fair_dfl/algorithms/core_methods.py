@@ -23,8 +23,6 @@ from .mo_handler import (
     CAGradHandler,
     PLGHandler3Obj,
     FAMOHandler,
-    NestedPLGFairPrimaryHandler,
-    NestedPLGPredPrimaryHandler,
 )
 from ..tasks.medical_resource_allocation import MedicalResourceAllocationTask
 from ..tasks.portfolio_qp_simplex import PortfolioQPSimplexTask
@@ -536,18 +534,6 @@ def _train_single_stage(
             gamma=float(train_cfg.get("mo_famo_gamma", 1e-3)),
             w_lr=float(train_cfg.get("mo_famo_w_lr", 0.025)),
             min_loss=float(train_cfg.get("mo_famo_min_loss", 1e-8)),
-        )
-    elif mo_method == "plg_fp":
-        mo_handler = NestedPLGFairPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
-    elif mo_method == "plg_pp":
-        mo_handler = NestedPLGPredPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
         )
     elif mo_method is not None:
         raise ValueError(f"Unknown mo_method: {mo_method}")
