@@ -8,3 +8,11 @@ dist/
 build/
 .pytest_cache/
 .mypy_cache/
+
+# Experiment result files (generated artifacts, not source)
+results/**/*.csv
+results/**/*.json
+results/**/*.pdf
+results/**/*.png
+experiments/**/results/
+experiments/**/results_*/

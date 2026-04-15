@@ -1,35 +1,21 @@
-"""Task layer for data-driven optimization experiments used by the 8 active methods."""
+"""Task layer for data-driven optimization experiments."""
 
 from importlib import import_module
 
 __all__ = [
     "MultiDimKnapsackTask",
-    "PortfolioQPTask",
     "PortfolioQPSimplexTask",
     "PortfolioQPMultiConstraintTask",
-    "PyEPONonlinearKnapsackTask",
-    "PyEPOPortfolioQPTask",
-    "PyEPOPortfolioQPSimplexTask",
-    "ResourceAllocationTask",
     "MedicalResourceAllocationTask",
 ]
 
 _EXPORT_MAP = {
     "MultiDimKnapsackTask": ".md_knapsack",
-    "PortfolioQPTask": ".portfolio_qp",
     "PortfolioQPSimplexTask": ".portfolio_qp_simplex",
     "PortfolioQPMultiConstraintTask": ".portfolio_qp_multi_constraint",
-    "PyEPONonlinearKnapsackTask": ".pyepo_synthetic",
-    "PyEPOPortfolioQPTask": ".pyepo_synthetic",
-    "PyEPOPortfolioQPSimplexTask": ".pyepo_synthetic",
-    "ResourceAllocationTask": ".resource_allocation",
     "MedicalResourceAllocationTask": ".medical_resource_allocation",
 }
-_OPTIONAL_EXPORTS = {
-    "PyEPONonlinearKnapsackTask",
-    "PyEPOPortfolioQPTask",
-    "PyEPOPortfolioQPSimplexTask",
-}
+_OPTIONAL_EXPORTS: set = set()
 
 
 def __getattr__(name: str):

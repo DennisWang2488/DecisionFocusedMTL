@@ -15,7 +15,6 @@ import numpy as np
 from ...tasks.base import BaseTask
 from ...tasks.md_knapsack import MultiDimKnapsackTask
 from ...tasks.medical_resource_allocation import MedicalResourceAllocationTask
-from ...tasks.resource_allocation import ResourceAllocationTask
 from ..interface import DecisionGradientStrategy, DecisionResult
 
 
@@ -114,14 +113,10 @@ class FiniteDiffStrategy(DecisionGradientStrategy):
             except NotImplementedError:
                 pass
 
-        # Fall back to task-specific implementations
-        if isinstance(task, ResourceAllocationTask):
-            grad, solver_calls = self._fd_resource_allocation(pred, true, task)
-        else:
-            raise ValueError(
-                f"Finite-difference not implemented for {type(task).__name__}. "
-                f"Implement solve_decision() and evaluate_objective() on the task."
-            )
+        raise ValueError(
+            f"Finite-difference not implemented for {type(task).__name__}. "
+            f"Implement solve_decision() and evaluate_objective() on the task."
+        )
 
         decision_ms = (perf_counter() - t0) * 1000.0
         return DecisionResult(
@@ -234,51 +229,7 @@ class FiniteDiffStrategy(DecisionGradientStrategy):
 
         return grad.reshape(raw_pred.shape), solver_calls
 
-    def _fd_resource_allocation(
-        self,
-        raw_pred: np.ndarray,
-        true: np.ndarray,
-        task: ResourceAllocationTask,
-    ) -> tuple[np.ndarray, int]:
-        """Legacy finite-diff for ResourceAllocationTask with softplus transform."""
-        costs = np.asarray(task._current_costs, dtype=float)
-        raw = np.asarray(raw_pred, dtype=float)
-        pred_pos = _softplus_np(raw) + 1e-5
-        y_true = np.asarray(true, dtype=float)
-        bsz = int(raw.shape[0])
-        dim = int(raw.shape[1])
-        grad = np.zeros_like(raw, dtype=float)
-
-        obj_true = np.zeros(bsz, dtype=float)
-        for b in range(bsz):
-            d_true = task._solve_allocation_batch(y_true[b:b+1], costs)
-            obj_true[b] = float(task._objective(d_true, y_true[b:b+1])[0])
-
-        solver_calls = 0
-        for b in range(bsz):
-            base_pos = pred_pos[b].copy()
-            base_raw = raw[b]
-            yb = y_true[b:b+1]
-            for j in range(dim):
-                plus_pos = base_pos.copy()
-                minus_pos = base_pos.copy()
-                plus_pos[j] = float(_softplus_np(np.array([base_raw[j] + self.eps]))[0] + 1e-5)
-                minus_pos[j] = float(_softplus_np(np.array([base_raw[j] - self.eps]))[0] + 1e-5)
-
-                d_plus = task._solve_allocation_batch(plus_pos[None, :], costs)
-                d_minus = task._solve_allocation_batch(minus_pos[None, :], costs)
-                obj_pred_plus = float(task._objective(d_plus, yb)[0])
-                obj_pred_minus = float(task._objective(d_minus, yb)[0])
-                regret_plus = max(float(obj_true[b] - obj_pred_plus), 0.0)
-                regret_minus = max(float(obj_true[b] - obj_pred_minus), 0.0)
-                grad[b, j] = (regret_plus - regret_minus) / (2.0 * self.eps * bsz)
-                solver_calls += 2
-
-        return grad, int(solver_calls + bsz)
-
     def supports_task(self, task: BaseTask) -> bool:
         if isinstance(task, MultiDimKnapsackTask):
             return True
-        if hasattr(task, "solve_decision") and hasattr(task, "evaluate_objective"):
-            return True
-        return isinstance(task, ResourceAllocationTask)
+        return hasattr(task, "solve_decision") and hasattr(task, "evaluate_objective")

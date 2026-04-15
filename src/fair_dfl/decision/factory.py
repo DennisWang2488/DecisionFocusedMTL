@@ -67,18 +67,10 @@ def build_decision_gradient(
         from .strategies.spo_plus import SPOPlusStrategy
         strategy = SPOPlusStrategy()
 
-    elif backend == "cvxpylayers":
-        from .strategies.cvxpylayers import CvxpyLayersStrategy
-        strategy = CvxpyLayersStrategy()
-
-    elif backend == "autograd":
-        from .strategies.torch_autograd import TorchAutogradStrategy
-        strategy = TorchAutogradStrategy()
-
     else:
         raise ValueError(
             f"Unknown decision_grad_backend: {backend!r}. "
-            f"Options: analytic, finite_diff, spsa, spo_plus, cvxpylayers, autograd"
+            f"Options: analytic, finite_diff, spsa, spo_plus"
         )
 
     if not strategy.supports_task(task):
