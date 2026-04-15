@@ -8,6 +8,7 @@ train_single_stage() function.
 
 from __future__ import annotations
 
+import copy
 from time import perf_counter
 from typing import Any, Dict, List, Tuple
 
@@ -43,7 +44,7 @@ from ..tasks.base import BaseTask, SplitData, TaskData
 from ..tasks.md_knapsack import MultiDimKnapsackTask
 from ..tasks.medical_resource_allocation import MedicalResourceAllocationTask
 
-from .eval import evaluate_model
+from .eval import eval_split_medical, evaluate_model
 from .method_spec import MethodSpec
 
 
@@ -308,6 +309,39 @@ def train_single_stage(
     cos_pred_fair_list: List[float] = []
     norm_combined_list: List[float] = []
     iter_logs: List[Dict[str, Any]] = []
+
+    # --- Early stopping (val-based, per-stage scope) ---
+    # When eval_val_every_k_steps > 0 and a val split is present, evaluate val
+    # metrics every K steps inside the inner loop. Keep a snapshot of the best
+    # (predictor, optimizer, dual_lambda) state as measured by
+    # ``early_stop_metric`` (default: val regret). Restore at stage end.
+    #
+    # Scope is per-lambda-stage: the next stage starts from the restored best
+    # state of the previous stage, which is the desired behavior for
+    # ``continuation=True`` methods like FPLG.
+    eval_val_every_k = int(train_cfg.get("eval_val_every_k_steps", 0))
+    early_stop_metric = str(train_cfg.get("early_stop_metric", "val_regret"))
+    early_stop_min_steps = int(train_cfg.get("early_stop_min_steps", 0))
+    _val_y = None
+    if data.val is not None and getattr(data.val, "y", None) is not None:
+        _val_y = data.val.y
+    val_available = _val_y is not None and (
+        _val_y.size if hasattr(_val_y, "size") else len(_val_y)
+    ) > 0
+    early_stop_enabled = eval_val_every_k > 0 and val_available
+    if early_stop_enabled and isinstance(mo_handler, FAMOHandler):
+        raise ValueError(
+            "Early stopping with FAMO handler is not supported "
+            "(FAMOHandler._xi / _prev_losses snapshot not implemented)."
+        )
+    if early_stop_enabled and not isinstance(task, MedicalResourceAllocationTask):
+        raise ValueError(
+            "eval_val_every_k_steps currently only supports "
+            "MedicalResourceAllocationTask (uses eval_split_medical)."
+        )
+    best_val_metric = float("inf")
+    best_snapshot: Dict[str, Any] | None = None
+    best_step = -1
 
     # --- SAA: skip training, use mean ---
     saa_mean = 0.0
@@ -622,6 +656,7 @@ def train_single_stage(
                 "stage_idx": stage_idx,
                 "lambda": lambda_value,
                 "iter": t,
+                "stage_type": "train",
                 "alpha_t": alpha_t,
                 "beta_t": beta_t,
                 "lr_t": lr_t,
@@ -659,7 +694,94 @@ def train_single_stage(
                 iter_row["mo_method"] = str(train_cfg.get("mo_method", ""))
             iter_logs.append(iter_row)
 
+        # --- Early-stop val check (optional, per K steps) ---
+        # Evaluates val metrics every ``eval_val_every_k`` steps and tracks
+        # the best snapshot. Gated on (val split present) AND (t+1 past
+        # ``early_stop_min_steps``). Appends a ``stage_type="val_check"`` row
+        # to iter_logs for post-hoc diagnostics.
+        if (
+            early_stop_enabled
+            and ((t + 1) % eval_val_every_k == 0)
+            and ((t + 1) >= early_stop_min_steps)
+        ):
+            predictor.module.eval()
+            with torch.no_grad():
+                val_check = eval_split_medical(
+                    task=task,
+                    predictor=predictor,
+                    split_name="val",
+                    fairness_smoothing=fairness_smoothing,
+                )
+            predictor.module.train()
+
+            # Selection metric: val_regret | val_regret_normalized |
+            # val_fairness | val_loss_total (regret + lam * fair)
+            esm = early_stop_metric.lower().strip()
+            if esm in ("val_regret", "regret"):
+                current = float(val_check.get("regret", float("inf")))
+            elif esm in ("val_regret_normalized", "regret_normalized"):
+                current = float(val_check.get("regret_normalized", float("inf")))
+            elif esm in ("val_fairness", "fairness"):
+                current = float(val_check.get("fairness", float("inf")))
+            elif esm in ("val_loss_total", "val_total", "total"):
+                current = float(val_check.get("regret", 0.0)) + float(
+                    lambda_value
+                ) * float(val_check.get("fairness", 0.0))
+            else:
+                current = float(val_check.get("regret", float("inf")))
+
+            is_best = current < best_val_metric
+            if is_best:
+                best_val_metric = current
+                best_step = t + 1
+                best_snapshot = {
+                    "predictor": copy.deepcopy(predictor.module.state_dict()),
+                    "optimizer": copy.deepcopy(optimizer.state_dict()),
+                    "dual_lambda": float(dual_lambda),
+                }
+
+            iter_logs.append(
+                {
+                    "task": task.name,
+                    "method": method_name,
+                    "seed": seed,
+                    "stage_idx": stage_idx,
+                    "lambda": lambda_value,
+                    "iter": t + 1,
+                    "stage_type": "val_check",
+                    "val_check_regret": float(val_check.get("regret", float("nan"))),
+                    "val_check_regret_normalized": float(
+                        val_check.get("regret_normalized", float("nan"))
+                    ),
+                    "val_check_fairness": float(
+                        val_check.get("fairness", float("nan"))
+                    ),
+                    "val_check_pred_mse": float(
+                        val_check.get("pred_mse", float("nan"))
+                    ),
+                    "val_check_metric_used": early_stop_metric,
+                    "val_check_selection_value": float(current),
+                    "val_check_is_best": int(bool(is_best)),
+                    "device": str(device),
+                }
+            )
+
     stage_wallclock = float(perf_counter() - stage_start)
+
+    # --- Restore best-val snapshot if early stopping engaged ---
+    # Scope: per-stage. Methods with ``continuation=True`` will start the next
+    # stage from this restored state, which is the intended behavior (each
+    # stage converges to its best val point before passing to the next).
+    early_stop_applied = False
+    if early_stop_enabled and best_snapshot is not None:
+        predictor.module.load_state_dict(best_snapshot["predictor"])
+        try:
+            optimizer.load_state_dict(best_snapshot["optimizer"])
+        except Exception:
+            # Stateless SGD load is a no-op; swallow any transient mismatch.
+            pass
+        dual_lambda = best_snapshot["dual_lambda"]
+        early_stop_applied = True
 
     # === EVALUATION ===
     # Train evaluation runs once per lambda stage (not per iteration) — it
@@ -707,6 +829,10 @@ def train_single_stage(
         "seed": seed,
         "stage_idx": stage_idx,
         "lambda": lambda_value,
+        "early_stop_enabled": int(bool(early_stop_enabled)),
+        "early_stop_applied": int(bool(early_stop_applied)) if early_stop_enabled else 0,
+        "early_stop_step": int(best_step) if (early_stop_enabled and best_step > 0) else int(steps),
+        "early_stop_metric": early_stop_metric if early_stop_enabled else "",
         "train_regret": _metric_or_nan(train_metrics, "regret"),
         "train_fairness": _metric_or_nan(train_metrics, "fairness"),
         "train_pred_mse": _metric_or_nan(train_metrics, "pred_mse"),
