@@ -57,14 +57,33 @@ def cell_path(variant: str, fairness_type: str, alpha: float, seed: int) -> Path
     )
 
 
+def _discover_seeds(variant: str, fairness_type: str, alpha: float) -> list[int]:
+    """Scan the (variant, fairness, alpha) directory for seed_* subdirs."""
+    base = variant_dir(variant) / fairness_type / f"alpha_{alpha}"
+    if not base.exists():
+        return []
+    seeds = []
+    for child in base.iterdir():
+        if not child.is_dir() or not child.name.startswith("seed_"):
+            continue
+        try:
+            seeds.append(int(child.name[len("seed_"):]))
+        except ValueError:
+            continue
+    return sorted(seeds)
+
+
 def load_variant(variant: str) -> pd.DataFrame:
-    """Load all (fairness_type, alpha, seed) cells for one variant."""
+    """Load all (fairness_type, alpha, seed) cells for one variant.
+
+    Seeds are discovered from the filesystem rather than a hard-coded
+    list, so adding new seed runs later is automatic.
+    """
     variant = variant.lower().strip()
-    seeds = HC_V2_SEEDS_A if variant == "a" else HC_V2_SEEDS_B
     frames: list[pd.DataFrame] = []
     for ft in HC_V2_FAIRNESS_TYPES:
         for a in HC_V2_ALPHAS:
-            for s in seeds:
+            for s in _discover_seeds(variant, ft, a):
                 path = cell_path(variant, ft, a, s)
                 if not path.exists():
                     continue

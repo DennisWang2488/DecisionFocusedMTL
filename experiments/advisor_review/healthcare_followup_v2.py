@@ -47,9 +47,13 @@ HC_V2_METHODS: List[str] = [
 HC_V2_FAIRNESS_TYPES: List[str] = ["mad", "dp", "atkinson", "bias_parity"]
 HC_V2_ALPHAS: List[float] = [0.5, 2.0]
 
-# Disjoint seed assignment — each seed gets its own train/test split via
-# split_seed = seed coupling.
-HC_V2_SEEDS_A: List[int] = [11, 22, 33]
+# Per-seed train/test split via split_seed = seed coupling.
+# Variant A originally ran [11, 22, 33]; seeds 44 and 55 were added in a
+# follow-up run to reach 5 seeds total. The loader auto-discovers all
+# seed_* directories so both original and extra seeds load together.
+HC_V2_SEEDS_A: List[int] = [11, 22, 33, 44, 55]
+# Variant B was originally run on [44, 55]. Deprecated — the v2 paper
+# numbers use Variant A's 5 seeds only.
 HC_V2_SEEDS_B: List[int] = [44, 55]
 
 HC_V2_LAMBDAS: List[float] = [0.0, 0.5, 1.0, 2.0]

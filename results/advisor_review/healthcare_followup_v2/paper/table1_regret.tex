@@ -1,0 +1,20 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Test regret (normalised by oracle objective) on the healthcare task across 4 fairness types and 2 welfare curvatures $\alpha$. Mean $\pm$ std across 5 seeds, each with its own train/test split. Lower is better. Bold marks the best method per column.}
+\label{tab:healthcare_regret}
+\begin{tabular}{lcccccccc}
+\toprule
+Method & \multicolumn{2}{c}{MAD} & \multicolumn{2}{c}{DP} & \multicolumn{2}{c}{Atkinson} & \multicolumn{2}{c}{BiasParity} \\
+ & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 \\
+\midrule
+FPTO & 0.0495 $\pm$ 0.0006 & 0.1522 $\pm$ 0.0025 & 0.0500 $\pm$ 0.0008 & 0.1534 $\pm$ 0.0033 & 0.0500 $\pm$ 0.0008 & 0.1534 $\pm$ 0.0033 & 0.0499 $\pm$ 0.0008 & 0.1523 $\pm$ 0.0032 \\
+FDFL-Scal & 0.0653 $\pm$ 0.0036 & 0.1307 $\pm$ 0.0019 & 0.0749 $\pm$ 0.0013 & 0.1307 $\pm$ 0.0019 & 0.0749 $\pm$ 0.0013 & 0.1307 $\pm$ 0.0019 & 0.0746 $\pm$ 0.0013 & 0.1305 $\pm$ 0.0019 \\
+FPLG & 0.0735 $\pm$ 0.0013 & \textbf{0.1275 $\pm$ 0.0020} & 0.0738 $\pm$ 0.0012 & \textbf{0.1274 $\pm$ 0.0020} & 0.0738 $\pm$ 0.0012 & \textbf{0.1274 $\pm$ 0.0020} & 0.0738 $\pm$ 0.0012 & \textbf{0.1273 $\pm$ 0.0020} \\
+PCGrad & \textbf{0.0488 $\pm$ 0.0004} & 0.1282 $\pm$ 0.0019 & 0.0583 $\pm$ 0.0020 & 0.1363 $\pm$ 0.0036 & 0.0500 $\pm$ 0.0007 & 0.1284 $\pm$ 0.0020 & 0.0498 $\pm$ 0.0008 & 0.1291 $\pm$ 0.0021 \\
+MGDA & 0.0759 $\pm$ 0.0014 & 0.1309 $\pm$ 0.0013 & 0.0759 $\pm$ 0.0013 & 0.1541 $\pm$ 0.0028 & 0.0759 $\pm$ 0.0014 & 0.1530 $\pm$ 0.0042 & 0.0759 $\pm$ 0.0014 & 0.1504 $\pm$ 0.0068 \\
+SAA & 0.0754 $\pm$ 0.0002 & 0.2795 $\pm$ 0.0024 & 0.0754 $\pm$ 0.0002 & 0.2795 $\pm$ 0.0024 & 0.0754 $\pm$ 0.0002 & 0.2795 $\pm$ 0.0024 & 0.0754 $\pm$ 0.0002 & 0.2795 $\pm$ 0.0024 \\
+WDRO & 0.0490 $\pm$ 0.0005 & 0.1499 $\pm$ 0.0024 & \textbf{0.0490 $\pm$ 0.0005} & 0.1499 $\pm$ 0.0024 & \textbf{0.0490 $\pm$ 0.0005} & 0.1499 $\pm$ 0.0024 & \textbf{0.0490 $\pm$ 0.0005} & 0.1499 $\pm$ 0.0024 \\
+\bottomrule
+\end{tabular}
+\end{table}

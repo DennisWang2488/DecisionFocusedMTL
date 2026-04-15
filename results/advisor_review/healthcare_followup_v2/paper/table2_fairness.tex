@@ -1,0 +1,20 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Test fairness at the Pareto-best $\lambda$ (the lambda minimising test regret). Units differ per fairness type (MAD on per-group MSE, DP and BiasParity on benefit scale, Atkinson as a unit-free ratio). Mean $\pm$ std across 5 seeds. Lower is fairer.}
+\label{tab:healthcare_fairness}
+\begin{tabular}{lcccccccc}
+\toprule
+Method & \multicolumn{2}{c}{MAD} & \multicolumn{2}{c}{DP} & \multicolumn{2}{c}{Atkinson} & \multicolumn{2}{c}{BiasParity} \\
+ & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 \\
+\midrule
+FPTO & 22.096 $\pm$ 0.799 & 22.096 $\pm$ 0.799 & 1.750 $\pm$ 0.089 & 1.750 $\pm$ 0.089 & 0.0057 $\pm$ 0.0005 & 0.0057 $\pm$ 0.0005 & 0.6443 $\pm$ 0.0408 & 0.6443 $\pm$ 0.0408 \\
+FDFL-Scal & 112.172 $\pm$ 6.972 & 22.876 $\pm$ 1.181 & 0.0033 $\pm$ 0.0029 & 1.732 $\pm$ 0.137 & 0.0153 $\pm$ 0.0014 & 0.0069 $\pm$ 0.0006 & 2.523 $\pm$ 0.066 & 0.7298 $\pm$ 0.0939 \\
+FPLG & 119.309 $\pm$ 5.595 & 25.110 $\pm$ 1.064 & 0.0058 $\pm$ 0.0040 & 1.900 $\pm$ 0.135 & 0.0152 $\pm$ 0.0014 & 0.0079 $\pm$ 0.0006 & 2.521 $\pm$ 0.066 & 0.5613 $\pm$ 0.0951 \\
+PCGrad & 21.282 $\pm$ 0.579 & 27.386 $\pm$ 2.871 & 0.1344 $\pm$ 0.0949 & 0.5530 $\pm$ 0.3971 & 0.0057 $\pm$ 0.0005 & 0.0087 $\pm$ 0.0019 & \textbf{0.2907 $\pm$ 0.0948} & \textbf{0.3719 $\pm$ 0.1988} \\
+MGDA & 120.002 $\pm$ 5.616 & 27.734 $\pm$ 1.791 & 0.0030 $\pm$ 0.0020 & 0.3029 $\pm$ 0.0541 & 0.0153 $\pm$ 0.0014 & 0.0128 $\pm$ 0.0010 & 2.527 $\pm$ 0.066 & 2.170 $\pm$ 0.062 \\
+SAA & 58.498 $\pm$ 3.647 & 58.498 $\pm$ 3.647 & \textbf{0.0010 $\pm$ 0.0000} & \textbf{0.0010 $\pm$ 0.0000} & 0.0100 $\pm$ 0.0012 & 0.0100 $\pm$ 0.0012 & 2.526 $\pm$ 0.067 & 2.526 $\pm$ 0.067 \\
+WDRO & \textbf{21.008 $\pm$ 0.851} & \textbf{21.008 $\pm$ 0.851} & 1.592 $\pm$ 0.095 & 1.592 $\pm$ 0.095 & \textbf{0.0051 $\pm$ 0.0005} & \textbf{0.0051 $\pm$ 0.0005} & 0.9346 $\pm$ 0.0550 & 0.9346 $\pm$ 0.0550 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,20 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Pareto-best $\lambda$ per method per cell, where Pareto-best means the $\lambda$ value in $\{0, 0.5, 1, 2\}$ that minimises test regret. Methods whose training is $\lambda$-independent (MOO: MGDA, PCGrad; baselines: SAA, WDRO) always show $\lambda = 0.0$.}
+\label{tab:healthcare_best_lambda}
+\begin{tabular}{lcccccccc}
+\toprule
+Method & \multicolumn{2}{c}{MAD} & \multicolumn{2}{c}{DP} & \multicolumn{2}{c}{Atkinson} & \multicolumn{2}{c}{BiasParity} \\
+ & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 & $\alpha$=0.5 & $\alpha$=2.0 \\
+\midrule
+FPTO & 0.5 & 0.5 & 0.0 & 0.0 & 0.0 & 0.0 & 2.0 & 2.0 \\
+FDFL-Scal & 0.5 & 0.0 & 0.0 & 0.0 & 2.0 & 0.0 & 2.0 & 2.0 \\
+FPLG & 2.0 & 0.5 & 2.0 & 1.0 & 2.0 & 1.0 & 2.0 & 1.0 \\
+PCGrad & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 \\
+MGDA & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 \\
+SAA & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 \\
+WDRO & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
