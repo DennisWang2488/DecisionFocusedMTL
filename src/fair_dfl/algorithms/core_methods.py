@@ -47,7 +47,7 @@ class MethodSpec:
 
 
 BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
-    "fplg": MethodSpec(
+    "fair_moo": MethodSpec(
         use_dec=True,
         use_pred=True,
         use_fair=True,
@@ -72,7 +72,7 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
         continuation=False,
         allow_orthogonalization=False,
     ),
-    "plg": MethodSpec(
+    "moo": MethodSpec(
         use_dec=True,
         use_pred=True,
         use_fair=False,
@@ -112,7 +112,7 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
         continuation=False,
         allow_orthogonalization=False,
     ),
-    "wass_dro": MethodSpec(
+    "wdro": MethodSpec(
         use_dec=False,
         use_pred=True,
         use_fair=False,
@@ -122,7 +122,7 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
     ),
 }
 
-PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "plg", "fplg", "saa", "var_dro", "wass_dro")
+PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "moo", "fair_moo", "saa", "var_dro", "wdro")
 METHOD_SPECS: Dict[str, MethodSpec] = {name: BASE_METHOD_SPECS[name] for name in PUBLIC_METHODS}
 
 # Human-readable aliases → canonical abbreviation
@@ -130,11 +130,11 @@ METHOD_ALIASES: Dict[str, str] = {
     "prediction_only": "fpto",
     "decision_focused": "dfl",
     "fair_decision_focused": "fdfl",
-    "pred_loss_guided": "plg",
-    "fair_pred_loss_guided": "fplg",
+    "pred_loss_guided": "moo",
+    "fair_pred_loss_guided": "fair_moo",
     "sample_average_approximation": "saa",
     "variance_dro": "var_dro",
-    "wasserstein_dro": "wass_dro",
+    "wasserstein_dro": "wdro",
 }
 REVERSE_ALIASES: Dict[str, str] = {v: k for k, v in METHOD_ALIASES.items()}
 
@@ -363,7 +363,7 @@ def _combine_prediction_gradients(
         "guided_dir_norm": float("nan"),
     }
     if iter_spec.use_dec and iter_spec.use_pred:
-        fairness_into_pred = iter_spec.use_fair and method_name in {"fplg", "grid_restart"}
+        fairness_into_pred = iter_spec.use_fair and method_name in {"fair_moo", "grid_restart"}
         pred_branch = g_pred_pred + beta_t * g_fair_pred if fairness_into_pred else g_pred_pred
         g_guided, guided_diag = merge_guided_dec_pred_gradient(
             g_dec=g_dec_pred,
@@ -646,8 +646,8 @@ def _train_single_stage(
             out["loss_pred"] = float(mean_loss + dro_eps * std_loss)
 
         # --- WassDRO: Wasserstein DRO via input gradient penalty ---
-        wass_dro_penalty_val = 0.0
-        if method_name == "wass_dro":
+        wdro_penalty_val = 0.0
+        if method_name == "wdro":
             wdro_eps = float(train_cfg.get("wdro_epsilon", 0.1))
             xb_wdro = xb_t.detach().clone().requires_grad_(True)
             if isinstance(task, MedicalResourceAllocationTask):
@@ -668,12 +668,12 @@ def _train_single_stage(
             )[0]
             grad_norms = (grad_x ** 2).sum(dim=-1).sqrt()
             penalty = wdro_eps * grad_norms.mean()
-            wass_dro_penalty_val = float(penalty.item())
+            wdro_penalty_val = float(penalty.item())
             model.zero_grad(set_to_none=True)
             penalty.backward()
-            wass_dro_penalty_param_grad = flatten_param_grads(model)
-            out["wdro_grad_penalty"] = wass_dro_penalty_val
-            out["loss_pred"] = float(per_sample_mse.mean().item()) + wass_dro_penalty_val
+            wdro_penalty_param_grad = flatten_param_grads(model)
+            out["wdro_grad_penalty"] = wdro_penalty_val
+            out["loss_pred"] = float(per_sample_mse.mean().item()) + wdro_penalty_val
 
         alpha_t = _pred_weight(iter_spec.pred_weight_mode, t=t, alpha_schedule_cfg=train_cfg["alpha_schedule"])
         if not iter_spec.use_fair:
@@ -728,8 +728,8 @@ def _train_single_stage(
         )
 
         # WassDRO: add gradient penalty contribution to pred param grad
-        if method_name == "wass_dro":
-            g_pred_param = g_pred_param + wass_dro_penalty_param_grad
+        if method_name == "wdro":
+            g_pred_param = g_pred_param + wdro_penalty_param_grad
 
         if mo_handler is not None:
             mo_grads = {

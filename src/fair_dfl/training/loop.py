@@ -89,7 +89,7 @@ def _active_spec(base_spec: MethodSpec, iter_idx: int, warmstart_steps: int) -> 
 
 
 def _method_uses_fpto_warmstart(method_name: str, train_cfg: Dict[str, Any]) -> bool:
-    warmstart_methods = {str(x).strip().lower() for x in train_cfg.get("warmstart_methods", ["fplg", "plg"])}
+    warmstart_methods = {str(x).strip().lower() for x in train_cfg.get("warmstart_methods", ["fair_moo", "moo"])}
     return method_name.lower() in warmstart_methods
 
 
@@ -165,7 +165,7 @@ def _combine_prediction_gradients(
         "guided_dir_norm": float("nan"),
     }
     if iter_spec.use_dec and iter_spec.use_pred:
-        fairness_into_pred = iter_spec.use_fair and method_name in {"fplg", "grid_restart"}
+        fairness_into_pred = iter_spec.use_fair and method_name in {"fair_moo", "grid_restart"}
         pred_branch = g_pred_pred + beta_t * g_fair_pred if fairness_into_pred else g_pred_pred
         g_guided, guided_diag = merge_guided_dec_pred_gradient(
             g_dec=g_dec_pred,
@@ -462,8 +462,8 @@ def train_single_stage(
         # Gao, Chen & Kleywegt (2024) "Wasserstein DRO and Variation Regularization".
         # The penalty on the Lipschitz constant of the loss w.r.t. inputs
         # provides robustness to Wasserstein perturbations in the data distribution.
-        wass_dro_penalty_val = 0.0
-        if method_name == "wass_dro":
+        wdro_penalty_val = 0.0
+        if method_name == "wdro":
             wdro_eps = float(train_cfg.get("wdro_epsilon", 0.1))
             # Re-forward with input gradients enabled for the penalty term
             xb_wdro = xb_t.detach().clone().requires_grad_(True)
@@ -487,13 +487,13 @@ def train_single_stage(
             # Per-sample L2 norm of input gradients (Lipschitz proxy)
             grad_norms = (grad_x ** 2).sum(dim=-1).sqrt()  # (batch,)
             penalty = wdro_eps * grad_norms.mean()
-            wass_dro_penalty_val = float(penalty.item())
+            wdro_penalty_val = float(penalty.item())
             # Backprop penalty to get its parameter gradient contribution
             predictor.module.zero_grad(set_to_none=True)
             penalty.backward()
-            wass_dro_penalty_param_grad = flatten_param_grads(predictor.module)
-            out["wdro_grad_penalty"] = wass_dro_penalty_val
-            out["loss_pred"] = float(per_sample_mse.mean().item()) + wass_dro_penalty_val
+            wdro_penalty_param_grad = flatten_param_grads(predictor.module)
+            out["wdro_grad_penalty"] = wdro_penalty_val
+            out["loss_pred"] = float(per_sample_mse.mean().item()) + wdro_penalty_val
 
         # --- Alpha/beta weights ---
         alpha_t = _pred_weight(iter_spec.pred_weight_mode, t=t, alpha_schedule_cfg=train_cfg["alpha_schedule"])
@@ -541,8 +541,8 @@ def train_single_stage(
         )
 
         # --- WassDRO: add gradient penalty contribution to pred param grad ---
-        if method_name == "wass_dro":
-            g_pred_param = g_pred_param + wass_dro_penalty_param_grad
+        if method_name == "wdro":
+            g_pred_param = g_pred_param + wdro_penalty_param_grad
 
         # --- MOO handler or standard backward ---
         if mo_handler is not None:

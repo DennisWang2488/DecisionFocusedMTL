@@ -17,9 +17,9 @@ from .tasks.base import BaseTask, SplitData, TaskData
 
 
 DEFAULT_METHODS = [
-    "fplg",
+    "fair_moo",
     "fdfl",
-    "plg",
+    "moo",
     "fpto",
     "dfl",
 ]
@@ -27,11 +27,11 @@ PUBLIC_METHODS = [
     "fpto",
     "dfl",
     "fdfl",
-    "plg",
-    "fplg",
+    "moo",
+    "fair_moo",
     "saa",
     "var_dro",
-    "wass_dro",
+    "wdro",
 ]
 
 

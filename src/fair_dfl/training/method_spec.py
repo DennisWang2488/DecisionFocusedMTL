@@ -18,7 +18,7 @@ class MethodSpec:
 
 # Legacy mapping from method name -> MethodSpec (kept for backward compat)
 _LEGACY_METHOD_SPECS: Dict[str, MethodSpec] = {
-    "fplg": MethodSpec(
+    "fair_moo": MethodSpec(
         use_dec=True, use_pred=True, use_fair=True,
         pred_weight_mode="schedule", continuation=True, allow_orthogonalization=True,
     ),
@@ -30,7 +30,7 @@ _LEGACY_METHOD_SPECS: Dict[str, MethodSpec] = {
         use_dec=True, use_pred=False, use_fair=True,
         pred_weight_mode="zero", continuation=False, allow_orthogonalization=False,
     ),
-    "plg": MethodSpec(
+    "moo": MethodSpec(
         use_dec=True, use_pred=True, use_fair=False,
         pred_weight_mode="schedule", continuation=False, allow_orthogonalization=False,
     ),
@@ -50,7 +50,7 @@ _LEGACY_METHOD_SPECS: Dict[str, MethodSpec] = {
         use_dec=False, use_pred=True, use_fair=False,
         pred_weight_mode="fixed1", continuation=False, allow_orthogonalization=False,
     ),
-    "wass_dro": MethodSpec(
+    "wdro": MethodSpec(
         use_dec=False, use_pred=True, use_fair=False,
         pred_weight_mode="fixed1", continuation=False, allow_orthogonalization=False,
     ),
@@ -64,7 +64,7 @@ def resolve_method_spec(method_cfg: Dict[str, Any]) -> MethodSpec:
         {"use_dec": True, "use_pred": True, "use_fair": True, ...}
 
     Legacy format (backward compat):
-        {"method": "fplg", ...}
+        {"method": "fair_moo", ...}
     """
     if "use_dec" in method_cfg:
         return MethodSpec(
@@ -85,6 +85,6 @@ def resolve_method_spec(method_cfg: Dict[str, Any]) -> MethodSpec:
 def resolve_method_backend(method_cfg: Dict[str, Any]) -> str:
     """Return the training backend name for dispatch.
 
-    Returns the 'method' key value (e.g., 'fplg', 'fpto', 'dfl', 'saa', 'wdro').
+    Returns the 'method' key value (e.g., 'fair_moo', 'fpto', 'dfl', 'saa', 'wdro').
     """
-    return str(method_cfg.get("method", "fplg")).strip().lower()
+    return str(method_cfg.get("method", "fair_moo")).strip().lower()

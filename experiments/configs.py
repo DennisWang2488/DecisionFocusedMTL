@@ -26,7 +26,7 @@ N_SAMPLE_FULL = 0     # 0 = use all patients (48,784)
 #   use_fair: use fairness gradient
 #
 # The "method" key maps to the training loop backend:
-#   - Core backends: fpto, dfl, fdfl, plg, fplg, saa, wdro
+#   - Core backends: fpto, dfl, fdfl, moo, fair_moo, saa, var_dro, wdro
 #
 # MOO methods set "mo_method" to override the default gradient combination.
 # ---------------------------------------------------------------------------
@@ -41,16 +41,16 @@ ALL_METHOD_CONFIGS = {
 
     # ----- PLG-family methods (alpha_t schedule from PLG paper) -----
     # PLG: 2-objective (dec+pred) with decaying prediction weight (the original PLG paper)
-    "PLG":    {"method": "plg",   "use_dec": True,  "use_pred": True,  "use_fair": False,
+    "PLG":    {"method": "moo",   "use_dec": True,  "use_pred": True,  "use_fair": False,
                "pred_weight_mode": "schedule"},
     # FPLG: 3-objective PLG extension (dec+pred+fair) with alpha_t schedule
-    "FPLG":   {"method": "fplg",  "use_dec": True,  "use_pred": True,  "use_fair": True,
+    "FPLG":   {"method": "fair_moo",  "use_dec": True,  "use_pred": True,  "use_fair": True,
                "pred_weight_mode": "schedule", "continuation": True, "allow_orthogonalization": True},
 
     # ----- Static-weight scalarized DFL -----
     # FDFL-Scal: 3-objective (dec+pred+fair) with CONSTANT prediction weight (no alpha_t decay)
     # Unlike FPLG, this uses fixed1 — a standard weighted-sum scalarization, not PLG's schedule.
-    "FDFL-Scal": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+    "FDFL-Scal": {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
                   "pred_weight_mode": "fixed1"},
 
     # ----- Data-driven optimization baselines -----
@@ -68,33 +68,33 @@ ALL_METHOD_CONFIGS = {
     # clarity — the alpha_t schedule is a PLG-specific technique and
     # should NOT be the default for MOO methods.
     "WS-equal": {
-        "method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+        "method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
         "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
         "mo_method": "weighted_sum",
         "mo_weights": {"decision_regret": 0.333, "pred_loss": 0.333, "pred_fairness": 0.333},
     },
     "WS-dec": {
-        "method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+        "method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
         "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
         "mo_method": "weighted_sum",
         "mo_weights": {"decision_regret": 0.6, "pred_loss": 0.2, "pred_fairness": 0.2},
     },
     "WS-fair": {
-        "method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+        "method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
         "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
         "mo_method": "weighted_sum",
         "mo_weights": {"decision_regret": 0.2, "pred_loss": 0.2, "pred_fairness": 0.6},
     },
-    "MGDA":   {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+    "MGDA":   {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
                "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
                "mo_method": "mgda"},
-    "PCGrad": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+    "PCGrad": {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
                "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
                "mo_method": "pcgrad"},
-    "CAGrad": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+    "CAGrad": {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
                "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
                "mo_method": "cagrad"},
-    "FAMO":   {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+    "FAMO":   {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
                "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
                "mo_method": "famo"},
 
@@ -102,11 +102,11 @@ ALL_METHOD_CONFIGS = {
     "PTO":        {"method": "fpto", "use_dec": False, "use_pred": True, "use_fair": False,
                    "pred_weight_mode": "fixed1",
                    "lambdas": [0.0], "force_lambda_path_all_methods": False},
-    "PCGrad-nf":  {"method": "plg", "use_dec": True, "use_pred": True, "use_fair": False,
+    "PCGrad-nf":  {"method": "moo", "use_dec": True, "use_pred": True, "use_fair": False,
                    "pred_weight_mode": "fixed1", "mo_method": "pcgrad"},
-    "MGDA-nf":    {"method": "plg", "use_dec": True, "use_pred": True, "use_fair": False,
+    "MGDA-nf":    {"method": "moo", "use_dec": True, "use_pred": True, "use_fair": False,
                    "pred_weight_mode": "fixed1", "mo_method": "mgda"},
-    "CAGrad-nf":  {"method": "plg", "use_dec": True, "use_pred": True, "use_fair": False,
+    "CAGrad-nf":  {"method": "moo", "use_dec": True, "use_pred": True, "use_fair": False,
                    "pred_weight_mode": "fixed1", "mo_method": "cagrad"},
 }
 
