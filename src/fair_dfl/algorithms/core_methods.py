@@ -178,7 +178,11 @@ def _pred_weight(mode: str, t: int, alpha_schedule_cfg: Dict[str, Any]) -> float
         return 1.0
     if mode == "schedule":
         return alpha_value(t=t, schedule_cfg=alpha_schedule_cfg)
-    raise ValueError(f"Unsupported pred weight mode: {mode}")
+    # Any numeric string is treated as a fixed prediction weight (mu).
+    try:
+        return float(mode)
+    except (TypeError, ValueError):
+        raise ValueError(f"Unsupported pred weight mode: {mode}")
 
 
 def _safe_mean(values: List[float]) -> float:
@@ -527,7 +531,9 @@ def _train_single_stage(
     if mo_method == "weighted_sum":
         mo_handler = WeightedSumHandler(weights=train_cfg.get("mo_weights", {}))
     elif mo_method == "pcgrad":
-        mo_handler = PCGradHandler()
+        mo_handler = PCGradHandler(
+            normalize=bool(train_cfg.get("mo_pcgrad_normalize", False)),
+        )
     elif mo_method == "mgda":
         mo_handler = MGDAHandler()
     elif mo_method == "cagrad":

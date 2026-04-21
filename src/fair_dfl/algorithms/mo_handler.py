@@ -161,10 +161,23 @@ class WeightedSumHandler(MultiObjectiveGradientHandler):
 # ======================================================================
 
 class PCGradHandler(MultiObjectiveGradientHandler):
-    """PCGrad: project away conflicting components (Yu et al. 2020)."""
+    """PCGrad: project away conflicting components (Yu et al. 2020).
 
-    def __init__(self) -> None:
+    Parameters
+    ----------
+    normalize : bool, default False
+        If True, L2-normalize each per-objective gradient to unit length
+        before the pairwise conflict projection, then rescale the summed
+        direction by the mean of the original norms. This avoids a large
+        objective (e.g. decision regret under SPSA, whose scale can dwarf
+        prediction / fairness gradients by 3+ orders of magnitude)
+        dominating the projection geometry while preserving an
+        objective-scale step size.
+    """
+
+    def __init__(self, normalize: bool = False) -> None:
         self._last_diag: Dict[str, float] = {}
+        self._normalize = bool(normalize)
 
     def compute_direction(
         self,
@@ -176,6 +189,13 @@ class PCGradHandler(MultiObjectiveGradientHandler):
         names = sorted(grads.keys())
         m = len(names)
         flat_grads = {n: grads[n].ravel().copy() for n in names}
+
+        orig_norms: Dict[str, float] = {n: float(np.linalg.norm(flat_grads[n])) for n in names}
+        if self._normalize:
+            for n in names:
+                gn = orig_norms[n]
+                if gn > 1e-12:
+                    flat_grads[n] = flat_grads[n] / gn
 
         n_projections = 0
         n_pairs = 0
@@ -210,11 +230,17 @@ class PCGradHandler(MultiObjectiveGradientHandler):
         for n in names:
             direction += projected[n]
 
+        if self._normalize:
+            # Restore an objective-scale step size: mean of original norms.
+            mean_norm = float(np.mean([orig_norms[n] for n in names]))
+            direction = direction * mean_norm
+
         conflict_fraction = float(n_projections) / max(n_pairs, 1)
 
         self._last_diag = self._compute_common_diagnostics(grads, direction)
         self._last_diag["mo_pcgrad_n_projections"] = float(n_projections)
         self._last_diag["mo_pcgrad_conflict_fraction"] = conflict_fraction
+        self._last_diag["mo_pcgrad_normalize"] = float(self._normalize)
         return direction
 
     def extra_logs(self) -> Dict[str, float]:

@@ -74,7 +74,11 @@ def _pred_weight(mode: str, t: int, alpha_schedule_cfg: Dict[str, Any]) -> float
         return 1.0
     if mode == "schedule":
         return alpha_value(t=t, schedule_cfg=alpha_schedule_cfg)
-    raise ValueError(f"Unknown pred_weight_mode: {mode}")
+    # Any numeric string is treated as a fixed prediction weight (mu).
+    try:
+        return float(mode)
+    except (TypeError, ValueError):
+        raise ValueError(f"Unknown pred_weight_mode: {mode}")
 
 
 def _active_spec(base_spec: MethodSpec, iter_idx: int, warmstart_steps: int) -> MethodSpec:
@@ -102,7 +106,9 @@ def _build_mo_handler(
     if mo_method == "weighted_sum":
         return WeightedSumHandler(weights=train_cfg.get("mo_weights", {}))
     if mo_method == "pcgrad":
-        return PCGradHandler()
+        return PCGradHandler(
+            normalize=bool(train_cfg.get("mo_pcgrad_normalize", False)),
+        )
     if mo_method == "mgda":
         return MGDAHandler()
     if mo_method == "cagrad":
