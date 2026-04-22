@@ -44,9 +44,13 @@ gradient magnitude (~3000) dwarfs the prediction/fairness gradients
   10 methods × 5 seeds × λ ∈ {0, 0.5, 1, 2} × 30 steps, SPSA
   n_dirs=8 eps=5e-3, n_train=300, alpha_fair=2.0, fairness=mad.
   Launcher: `experiments/advisor_review/run_md_knapsack_mu_sweep.py`.
-  Key finding: FDFL (mu=0) normalized regret ≈ 1.0 (diverged);
-  FDFL-0.1 snaps to ~0.19; FDFL-0.5/Scal cluster with FPLG near
-  the top performers.
+  Key finding: FDFL (mu=0) normalized regret ≈ 0.84 (diverged);
+  FDFL-0.1 snaps to ~0.20; FDFL-0.5/Scal cluster with FPLG near
+  the top performers. Normalized PCGrad on SPSA is 8/9 stable
+  (0.19 ± 0.02 over stable seeds) but has a non-trivial
+  catastrophic-failure tail — seed 55 (from {11..55}) exploded to
+  0.9999, confirmed by extra-seeds run {66,77,88,99} which all
+  stayed stable. Observed explosion rate 1/9 ≈ 11%.
 
 - **Exp 2 — Healthcare FDFL-mu append**
   (`results/advisor_review/healthcare_followup_v2/variant_a/**/stage_results_fdfl_mu.csv`):
@@ -55,10 +59,27 @@ gradient magnitude (~3000) dwarfs the prediction/fairness gradients
   `stage_results.csv` is untouched.
   Launcher: `experiments/advisor_review/run_healthcare_v2_fdfl_mu.py`.
   Grand summary: `grand_summary_fdfl_mu.csv` (1120 rows).
-  Key finding (mad, alpha=2): FDFL mu ∈ {0, 0.1, 0.5, 1} all cluster
-  at test_regret_normalized ≈ 0.102 ± 0.003 (analytic grads don't
-  need the anchor). PCGrad (normalized) = 0.0945, meaningfully below
-  the cluster — shift > 0.005, paper table should be reviewed.
+  Key finding (mad, alpha=2, best-lambda, 5 seeds): FDFL mu ∈
+  {0, 0.1, 0.5} all cluster at test_regret_normalized ≈ 0.128–0.129,
+  matching FDFL-Scal (mu=1) at 0.1307 — analytic gradients don't
+  need the prediction anchor. PCGrad (normalized) = 0.1333 ± 0.0035,
+  slightly WORSE than the paper baseline (0.1282 ± 0.0019, with
+  normalize=False). At alpha=0.5, normalized PCGrad = 0.0475 vs
+  paper 0.0488 — marginally better. Net: normalization is a wash
+  under analytic gradients (slight gain at alpha=0.5, slight loss
+  at alpha=2).
+
+  Also flagged a suspected task-state contamination issue: FPLG at
+  alpha=0.5 shows non-monotone lambda behavior in the new run
+  (best = 0.0649 at lambda=0.5) vs monotone behavior in the old run
+  (best = 0.0735 at lambda=2). lambda=0 matches exactly across old
+  and new; the divergence begins with lambda=0.5, which for FPLG
+  continues from the end-of-lambda=0 predictor state. Likely cause:
+  the new FDFL / FDFL-0.1 / FDFL-0.5 methods running before FPLG in
+  the method loop leave the healthcare task's internal solver cache
+  in a different state. Needs investigation before any FPLG result
+  from the new run is used for paper comparison. alpha=2 FPLG is
+  unaffected (delta = +0.0004, within noise).
 
 - **Exp 3 — Gradient diagnostics figure**
   (`results/advisor_review/md_knapsack_mu_sweep/fig_gradient_scale_mu_sweep.png`):

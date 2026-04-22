@@ -1,0 +1,148 @@
+% Standalone insertable LaTeX section for the FDFL-mu / PCGrad-normalization
+% empirical follow-up. Intended to be \input{}'d into the IJOC manuscript.
+% Assumes the manuscript already loads graphicx and booktabs.
+% Expected manuscript-side figure path:
+%   Plots/fig_gradient_scale_mu_sweep.png
+
+\subsection{Empirical Follow-Up: Fixed Prediction Weights and Normalized PCGrad}
+\label{sec:exp-mu-followup}
+
+\paragraph{Motivation.}
+The main experiments revealed a sharp contrast between the healthcare and
+knapsack settings. On healthcare, end-to-end methods with analytic
+decision gradients were consistently stable, and the best scalarized and
+multi-objective variants were tightly clustered. On the synthetic
+multidimensional knapsack task, by contrast, the fair decision-focused
+methods were much more sensitive to the decision-gradient approximation.
+Two follow-up hypotheses emerged from the gradient logs. First, the poor
+behavior of FDFL with $\mu=0$ could be caused by the absence of a
+prediction anchor: when the decision gradient is estimated by SPSA, pure
+decision-plus-fairness updates may allow the predictor to drift. Second,
+PCGrad may be handicapped when one objective gradient is several orders
+of magnitude larger than the others, so per-objective normalization before
+projection may be necessary.
+
+\paragraph{Follow-up design.}
+We therefore ran two additional experiments. The first is an MD-knapsack
+``$\mu$-sweep'' on the redesigned per-individual, two-resource knapsack
+task with group-level $\alpha$-fair welfare, using $\alpha=2$,
+fairness type MAD, $n_{\mathrm{train}}=300$, 30 training steps per
+$\lambda$, 5 random seeds, and SPSA decision gradients with 8 directions
+and perturbation scale $5\times 10^{-3}$. We compare the original FDFL
+($\mu=0$), two fixed-anchor variants FDFL-0.1 and FDFL-0.5, the standard
+scalarized method FDFL-Scal ($\mu=1$), FPLG, PCGrad with per-objective
+gradient normalization, and the baseline methods FPTO, SAA, WDRO, and
+MGDA. The second is a healthcare append run on the full Obermeyer cohort
+with analytic decision gradients, which augments the existing grid with
+the same fixed-$\mu$ variants while keeping the original
+\texttt{stage\_results.csv} files untouched. This append run spans four
+prediction-fairness measures, two welfare curvatures
+$\alpha\in\{0.5,2\}$, 5 seeds, and 70 training steps. In both
+experiments, performance is summarized by normalized test regret.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Follow-up summary at the diagnostic operating point $\lambda=0$.
+The MD-knapsack column reports mean $\pm$ standard deviation of
+normalized test regret over 5 seeds on the SPSA-based synthetic task.
+The healthcare column reports the corresponding quantity for the full
+cohort under MAD fairness and $\alpha=2$ with analytic gradients. Lower
+is better.}
+\label{tab:mu-followup-summary}
+\begin{tabular}{lcc}
+\toprule
+Method & MD knapsack & Healthcare (MAD, $\alpha=2$) \\
+\midrule
+FDFL       & 0.8384 $\pm$ 0.3560 & 0.1025 $\pm$ 0.0270 \\
+FDFL-0.1   & 0.1970 $\pm$ 0.0037 & 0.1018 $\pm$ 0.0268 \\
+FDFL-0.5   & 0.1864 $\pm$ 0.0045 & 0.1023 $\pm$ 0.0275 \\
+FDFL-Scal  & 0.1748 $\pm$ 0.0069 & 0.1028 $\pm$ 0.0282 \\
+FPLG       & 0.1914 $\pm$ 0.0041 & 0.1017 $\pm$ 0.0267 \\
+PCGrad     & 0.3545 $\pm$ 0.3618 & \textbf{0.0945 $\pm$ 0.0424} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Results on MD knapsack.}
+The $\mu$-sweep confirms that the no-anchor variant is the unstable one.
+In Table~\ref{tab:mu-followup-summary}, FDFL at $\mu=0$ reaches
+normalized regret $0.8384 \pm 0.3560$, far above every anchored
+alternative and with very large seed variance. Introducing even a small
+fixed prediction weight is enough to restore stability:
+FDFL-0.1 drops to $0.1970 \pm 0.0037$, and FDFL-0.5 further improves to
+$0.1864 \pm 0.0045$. These values place the fixed-$\mu$ variants in the
+same performance band as FDFL-Scal ($0.1748 \pm 0.0069$) and FPLG
+($0.1914 \pm 0.0041$). The interpretation is direct: under SPSA, the
+decision gradient alone is too noisy to keep the predictor calibrated,
+whereas even a weak MSE anchor prevents the runaway behavior observed for
+$\mu=0$.
+
+The normalized PCGrad variant does not recover the same benefit on this
+task. Although normalization prevents the most extreme scale domination,
+PCGrad still attains $0.3545 \pm 0.3618$, well above the scalarized
+anchored methods and again with large variability. In this SPSA regime,
+the main issue is not only objective-scale imbalance but also the
+combination of noisy decision gradients and projection-based gradient
+manipulation. The follow-up therefore refines the earlier interpretation:
+adding a fixed prediction anchor is sufficient to stabilize scalarized
+FDFL, but PCGrad remains brittle when conflict resolution is driven by
+approximate decision gradients.
+
+\paragraph{Results on healthcare.}
+The healthcare append experiment tells the complementary story. Here the
+decision gradient is analytic and low-variance, so changing $\mu$ has
+almost no effect on regret. Across the four fixed-weight variants, the
+MAD/$\alpha=2$ regret values are nearly indistinguishable:
+FDFL = $0.1025 \pm 0.0270$, FDFL-0.1 = $0.1018 \pm 0.0268$,
+FDFL-0.5 = $0.1023 \pm 0.0275$, and FDFL-Scal = $0.1028 \pm 0.0282$.
+FPLG is likewise in the same band at $0.1017 \pm 0.0267$. In other
+words, once the downstream gradient is reliable, the prediction anchor is
+no longer the determining factor.
+
+Normalized PCGrad behaves very differently in this analytic setting. It
+achieves the best mean regret in the healthcare follow-up,
+$0.0945 \pm 0.0424$, outperforming the scalarized fixed-$\mu$ family by
+roughly $0.007$--$0.008$ in absolute normalized regret. This is
+consistent with the intended effect of normalization: when the objective
+gradients are informative but live on very different raw scales,
+equalizing them before projection lets PCGrad exploit directional
+conflicts without letting one objective dominate purely by magnitude.
+
+\paragraph{Gradient-scale diagnostic.}
+Figure~\ref{fig:gradient-scale-mu-followup} visualizes the mechanism
+behind these contrasting outcomes. The top row (MD knapsack) shows a
+large separation between decision-gradient and prediction-gradient norms,
+especially for $\mu=0$, together with substantial variation over the
+training trajectory. The bottom row (healthcare) is much flatter: the
+gradient scales remain stable across $\mu$, and there is no comparable
+explosion of the decision term. The figure reinforces the main empirical
+message of the follow-up: fixed prediction weights matter when the
+decision gradient is noisy and poorly scaled, but they have little effect
+when the gradient is analytic and well behaved.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{Plots/fig_gradient_scale_mu_sweep.png}
+  \caption{Gradient-scale diagnostic for the fixed-$\mu$ follow-up.
+  Each panel reports decision-gradient norm and prediction-gradient norm
+  on a log scale for FDFL at $\mu\in\{0,0.1,0.5,1\}$. The top row uses the
+  SPSA-based MD knapsack task; the bottom row uses the healthcare task
+  with analytic gradients. The knapsack panels show the scale explosion
+  associated with $\mu=0$, while the healthcare panels remain nearly flat
+  across all four choices.}
+  \label{fig:gradient-scale-mu-followup}
+\end{figure}
+
+\paragraph{Takeaway.}
+Taken together, the two follow-up experiments isolate two distinct
+failure modes. On SPSA-based tasks, the dominant issue is the absence of
+an explicit prediction anchor: fixed $\mu>0$ stabilizes FDFL even when
+the fairness term is present. On analytic-gradient tasks, that anchor is
+largely irrelevant, but per-objective normalization improves PCGrad by
+preventing raw gradient magnitude from overwhelming the projection
+geometry. This suggests a practical rule: when decision gradients are
+approximate, a fixed prediction-loss anchor is the first stabilizer to
+add; when decision gradients are reliable but objectives differ strongly
+in scale, normalized multi-objective projection is the more useful
+correction.
