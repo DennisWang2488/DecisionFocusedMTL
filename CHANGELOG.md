@@ -4,6 +4,69 @@ codex resume 019ce170-90a1-76b1-9fb2-fb04219c1b36
 
 All notable changes made today in this repository.
 
+## 2026-04-21
+
+### Advisor-review follow-up: FDFL mu parameter + PCGrad normalization (Claude)
+
+#### Motivation
+MD knapsack diagnosis confirmed two failure modes under SPSA decision
+gradients: (1) FDFL (mu=0) diverges because there is no prediction
+anchor — the SPSA gradient is noisy and without MSE regularization the
+predictor drifts; (2) PCGrad oscillates because the decision-regret
+gradient magnitude (~3000) dwarfs the prediction/fairness gradients
+(~1), so the projection geometry is dominated by a single objective.
+
+#### Added
+- `pred_weight_mode` now accepts any numeric string (e.g. `"0.1"`,
+  `"0.5"`) as a fixed prediction weight (mu).  Named keyword modes
+  (`zero`, `fixed1`, `schedule`) take priority; anything else is
+  parsed as `float`.  A non-numeric string still raises `ValueError`.
+  Implemented in both `src/fair_dfl/training/loop.py` and
+  `src/fair_dfl/algorithms/core_methods.py`.
+- `PCGradHandler(normalize=True)` — per-objective gradient
+  normalization before pairwise conflict projection, with rescaling by
+  the mean of the original norms to preserve an objective-scale step
+  size.  Enabled by `mo_pcgrad_normalize=True` in train config.
+- New method configs `FDFL-0.1` and `FDFL-0.5` (static dec+pred+fair,
+  mu ∈ {0.1, 0.5}).
+- Method taxonomy in `experiments/configs.py` reorganized into three
+  groups: PTO, static decision-focused, dynamic decision-focused.
+  `README.md` method tables updated to match.
+
+#### Changed
+- `PCGrad` config now sets `mo_pcgrad_normalize: True` by default.
+  No separate un-normalized variant is kept going forward.
+- `PCGrad-nf` also updated to normalize.
+
+#### Experiments (Exp 1 + 2 + 3)
+- **Exp 1 — MD knapsack mu sweep**
+  (`results/advisor_review/md_knapsack_mu_sweep/`):
+  10 methods × 5 seeds × λ ∈ {0, 0.5, 1, 2} × 30 steps, SPSA
+  n_dirs=8 eps=5e-3, n_train=300, alpha_fair=2.0, fairness=mad.
+  Launcher: `experiments/advisor_review/run_md_knapsack_mu_sweep.py`.
+  Key finding: FDFL (mu=0) normalized regret ≈ 1.0 (diverged);
+  FDFL-0.1 snaps to ~0.19; FDFL-0.5/Scal cluster with FPLG near
+  the top performers.
+
+- **Exp 2 — Healthcare FDFL-mu append**
+  (`results/advisor_review/healthcare_followup_v2/variant_a/**/stage_results_fdfl_mu.csv`):
+  10 methods × 4 fairness_types × 2 alphas × 5 seeds × 70 steps,
+  analytic gradients, full cohort.  Non-destructive — paper-cited
+  `stage_results.csv` is untouched.
+  Launcher: `experiments/advisor_review/run_healthcare_v2_fdfl_mu.py`.
+  Grand summary: `grand_summary_fdfl_mu.csv` (1120 rows).
+  Key finding (mad, alpha=2): FDFL mu ∈ {0, 0.1, 0.5, 1} all cluster
+  at test_regret_normalized ≈ 0.102 ± 0.003 (analytic grads don't
+  need the anchor). PCGrad (normalized) = 0.0945, meaningfully below
+  the cluster — shift > 0.005, paper table should be reviewed.
+
+- **Exp 3 — Gradient diagnostics figure**
+  (`results/advisor_review/md_knapsack_mu_sweep/fig_gradient_scale_mu_sweep.png`):
+  2×2 panel: grad_norm_dec vs grad_norm_pred on log-y axis for FDFL
+  mu ∈ {0, 0.1, 0.5, 1}, top row MD knapsack (SPSA, scale explosion),
+  bottom row healthcare (analytic, flat).
+  Script: `experiments/advisor_review/plot_gradient_scale_mu_sweep.py`.
+
 ## 2026-03-23
 
 ### Result provenance metadata (Claude)
