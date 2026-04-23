@@ -118,6 +118,92 @@ class TestVJPConsistency:
         np.testing.assert_allclose(vjp_result, expected, atol=1e-6, rtol=1e-4)
 
 
+class TestSolveGroupOptimality:
+    """Verify _solve_group returns the true optimum of the group-coupled
+    alpha-fairness problem at multiple alpha values, including alpha values
+    not used in the paper's experiments. Guards against the sign-flip bug
+    that previously made the closed form sub-optimal for alpha > 1, alpha != 2.
+    """
+
+    # Tiny synthetic instance: 6 stakeholders, 2 groups.
+    PRED = np.array([1.0, 2.0, 0.5, 1.5, 2.5, 1.2])
+    COST = np.array([1.0, 0.8, 1.2, 1.5, 0.9, 1.1])
+    RACE = np.array([0, 0, 0, 1, 1, 1])
+    BUDGET = 5.0
+
+    @pytest.mark.parametrize("alpha", [0.3, 0.5, 0.8, 1.5, 1.8, 2.0, 2.5, 3.0, 4.0, 5.0])
+    def test_solve_group_is_kkt_optimal(self, alpha):
+        """Starting SLSQP at the closed-form solution should not move it."""
+        from scipy.optimize import minimize
+
+        d_code = MedicalResourceAllocationTask._solve_group(
+            self.PRED, self.COST, self.RACE, self.BUDGET, alpha
+        )
+        # Same objective the code itself uses to evaluate W^g_alpha.
+        def neg_W(d):
+            return -MedicalResourceAllocationTask._group_objective(
+                d, self.PRED, self.RACE, alpha
+            )
+        n = len(self.PRED)
+        res = minimize(
+            neg_W, d_code, method="SLSQP",
+            bounds=[(1e-9, None)] * n,
+            constraints=[{"type": "ineq", "fun": lambda d: self.BUDGET - np.sum(self.COST * d)}],
+            options={"ftol": 1e-13, "maxiter": 2000},
+        )
+        # If d_code is locally optimal, SLSQP barely moves and the welfare is unchanged.
+        np.testing.assert_allclose(res.x, d_code, atol=1e-5)
+        assert -res.fun == pytest.approx(-neg_W(d_code), abs=1e-6)
+
+    @pytest.mark.parametrize("alpha", [0.5, 1.5, 2.0, 3.0, 5.0])
+    def test_solve_group_matches_paper_formula(self, alpha):
+        """Code _solve_group must equal the literal Proposition 1 formula."""
+        d_code = MedicalResourceAllocationTask._solve_group(
+            self.PRED, self.COST, self.RACE, self.BUDGET, alpha
+        )
+        # Literal evaluation of the paper formula.
+        K = 2
+        S = np.zeros(K)
+        for k in range(K):
+            m = self.RACE == k
+            S[k] = np.sum(
+                (self.COST[m] ** (-1.0 / alpha) * self.PRED[m] ** (1.0 / alpha)) ** (1.0 - alpha)
+            )
+        if 0.0 < alpha < 1.0:
+            beta = 1.0 / (alpha - 2.0)
+        else:
+            beta = (-alpha + 2.0) / (-alpha**2 + 2.0 * alpha - 2.0)
+        denom = float(np.sum(S ** (1.0 + beta)))
+        d_paper = np.array([
+            self.BUDGET
+            * self.COST[i] ** (-1.0 / alpha)
+            * self.PRED[i] ** ((1.0 - alpha) / alpha)
+            * S[self.RACE[i]] ** beta
+            / denom
+            for i in range(len(self.PRED))
+        ])
+        np.testing.assert_allclose(d_code, d_paper, rtol=1e-10, atol=1e-12)
+
+    @pytest.mark.parametrize("alpha", [0.5, 1.5, 2.0, 3.0, 5.0])
+    def test_jacobian_matches_finite_difference(self, alpha):
+        """Analytical Jacobian must match a centered finite difference of _solve_group."""
+        def f(p):
+            return MedicalResourceAllocationTask._solve_group(
+                p, self.COST, self.RACE, self.BUDGET, alpha
+            )
+        eps = 1e-6
+        n = len(self.PRED)
+        fd = np.zeros((n, n))
+        for i in range(n):
+            pp = self.PRED.copy(); pp[i] += eps
+            pm = self.PRED.copy(); pm[i] -= eps
+            fd[:, i] = (f(pp) - f(pm)) / (2 * eps)
+        ana = MedicalResourceAllocationTask._solve_group_grad_jacobian(
+            self.PRED, self.COST, self.RACE, self.BUDGET, alpha
+        )
+        np.testing.assert_allclose(ana, fd, atol=1e-6, rtol=1e-4)
+
+
 class TestFairnessMetrics:
     def test_mad_symmetric(self, task_and_data):
         task, _ = task_and_data

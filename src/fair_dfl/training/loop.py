@@ -19,6 +19,7 @@ from ..algorithms.mo_handler import (
     MultiObjectiveGradientHandler,
     WeightedSumHandler,
     PCGradHandler,
+    AlignMOHandler,
     MGDAHandler,
     CAGradHandler,
     PLGHandler3Obj,
@@ -108,6 +109,14 @@ def _build_mo_handler(
     if mo_method == "pcgrad":
         return PCGradHandler(
             normalize=bool(train_cfg.get("mo_pcgrad_normalize", False)),
+        )
+    if mo_method == "alignmo":
+        return AlignMOHandler(
+            tau_conflict=float(train_cfg.get("mo_alignmo_tau_conflict", -0.1)),
+            tau_scale=float(train_cfg.get("mo_alignmo_tau_scale", 2.0)),
+            mu_floor=float(train_cfg.get("mo_alignmo_mu_floor", 0.1)),
+            beta_ema=float(train_cfg.get("mo_alignmo_beta_ema", 0.9)),
+            T_warmup=int(train_cfg.get("mo_alignmo_T_warmup", 10)),
         )
     if mo_method == "mgda":
         return MGDAHandler()
@@ -560,6 +569,8 @@ def train_single_stage(
                 g_fair_param=g_fair_param,
                 mo_handler=mo_handler,
             )
+            if hasattr(mo_handler, "set_step_context"):
+                mo_handler.set_step_context(mu=float(alpha_t), lam=float(beta_t))
             g_comb_param = mo_handler.compute_direction(mo_grads, mo_losses_dict, step=t, epsilon=1e-4)
 
             predictor.module.zero_grad(set_to_none=True)

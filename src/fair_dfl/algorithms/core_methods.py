@@ -19,6 +19,7 @@ from .mo_handler import (
     MultiObjectiveGradientHandler,
     WeightedSumHandler,
     PCGradHandler,
+    AlignMOHandler,
     MGDAHandler,
     CAGradHandler,
     PLGHandler3Obj,
@@ -534,6 +535,14 @@ def _train_single_stage(
         mo_handler = PCGradHandler(
             normalize=bool(train_cfg.get("mo_pcgrad_normalize", False)),
         )
+    elif mo_method == "alignmo":
+        mo_handler = AlignMOHandler(
+            tau_conflict=float(train_cfg.get("mo_alignmo_tau_conflict", -0.1)),
+            tau_scale=float(train_cfg.get("mo_alignmo_tau_scale", 2.0)),
+            mu_floor=float(train_cfg.get("mo_alignmo_mu_floor", 0.1)),
+            beta_ema=float(train_cfg.get("mo_alignmo_beta_ema", 0.9)),
+            T_warmup=int(train_cfg.get("mo_alignmo_T_warmup", 10)),
+        )
     elif mo_method == "mgda":
         mo_handler = MGDAHandler()
     elif mo_method == "cagrad":
@@ -748,6 +757,8 @@ def _train_single_stage(
                 "decision_regret": float(out["loss_dec"]),
                 "pred_fairness": float(out["loss_fair"]),
             }
+            if hasattr(mo_handler, "set_step_context"):
+                mo_handler.set_step_context(mu=float(alpha_t), lam=float(beta_t))
             g_comb_param = mo_handler.compute_direction(mo_grads, mo_losses_dict, step=t, epsilon=1e-4)
 
             # Set model gradients directly from the MO handler output.

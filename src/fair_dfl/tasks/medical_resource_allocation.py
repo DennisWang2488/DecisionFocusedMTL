@@ -226,7 +226,8 @@ class MedicalResourceAllocationTask(BaseTask):
             exponent = 1.0 / (alpha - 2.0)
             psi_k = np.power(np.clip(s_k / (1.0 - alpha), 1e-12, None), exponent)
         else:
-            exponent = (2.0 - alpha) / (alpha * alpha - 2.0 * alpha + 2.0)
+            # beta = (alpha - 2) / (alpha^2 - 2 alpha + 2); KKT-derived, matches Prop. 1.
+            exponent = (alpha - 2.0) / (alpha * alpha - 2.0 * alpha + 2.0)
             psi_k = np.power(np.clip(s_k / (alpha - 1.0), 1e-12, None), exponent)
 
         xi = float(np.sum(h_k * psi_k))
@@ -265,7 +266,8 @@ class MedicalResourceAllocationTask(BaseTask):
             exponent = 1.0 / (alpha - 2.0)
             psi_k = np.power(np.clip(s_k / (1.0 - alpha), 1e-12, None), exponent)
         else:
-            exponent = (2.0 - alpha) / (alpha * alpha - 2.0 * alpha + 2.0)
+            # beta = (alpha - 2) / (alpha^2 - 2 alpha + 2); KKT-derived, matches Prop. 1.
+            exponent = (alpha - 2.0) / (alpha * alpha - 2.0 * alpha + 2.0)
             psi_k = np.power(np.clip(s_k / (alpha - 1.0), 1e-12, None), exponent)
 
         xi = float(np.sum(h_k * psi_k))
@@ -343,7 +345,8 @@ class MedicalResourceAllocationTask(BaseTask):
             exponent = 1.0 / (alpha - 2.0)
             psi_k = np.power(np.clip(s_k / (1.0 - alpha), 1e-12, None), exponent)
         else:
-            exponent = (2.0 - alpha) / (alpha * alpha - 2.0 * alpha + 2.0)
+            # beta = (alpha - 2) / (alpha^2 - 2 alpha + 2); KKT-derived, matches Prop. 1.
+            exponent = (alpha - 2.0) / (alpha * alpha - 2.0 * alpha + 2.0)
             psi_k = np.power(np.clip(s_k / (alpha - 1.0), 1e-12, None), exponent)
 
         xi = float(np.sum(h_k * psi_k))

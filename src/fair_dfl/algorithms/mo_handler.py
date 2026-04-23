@@ -1,8 +1,9 @@
 """Multi-objective gradient handler implementations for Decision-Focused Learning.
 
-Provides abstract base class and six concrete strategies:
+Provides abstract base class and seven concrete strategies:
   - WeightedSumHandler: normalized weighted sum of objective gradients
   - PCGradHandler: projecting away conflicting gradient components (Yu et al. 2020)
+  - AlignMOHandler: adaptive routing between scalarized / anchored / PCGrad modes
   - MGDAHandler: minimum-norm point in the convex hull (Sener & Koltun 2018)
   - CAGradHandler: conflict-averse gradient descent (Liu et al. ICLR 2021)
   - PLGHandler3Obj: prediction-loss-guided 3-objective extension for DFL
@@ -248,7 +249,204 @@ class PCGradHandler(MultiObjectiveGradientHandler):
 
 
 # ======================================================================
-# 3. MGDAHandler
+# 3. AlignMOHandler
+# ======================================================================
+
+class AlignMOHandler(MultiObjectiveGradientHandler):
+    """Adaptive multi-objective handler — two binary decisions, four modes.
+
+    At each step, maintains EMAs of the pairwise cosines among
+    {decision_regret, pred_loss, pred_fairness} and the log-scale ratios
+    r_dp = log(||g_dec||/||g_pred||), r_df = log(||g_dec||/||g_fair||),
+    then makes two *independent* decisions:
+
+      Decision A — normalize?  max(|r_dp|, |r_df|) > tau_scale
+      Decision B — project?    min(c_dp, c_df, c_pf) < tau_conflict
+
+    composed into four modes: scalarized, projected, anchored,
+    anchored_projected. Cold start (step < T_warmup) forces scalarized.
+    """
+
+    _DEC = "decision_regret"
+    _PRED = "pred_loss"
+    _FAIR = "pred_fairness"
+
+    _MODE_NAMES = {
+        (False, False): "scalarized",
+        (False, True): "projected",
+        (True, False): "anchored",
+        (True, True): "anchored_projected",
+    }
+
+    def __init__(
+        self,
+        tau_conflict: float = -0.1,
+        tau_scale: float = 2.0,
+        mu_floor: float = 0.1,
+        beta_ema: float = 0.9,
+        T_warmup: int = 10,
+        tau_align: Optional[float] = None,  # deprecated, ignored
+    ) -> None:
+        # tau_align accepted for backward compat but no longer used.
+        self._tau_conflict = float(tau_conflict)
+        self._tau_scale = float(tau_scale)
+        self._mu_floor = float(mu_floor)
+        self._beta_ema = float(beta_ema)
+        self._T_warmup = int(T_warmup)
+
+        self._ema_c_dp: Optional[float] = None
+        self._ema_c_df: Optional[float] = None
+        self._ema_c_pf: Optional[float] = None
+        self._ema_r_dp: Optional[float] = None
+        self._ema_r_df: Optional[float] = None
+
+        self._mu_context = 1.0
+        self._lambda_context = 1.0
+        self._last_mode: Optional[str] = None
+        self._n_mode_switches = 0
+        self._last_diag: Dict[str, float] = {}
+        self._pcgrad = PCGradHandler(normalize=False)
+
+    def set_step_context(self, *, mu: float = 1.0, lam: float = 1.0) -> None:
+        """Provide the current prediction/fairness weights for this step."""
+        self._mu_context = float(mu)
+        self._lambda_context = float(lam)
+
+    def compute_direction(
+        self,
+        grads: Dict[str, np.ndarray],
+        losses: Dict[str, float],
+        step: int,
+        epsilon: float = 1e-4,
+    ) -> np.ndarray:
+        safe_grads = {
+            name: np.nan_to_num(arr.ravel().astype(float, copy=True), nan=0.0, posinf=0.0, neginf=0.0)
+            for name, arr in grads.items()
+        }
+        if not safe_grads:
+            self._last_diag = {}
+            return np.zeros(0, dtype=float)
+
+        dim = next(iter(safe_grads.values())).shape[0]
+        zero = np.zeros(dim, dtype=float)
+        g_dec = safe_grads.get(self._DEC, zero)
+        g_pred = safe_grads.get(self._PRED, zero)
+        g_fair = safe_grads.get(self._FAIR, zero)
+
+        n_dec = l2_norm(g_dec)
+        n_pred = l2_norm(g_pred)
+        n_fair = l2_norm(g_fair)
+        c_dp = cosine(g_dec, g_pred)
+        c_df = cosine(g_dec, g_fair)
+        c_pf = cosine(g_pred, g_fair)
+        r_dp = self._safe_log_ratio(n_dec, n_pred)
+        r_df = self._safe_log_ratio(n_dec, n_fair)
+
+        ema_c_dp = self._update_ema("_ema_c_dp", c_dp)
+        ema_c_df = self._update_ema("_ema_c_df", c_df)
+        ema_c_pf = self._update_ema("_ema_c_pf", c_pf)
+        ema_r_dp = self._update_ema("_ema_r_dp", r_dp)
+        ema_r_df = self._update_ema("_ema_r_df", r_df)
+
+        mu = max(0.0, float(self._mu_context))
+        lam = max(0.0, float(self._lambda_context))
+        scale_signal = max(abs(ema_r_dp), abs(ema_r_df))
+
+        # Two independent binary decisions (forced off during warmup).
+        if step < self._T_warmup:
+            normalize = False
+            project = False
+        else:
+            normalize = bool(scale_signal > self._tau_scale)
+            project = bool(min(ema_c_dp, ema_c_df, ema_c_pf) < self._tau_conflict)
+        mode = self._MODE_NAMES[(normalize, project)]
+        regime_scale = "imbalanced" if normalize else "balanced"
+        regime_direction = "conflict" if project else "compatible"
+
+        # Decision A — normalize? Also sets mu_eff and post_scale.
+        if normalize:
+            g_d = self._unit_or_zero(g_dec)
+            g_p = self._unit_or_zero(g_pred)
+            g_f = self._unit_or_zero(g_fair)
+            mu_eff = max(mu, self._mu_floor)
+            post_scale = float(np.mean([n_dec, n_pred, n_fair]))
+        else:
+            g_d, g_p, g_f = g_dec, g_pred, g_fair
+            mu_eff = mu
+            post_scale = 1.0
+
+        # Weight the pred / fair gradients before the sum-or-project step.
+        weighted = {
+            self._DEC: g_d,
+            self._PRED: mu_eff * g_p,
+            self._FAIR: lam * g_f,
+        }
+
+        # Decision B — project? PCGrad on the (possibly normalized) grads.
+        n_projections = 0
+        if project:
+            core = self._pcgrad.compute_direction(weighted, losses, step=step, epsilon=epsilon)
+            n_projections = int(self._pcgrad.extra_logs().get("mo_pcgrad_n_projections", 0.0))
+        else:
+            core = weighted[self._DEC] + weighted[self._PRED] + weighted[self._FAIR]
+
+        direction = post_scale * core
+        direction = np.nan_to_num(direction, nan=0.0, posinf=0.0, neginf=0.0)
+
+        if self._last_mode is not None and mode != self._last_mode:
+            self._n_mode_switches += 1
+        self._last_mode = mode
+
+        self._last_diag = self._compute_common_diagnostics(safe_grads, direction)
+        self._last_diag.update(
+            {
+                "mode_this_step": mode,
+                "regime_scale": regime_scale,
+                "regime_direction": regime_direction,
+                "regime_scale_this_step": float(scale_signal),
+                "c_dp": float(ema_c_dp),
+                "c_df": float(ema_c_df),
+                "c_pf": float(ema_c_pf),
+                "r_dp": float(ema_r_dp),
+                "r_df": float(ema_r_df),
+                "mu_eff_used": float(mu_eff),
+                "post_scale_used": float(post_scale),
+                "n_projections": float(n_projections),
+                "n_mode_switches_so_far": float(self._n_mode_switches),
+                "mo_alignmo_tau_conflict": float(self._tau_conflict),
+                "mo_alignmo_tau_scale": float(self._tau_scale),
+                "mo_alignmo_mu": float(mu),
+                "mo_alignmo_lambda": float(lam),
+            }
+        )
+        return direction
+
+    def extra_logs(self) -> Dict[str, float]:
+        return dict(self._last_diag)
+
+    def _update_ema(self, attr: str, value: float) -> float:
+        prev = getattr(self, attr)
+        if prev is None:
+            updated = float(value)
+        else:
+            updated = float(self._beta_ema * prev + (1.0 - self._beta_ema) * value)
+        setattr(self, attr, updated)
+        return updated
+
+    @staticmethod
+    def _safe_log_ratio(num: float, den: float, eps: float = 1e-12) -> float:
+        return float(np.log(max(num, eps)) - np.log(max(den, eps)))
+
+    @staticmethod
+    def _unit_or_zero(arr: np.ndarray) -> np.ndarray:
+        norm = l2_norm(arr)
+        if norm <= 1e-12:
+            return np.zeros_like(arr)
+        return arr / norm
+
+
+# ======================================================================
+# 4. MGDAHandler
 # ======================================================================
 
 class MGDAHandler(MultiObjectiveGradientHandler):
