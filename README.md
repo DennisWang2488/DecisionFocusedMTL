@@ -137,37 +137,57 @@ colab_upload/
 
 ## Methods
 
-### Base Methods
+Methods are grouped by how the loss is combined during training.
+The FDFL family exposes an explicit prediction weight `mu` via the
+`pred_weight_mode` config key (`"zero"`, a numeric string like
+`"0.1"`, or `"fixed1"`), giving the loss
+
+$$L_{FDFL} = L_{regret} + \mu\, L_{pred} + \lambda\, F.$$
+
+### 1. Predict-then-Optimize (PTO)
+
+No decision gradient during training; predictor is fit to outcomes
+(MSE or a distributionally-robust surrogate) and the solver is
+applied post-hoc at evaluation time.
 
 | Method | Objectives | Description |
 |--------|-----------|-------------|
+| PTO    | pred      | Predict-then-optimize (no fairness) |
 | FPTO   | pred+fair | Fair predict-then-optimize |
-| DFL    | dec       | Decision-focused learning |
-| FDFL   | dec+fair  | Fair DFL |
-| PLG    | dec+pred  | Predict-and-Learn with Gradients |
-| FPLG   | dec+pred+fair | Fair PLG (full 3-objective) |
+| SAA    | —         | Sample average approximation (no training) |
+| WDRO   | pred      | Wasserstein DRO via input-gradient penalty |
+| VarDRO | pred      | f-divergence variance-regularized prediction |
 
-### MOO Methods (Multi-Objective Optimization)
+### 2. Static decision-focused (constant prediction weight `mu`)
 
-| Method | Handler | Description |
-|--------|---------|-------------|
-| WS-equal / WS-dec / WS-fair | weighted_sum | Weighted sum with different weight profiles |
-| MGDA   | mgda    | Multiple-gradient descent |
-| PCGrad | pcgrad  | Projecting conflicting gradients |
-| CAGrad | cagrad  | Conflict-averse gradient descent |
-| FAMO   | famo    | Fast adaptive MOO |
-| PLG-FP | plg_fp  | Nested PLG (fairness primary) |
-| PLG-PP | plg_pp  | Nested PLG (prediction primary) |
+The decision-regret gradient is combined with a fixed-weight
+prediction / fairness term.
 
-### Baselines
+| Method     | Objectives     | mu  | Description |
+|------------|----------------|-----|-------------|
+| DFL        | dec            | 0   | Pure decision-focused (no fairness) |
+| FDFL       | dec+fair       | 0   | Fair DFL, no prediction anchor |
+| FDFL-0.1   | dec+pred+fair  | 0.1 | FDFL + small prediction anchor |
+| FDFL-0.5   | dec+pred+fair  | 0.5 | FDFL + medium prediction anchor |
+| FDFL-Scal  | dec+pred+fair  | 1   | Standard weighted-sum scalarization |
 
-| Method | Description |
-|--------|-------------|
-| SAA    | Sample average approximation (no training) |
-| WDRO   | Wasserstein distributionally robust optimization |
-| PTO    | Predict-then-optimize (no fairness, no decision gradient) |
+### 3. Dynamic decision-focused (adaptive per-step combination)
 
-### No-Fairness Variants
+The gradient combination rule changes every step — either through
+PLG's $\alpha_t$ schedule or through a multi-objective handler that
+resolves conflicts between per-objective gradients online.
+
+| Method   | Objectives     | Handler | Description |
+|----------|----------------|---------|-------------|
+| PLG      | dec+pred       | —       | Predict-and-Learn with Gradients (decaying $\alpha_t$) |
+| FPLG     | dec+pred+fair  | —       | Fair PLG (3-objective with $\alpha_t$ schedule) |
+| PCGrad   | dec+pred+fair  | pcgrad  | Projecting conflicting gradients (per-objective normalization ON by default) |
+| MGDA     | dec+pred+fair  | mgda    | Minimum-norm point in convex hull |
+| CAGrad   | dec+pred+fair  | cagrad  | Conflict-averse gradient descent |
+| FAMO     | dec+pred+fair  | famo    | Fast adaptive MOO |
+| WS-equal / WS-dec / WS-fair | dec+pred+fair | weighted_sum | Weighted-sum profiles |
+
+### No-Fairness MOO variants
 
 PCGrad-nf, MGDA-nf, CAGrad-nf: 2-objective (dec+pred) versions of MOO methods.
 

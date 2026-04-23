@@ -1,0 +1,82 @@
+{
+  "label": "a0.5_bb0.0_cb0.3",
+  "timestamp": "2026-04-14T04:38:07",
+  "elapsed_sec": 151.3562135696411,
+  "task_cfg": {
+    "name": "md_knapsack",
+    "n_samples_train": 40,
+    "n_samples_val": 10,
+    "n_samples_test": 20,
+    "n_features": 5,
+    "n_resources": 2,
+    "scenario": "alpha_fair",
+    "alpha_fair": 0.5,
+    "poly_degree": 2,
+    "snr": 5.0,
+    "benefit_group_bias": 0.0,
+    "benefit_noise_ratio": 1.0,
+    "cost_group_bias": 0.3,
+    "cost_noise_ratio": 1.0,
+    "cost_mean": 1.0,
+    "cost_std": 0.2,
+    "budget_tightness": 0.35,
+    "fairness_type": "mad",
+    "group_ratio": 0.5,
+    "decision_mode": "group",
+    "data_seed": 42
+  },
+  "train_cfg": {
+    "lambdas": [
+      0.0,
+      0.5
+    ],
+    "seeds": [
+      11,
+      22,
+      33
+    ],
+    "steps_per_lambda": 30,
+    "batch_size": -1,
+    "lr": 0.0005,
+    "lr_decay": 0.0005,
+    "optimizer": "sgd",
+    "weight_decay": 0.0,
+    "alpha_schedule": {
+      "type": "inv_sqrt",
+      "alpha0": 1.0,
+      "alpha_min": 0.0
+    },
+    "warmstart_fraction": 0.0,
+    "force_lambda_path_all_methods": false,
+    "grad_clip_norm": 10000.0,
+    "explode_threshold": 1000000.0,
+    "fairness_smoothing": 1e-06,
+    "log_every": 5,
+    "pareto_sweep_mode": true,
+    "lambda_train": 0.0,
+    "model": {
+      "arch": "mlp",
+      "hidden_dim": 32,
+      "n_layers": 2,
+      "activation": "relu",
+      "dropout": 0.0,
+      "batch_norm": false,
+      "init_mode": "default"
+    },
+    "device": "cpu",
+    "decision_grad_backend": "spsa",
+    "decision_grad_spsa_eps": 0.005,
+    "decision_grad_spsa_n_dirs": 8,
+    "eval_train": true
+  },
+  "methods": [
+    "FPTO",
+    "DFL",
+    "FDFL-Scal",
+    "FPLG",
+    "PCGrad",
+    "MGDA"
+  ],
+  "n_stage_rows": 27,
+  "n_iter_rows": 162
+}

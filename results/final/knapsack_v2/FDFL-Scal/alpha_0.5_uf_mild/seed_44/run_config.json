@@ -1,0 +1,14 @@
+{
+  "method_label": "FDFL-Scal",
+  "config_name": "FPLG",
+  "alpha": 0.5,
+  "unfairness": "mild",
+  "seed": 44,
+  "lambdas": [
+    0.0,
+    0.5,
+    1.0,
+    5.0
+  ],
+  "elapsed_sec": 65.61797451972961
+}

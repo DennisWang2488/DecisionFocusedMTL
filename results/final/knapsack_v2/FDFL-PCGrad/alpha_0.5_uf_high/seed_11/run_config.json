@@ -1,0 +1,11 @@
+{
+  "method_label": "FDFL-PCGrad",
+  "config_name": "PCGrad",
+  "alpha": 0.5,
+  "unfairness": "high",
+  "seed": 11,
+  "lambdas": [
+    0.0
+  ],
+  "elapsed_sec": 20.44731330871582
+}

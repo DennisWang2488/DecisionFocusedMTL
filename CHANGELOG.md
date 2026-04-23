@@ -4,6 +4,90 @@ codex resume 019ce170-90a1-76b1-9fb2-fb04219c1b36
 
 All notable changes made today in this repository.
 
+## 2026-04-21
+
+### Advisor-review follow-up: FDFL mu parameter + PCGrad normalization (Claude)
+
+#### Motivation
+MD knapsack diagnosis confirmed two failure modes under SPSA decision
+gradients: (1) FDFL (mu=0) diverges because there is no prediction
+anchor — the SPSA gradient is noisy and without MSE regularization the
+predictor drifts; (2) PCGrad oscillates because the decision-regret
+gradient magnitude (~3000) dwarfs the prediction/fairness gradients
+(~1), so the projection geometry is dominated by a single objective.
+
+#### Added
+- `pred_weight_mode` now accepts any numeric string (e.g. `"0.1"`,
+  `"0.5"`) as a fixed prediction weight (mu).  Named keyword modes
+  (`zero`, `fixed1`, `schedule`) take priority; anything else is
+  parsed as `float`.  A non-numeric string still raises `ValueError`.
+  Implemented in both `src/fair_dfl/training/loop.py` and
+  `src/fair_dfl/algorithms/core_methods.py`.
+- `PCGradHandler(normalize=True)` — per-objective gradient
+  normalization before pairwise conflict projection, with rescaling by
+  the mean of the original norms to preserve an objective-scale step
+  size.  Enabled by `mo_pcgrad_normalize=True` in train config.
+- New method configs `FDFL-0.1` and `FDFL-0.5` (static dec+pred+fair,
+  mu ∈ {0.1, 0.5}).
+- Method taxonomy in `experiments/configs.py` reorganized into three
+  groups: PTO, static decision-focused, dynamic decision-focused.
+  `README.md` method tables updated to match.
+
+#### Changed
+- `PCGrad` config now sets `mo_pcgrad_normalize: True` by default.
+  No separate un-normalized variant is kept going forward.
+- `PCGrad-nf` also updated to normalize.
+
+#### Experiments (Exp 1 + 2 + 3)
+- **Exp 1 — MD knapsack mu sweep**
+  (`results/advisor_review/md_knapsack_mu_sweep/`):
+  10 methods × 5 seeds × λ ∈ {0, 0.5, 1, 2} × 30 steps, SPSA
+  n_dirs=8 eps=5e-3, n_train=300, alpha_fair=2.0, fairness=mad.
+  Launcher: `experiments/advisor_review/run_md_knapsack_mu_sweep.py`.
+  Key finding: FDFL (mu=0) normalized regret ≈ 0.84 (diverged);
+  FDFL-0.1 snaps to ~0.20; FDFL-0.5/Scal cluster with FPLG near
+  the top performers. Normalized PCGrad on SPSA is 8/9 stable
+  (0.19 ± 0.02 over stable seeds) but has a non-trivial
+  catastrophic-failure tail — seed 55 (from {11..55}) exploded to
+  0.9999, confirmed by extra-seeds run {66,77,88,99} which all
+  stayed stable. Observed explosion rate 1/9 ≈ 11%.
+
+- **Exp 2 — Healthcare FDFL-mu append**
+  (`results/advisor_review/healthcare_followup_v2/variant_a/**/stage_results_fdfl_mu.csv`):
+  10 methods × 4 fairness_types × 2 alphas × 5 seeds × 70 steps,
+  analytic gradients, full cohort.  Non-destructive — paper-cited
+  `stage_results.csv` is untouched.
+  Launcher: `experiments/advisor_review/run_healthcare_v2_fdfl_mu.py`.
+  Grand summary: `grand_summary_fdfl_mu.csv` (1120 rows).
+  Key finding (mad, alpha=2, best-lambda, 5 seeds): FDFL mu ∈
+  {0, 0.1, 0.5} all cluster at test_regret_normalized ≈ 0.128–0.129,
+  matching FDFL-Scal (mu=1) at 0.1307 — analytic gradients don't
+  need the prediction anchor. PCGrad (normalized) = 0.1333 ± 0.0035,
+  slightly WORSE than the paper baseline (0.1282 ± 0.0019, with
+  normalize=False). At alpha=0.5, normalized PCGrad = 0.0475 vs
+  paper 0.0488 — marginally better. Net: normalization is a wash
+  under analytic gradients (slight gain at alpha=0.5, slight loss
+  at alpha=2).
+
+  Also flagged a suspected task-state contamination issue: FPLG at
+  alpha=0.5 shows non-monotone lambda behavior in the new run
+  (best = 0.0649 at lambda=0.5) vs monotone behavior in the old run
+  (best = 0.0735 at lambda=2). lambda=0 matches exactly across old
+  and new; the divergence begins with lambda=0.5, which for FPLG
+  continues from the end-of-lambda=0 predictor state. Likely cause:
+  the new FDFL / FDFL-0.1 / FDFL-0.5 methods running before FPLG in
+  the method loop leave the healthcare task's internal solver cache
+  in a different state. Needs investigation before any FPLG result
+  from the new run is used for paper comparison. alpha=2 FPLG is
+  unaffected (delta = +0.0004, within noise).
+
+- **Exp 3 — Gradient diagnostics figure**
+  (`results/advisor_review/md_knapsack_mu_sweep/fig_gradient_scale_mu_sweep.png`):
+  2×2 panel: grad_norm_dec vs grad_norm_pred on log-y axis for FDFL
+  mu ∈ {0, 0.1, 0.5, 1}, top row MD knapsack (SPSA, scale explosion),
+  bottom row healthcare (analytic, flat).
+  Script: `experiments/advisor_review/plot_gradient_scale_mu_sweep.py`.
+
 ## 2026-03-23
 
 ### Result provenance metadata (Claude)

@@ -19,16 +19,14 @@ from .mo_handler import (
     MultiObjectiveGradientHandler,
     WeightedSumHandler,
     PCGradHandler,
+    AlignMOHandler,
     MGDAHandler,
     CAGradHandler,
     PLGHandler3Obj,
     FAMOHandler,
-    NestedPLGFairPrimaryHandler,
-    NestedPLGPredPrimaryHandler,
 )
 from ..tasks.medical_resource_allocation import MedicalResourceAllocationTask
 from ..tasks.portfolio_qp_simplex import PortfolioQPSimplexTask
-from ..tasks.resource_allocation import ResourceAllocationTask
 from .torch_utils import (
     backward_param_grad_from_output_grad,
     flatten_param_grads,
@@ -50,7 +48,7 @@ class MethodSpec:
 
 
 BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
-    "fplg": MethodSpec(
+    "fair_moo": MethodSpec(
         use_dec=True,
         use_pred=True,
         use_fair=True,
@@ -75,7 +73,7 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
         continuation=False,
         allow_orthogonalization=False,
     ),
-    "plg": MethodSpec(
+    "moo": MethodSpec(
         use_dec=True,
         use_pred=True,
         use_fair=False,
@@ -107,6 +105,14 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
         continuation=False,
         allow_orthogonalization=False,
     ),
+    "var_dro": MethodSpec(
+        use_dec=False,
+        use_pred=True,
+        use_fair=False,
+        pred_weight_mode="fixed1",
+        continuation=False,
+        allow_orthogonalization=False,
+    ),
     "wdro": MethodSpec(
         use_dec=False,
         use_pred=True,
@@ -117,7 +123,7 @@ BASE_METHOD_SPECS: Dict[str, MethodSpec] = {
     ),
 }
 
-PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "plg", "fplg", "saa", "wdro")
+PUBLIC_METHODS = ("fpto", "dfl", "fdfl", "moo", "fair_moo", "saa", "var_dro", "wdro")
 METHOD_SPECS: Dict[str, MethodSpec] = {name: BASE_METHOD_SPECS[name] for name in PUBLIC_METHODS}
 
 # Human-readable aliases → canonical abbreviation
@@ -125,9 +131,10 @@ METHOD_ALIASES: Dict[str, str] = {
     "prediction_only": "fpto",
     "decision_focused": "dfl",
     "fair_decision_focused": "fdfl",
-    "pred_loss_guided": "plg",
-    "fair_pred_loss_guided": "fplg",
+    "pred_loss_guided": "moo",
+    "fair_pred_loss_guided": "fair_moo",
     "sample_average_approximation": "saa",
+    "variance_dro": "var_dro",
     "wasserstein_dro": "wdro",
 }
 REVERSE_ALIASES: Dict[str, str] = {v: k for k, v in METHOD_ALIASES.items()}
@@ -172,7 +179,11 @@ def _pred_weight(mode: str, t: int, alpha_schedule_cfg: Dict[str, Any]) -> float
         return 1.0
     if mode == "schedule":
         return alpha_value(t=t, schedule_cfg=alpha_schedule_cfg)
-    raise ValueError(f"Unsupported pred weight mode: {mode}")
+    # Any numeric string is treated as a fixed prediction weight (mu).
+    try:
+        return float(mode)
+    except (TypeError, ValueError):
+        raise ValueError(f"Unsupported pred weight mode: {mode}")
 
 
 def _safe_mean(values: List[float]) -> float:
@@ -357,7 +368,7 @@ def _combine_prediction_gradients(
         "guided_dir_norm": float("nan"),
     }
     if iter_spec.use_dec and iter_spec.use_pred:
-        fairness_into_pred = iter_spec.use_fair and method_name in {"fplg", "grid_restart"}
+        fairness_into_pred = iter_spec.use_fair and method_name in {"fair_moo", "grid_restart"}
         pred_branch = g_pred_pred + beta_t * g_fair_pred if fairness_into_pred else g_pred_pred
         g_guided, guided_diag = merge_guided_dec_pred_gradient(
             g_dec=g_dec_pred,
@@ -405,40 +416,6 @@ def _finite_diff_decision_grad(
     bsz = int(raw_pred.shape[0])
     dim = int(raw_pred.shape[1])
     grad = np.zeros_like(raw_pred, dtype=float)
-
-    if isinstance(task, ResourceAllocationTask):
-        costs = np.asarray(task._current_costs, dtype=float)  # bound via runner
-        raw = np.asarray(raw_pred, dtype=float)
-        pred_pos = _softplus_np(raw) + 1e-5
-        y_true = np.asarray(true, dtype=float)
-
-        obj_true = np.zeros(bsz, dtype=float)
-        for b in range(bsz):
-            d_true = task._solve_allocation_batch(y_true[b : b + 1], costs)
-            obj_true[b] = float(task._objective(d_true, y_true[b : b + 1])[0])
-
-        solver_calls = 0
-        for b in range(bsz):
-            base_pos = pred_pos[b].copy()
-            base_raw = raw[b]
-            yb = y_true[b : b + 1]
-            for j in range(dim):
-                plus_pos = base_pos.copy()
-                minus_pos = base_pos.copy()
-                plus_pos[j] = float(_softplus_np(np.array([base_raw[j] + eps]))[0] + 1e-5)
-                minus_pos[j] = float(_softplus_np(np.array([base_raw[j] - eps]))[0] + 1e-5)
-
-                d_plus = task._solve_allocation_batch(plus_pos[None, :], costs)
-                d_minus = task._solve_allocation_batch(minus_pos[None, :], costs)
-                obj_pred_plus = float(task._objective(d_plus, yb)[0])
-                obj_pred_minus = float(task._objective(d_minus, yb)[0])
-                regret_plus = max(float(obj_true[b] - obj_pred_plus), 0.0)
-                regret_minus = max(float(obj_true[b] - obj_pred_minus), 0.0)
-                grad[b, j] = (regret_plus - regret_minus) / (2.0 * float(eps) * float(bsz))
-                solver_calls += 2
-
-        decision_ms = (perf_counter() - t0) * 1000.0
-        return grad, int(solver_calls + bsz), float(decision_ms)
 
     if isinstance(task, PortfolioQPSimplexTask):
         if task._cvx_problem is None:
@@ -555,7 +532,17 @@ def _train_single_stage(
     if mo_method == "weighted_sum":
         mo_handler = WeightedSumHandler(weights=train_cfg.get("mo_weights", {}))
     elif mo_method == "pcgrad":
-        mo_handler = PCGradHandler()
+        mo_handler = PCGradHandler(
+            normalize=bool(train_cfg.get("mo_pcgrad_normalize", False)),
+        )
+    elif mo_method == "alignmo":
+        mo_handler = AlignMOHandler(
+            tau_conflict=float(train_cfg.get("mo_alignmo_tau_conflict", -0.1)),
+            tau_scale=float(train_cfg.get("mo_alignmo_tau_scale", 2.0)),
+            mu_floor=float(train_cfg.get("mo_alignmo_mu_floor", 0.1)),
+            beta_ema=float(train_cfg.get("mo_alignmo_beta_ema", 0.9)),
+            T_warmup=int(train_cfg.get("mo_alignmo_T_warmup", 10)),
+        )
     elif mo_method == "mgda":
         mo_handler = MGDAHandler()
     elif mo_method == "cagrad":
@@ -571,18 +558,6 @@ def _train_single_stage(
             gamma=float(train_cfg.get("mo_famo_gamma", 1e-3)),
             w_lr=float(train_cfg.get("mo_famo_w_lr", 0.025)),
             min_loss=float(train_cfg.get("mo_famo_min_loss", 1e-8)),
-        )
-    elif mo_method == "plg_fp":
-        mo_handler = NestedPLGFairPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
-    elif mo_method == "plg_pp":
-        mo_handler = NestedPLGPredPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
         )
     elif mo_method is not None:
         raise ValueError(f"Unknown mo_method: {mo_method}")
@@ -664,8 +639,8 @@ def _train_single_stage(
         g_pred_pred = np.asarray(out["grad_pred"], dtype=float).reshape(pred_np.shape) if iter_spec.use_pred else np.zeros_like(pred_np)
         g_fair_pred = np.asarray(out["grad_fair"], dtype=float).reshape(pred_np.shape) if iter_spec.use_fair else np.zeros_like(pred_np)
 
-        # --- WDRO: variance-regularized prediction gradient ---
-        if method_name == "wdro":
+        # --- VarDRO: f-divergence variance-regularized prediction gradient ---
+        if method_name == "var_dro":
             dro_eps = float(train_cfg.get("dro_epsilon", 0.1))
             if isinstance(task, MedicalResourceAllocationTask):
                 true_np = batch.y
@@ -677,12 +652,43 @@ def _train_single_stage(
             std_loss = per_sample_loss.std()
             if std_loss > 1e-12:
                 dro_weights = 1.0 + dro_eps * (per_sample_loss - mean_loss) / std_loss
+                dro_weights = np.maximum(dro_weights, 0.0)
             else:
                 dro_weights = np.ones_like(per_sample_loss)
             # Expand weights to broadcast with (batch, n_outputs) gradient shape
             dro_weights = dro_weights.reshape(-1, *([1] * (g_pred_pred.ndim - 1)))
             g_pred_pred = g_pred_pred * dro_weights
             out["loss_pred"] = float(mean_loss + dro_eps * std_loss)
+
+        # --- WassDRO: Wasserstein DRO via input gradient penalty ---
+        wdro_penalty_val = 0.0
+        if method_name == "wdro":
+            wdro_eps = float(train_cfg.get("wdro_epsilon", 0.1))
+            xb_wdro = xb_t.detach().clone().requires_grad_(True)
+            if isinstance(task, MedicalResourceAllocationTask):
+                raw_wdro = model(xb_wdro).reshape(-1)
+                pred_wdro = post_processor(raw_wdro)
+                yb_wdro = to_torch(batch.y, device=device, dtype=dtype)
+                per_sample_mse = (pred_wdro - yb_wdro) ** 2
+            else:
+                pred_wdro = model(xb_wdro)
+                if post_processor.transform != "none":
+                    pred_wdro = post_processor(pred_wdro)
+                yb_wdro = to_torch(yb, device=device, dtype=dtype)
+                per_sample_mse = ((pred_wdro - yb_wdro) ** 2).reshape(
+                    pred_wdro.shape[0], -1
+                ).mean(dim=-1)
+            grad_x = torch.autograd.grad(
+                per_sample_mse.sum(), xb_wdro, create_graph=True,
+            )[0]
+            grad_norms = (grad_x ** 2).sum(dim=-1).sqrt()
+            penalty = wdro_eps * grad_norms.mean()
+            wdro_penalty_val = float(penalty.item())
+            model.zero_grad(set_to_none=True)
+            penalty.backward()
+            wdro_penalty_param_grad = flatten_param_grads(model)
+            out["wdro_grad_penalty"] = wdro_penalty_val
+            out["loss_pred"] = float(per_sample_mse.mean().item()) + wdro_penalty_val
 
         alpha_t = _pred_weight(iter_spec.pred_weight_mode, t=t, alpha_schedule_cfg=train_cfg["alpha_schedule"])
         if not iter_spec.use_fair:
@@ -736,6 +742,10 @@ def _train_single_stage(
             device=device,
         )
 
+        # WassDRO: add gradient penalty contribution to pred param grad
+        if method_name == "wdro":
+            g_pred_param = g_pred_param + wdro_penalty_param_grad
+
         if mo_handler is not None:
             mo_grads = {
                 "pred_loss": g_pred_param,
@@ -747,6 +757,8 @@ def _train_single_stage(
                 "decision_regret": float(out["loss_dec"]),
                 "pred_fairness": float(out["loss_fair"]),
             }
+            if hasattr(mo_handler, "set_step_context"):
+                mo_handler.set_step_context(mu=float(alpha_t), lam=float(beta_t))
             g_comb_param = mo_handler.compute_direction(mo_grads, mo_losses_dict, step=t, epsilon=1e-4)
 
             # Set model gradients directly from the MO handler output.

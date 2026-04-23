@@ -1,0 +1,11 @@
+{
+  "method_label": "WDRO",
+  "config_name": "WDRO",
+  "alpha": 0.5,
+  "hidden_dim": 64,
+  "seed": 55,
+  "lambdas": [
+    0.0
+  ],
+  "elapsed_sec": 4.323949098587036
+}

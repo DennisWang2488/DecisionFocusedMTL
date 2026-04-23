@@ -1,0 +1,70 @@
+\begin{table}[htbp]
+\centering
+\caption{Healthcare resource allocation results with MAD of per-group mean residuals (bias parity / calibration first moment) as the fairness violation. Mean $\pm$ std.\ over 5 seeds, each using its own train/test partition of the 48{,}784-patient cohort. Best value per column per panel is \textbf{bold}; all metrics are lower-is-better. FPTO, SAA, and WDRO train the same predictive model regardless of $\alpha$; only their normalized regret varies with $\alpha$. DFL-family methods use the decision gradient, so all three metrics depend on $\alpha$.}
+\label{tab:healthcare-bp}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+
+\smallskip
+\textit{Panel A: $\alpha = 0.5$}
+
+\smallskip
+\begin{tabular}{l ccc}
+\toprule
+Method & Norm.\ Regret & Fair.\ Viol. & Pred.\ MSE \\
+\midrule
+PTO ($\equiv$ FPTO, $\lambda\!=\!0$)         & $0.0500 \pm 0.0008$ & $0.776 \pm 0.040$ & $140.124 \pm 4.382$ \\
+FPTO ($\lambda\!=\!0.5$)                     & $0.0500 \pm 0.0008$ & $0.743 \pm 0.040$ & $140.112 \pm 4.370$ \\
+FPTO ($\lambda\!=\!1$)                       & $0.0499 \pm 0.0008$ & $0.710 \pm 0.040$ & $140.113 \pm 4.357$ \\
+FPTO ($\lambda\!=\!2$)                       & $0.0499 \pm 0.0008$ & $0.644 \pm 0.041$ & $140.156 \pm 4.331$ \\
+\midrule
+SAA                                          & $0.0754 \pm 0.0002$ & $2.526 \pm 0.067$ & $249.173 \pm 2.732$ \\
+WDRO                                         & $\mathbf{0.0490 \pm 0.0005}$ & $0.935 \pm 0.055$ & $\mathbf{131.094 \pm 2.045}$ \\
+\midrule
+DFL ($\equiv$ FDFL-Scal, $\lambda\!=\!0$)    & $0.0749 \pm 0.0013$ & $2.524 \pm 0.066$ & $396.125 \pm 5.580$ \\
+FDFL-Scal ($\lambda\!=\!0.5$)                & $0.0749 \pm 0.0013$ & $2.524 \pm 0.066$ & $396.087 \pm 5.584$ \\
+FDFL-Scal ($\lambda\!=\!1$)                  & $0.0748 \pm 0.0013$ & $2.524 \pm 0.066$ & $396.047 \pm 5.589$ \\
+FDFL-Scal ($\lambda\!=\!2$)                  & $0.0746 \pm 0.0013$ & $2.523 \pm 0.066$ & $395.967 \pm 5.599$ \\
+\midrule
+FPLG ($\lambda\!=\!0$)                       & $0.0754 \pm 0.0013$ & $2.525 \pm 0.066$ & $396.682 \pm 5.565$ \\
+FPLG ($\lambda\!=\!0.5$)                     & $0.0748 \pm 0.0013$ & $2.524 \pm 0.066$ & $396.281 \pm 5.571$ \\
+FPLG ($\lambda\!=\!1$)                       & $0.0743 \pm 0.0013$ & $2.522 \pm 0.066$ & $395.869 \pm 5.579$ \\
+FPLG ($\lambda\!=\!2$)                       & $0.0738 \pm 0.0012$ & $2.521 \pm 0.066$ & $395.443 \pm 5.590$ \\
+\midrule
+FDFL-PCGrad                                  & $0.0498 \pm 0.0008$ & $\mathbf{0.291 \pm 0.095}$ & $141.390 \pm 4.283$ \\
+FDFL-MGDA                                    & $0.0759 \pm 0.0014$ & $2.527 \pm 0.066$ & $397.067 \pm 5.561$ \\
+\bottomrule
+\end{tabular}
+
+\bigskip
+\textit{Panel B: $\alpha = 2$}
+
+\smallskip
+\begin{tabular}{l ccc}
+\toprule
+Method & Norm.\ Regret & Fair.\ Viol. & Pred.\ MSE \\
+\midrule
+PTO ($\equiv$ FPTO, $\lambda\!=\!0$)         & $0.1534 \pm 0.0033$ & $0.776 \pm 0.040$ & $140.124 \pm 4.382$ \\
+FPTO ($\lambda\!=\!0.5$)                     & $0.1531 \pm 0.0033$ & $0.743 \pm 0.040$ & $140.112 \pm 4.370$ \\
+FPTO ($\lambda\!=\!1$)                       & $0.1528 \pm 0.0032$ & $0.710 \pm 0.040$ & $140.113 \pm 4.357$ \\
+FPTO ($\lambda\!=\!2$)                       & $0.1523 \pm 0.0032$ & $0.644 \pm 0.041$ & $140.156 \pm 4.331$ \\
+\midrule
+SAA                                          & $0.2795 \pm 0.0024$ & $2.526 \pm 0.067$ & $249.173 \pm 2.732$ \\
+WDRO                                         & $0.1499 \pm 0.0024$ & $0.935 \pm 0.055$ & $131.094 \pm 2.045$ \\
+\midrule
+DFL ($\equiv$ FDFL-Scal, $\lambda\!=\!0$)    & $0.1307 \pm 0.0019$ & $0.794 \pm 0.094$ & $\mathbf{120.202 \pm 1.166}$ \\
+FDFL-Scal ($\lambda\!=\!0.5$)                & $0.1306 \pm 0.0019$ & $0.778 \pm 0.093$ & $120.226 \pm 1.157$ \\
+FDFL-Scal ($\lambda\!=\!1$)                  & $0.1306 \pm 0.0019$ & $0.762 \pm 0.094$ & $120.253 \pm 1.146$ \\
+FDFL-Scal ($\lambda\!=\!2$)                  & $0.1305 \pm 0.0019$ & $0.730 \pm 0.094$ & $120.321 \pm 1.129$ \\
+\midrule
+FPLG ($\lambda\!=\!0$)                       & $0.1281 \pm 0.0018$ & $0.567 \pm 0.088$ & $125.483 \pm 1.155$ \\
+FPLG ($\lambda\!=\!0.5$)                     & $0.1274 \pm 0.0020$ & $0.577 \pm 0.089$ & $123.827 \pm 1.046$ \\
+FPLG ($\lambda\!=\!1$)                       & $\mathbf{0.1273 \pm 0.0020}$ & $0.561 \pm 0.095$ & $123.744 \pm 1.010$ \\
+FPLG ($\lambda\!=\!2$)                       & $0.1274 \pm 0.0019$ & $0.523 \pm 0.096$ & $123.959 \pm 1.026$ \\
+\midrule
+FDFL-PCGrad                                  & $0.1291 \pm 0.0021$ & $\mathbf{0.372 \pm 0.199}$ & $129.160 \pm 1.654$ \\
+FDFL-MGDA                                    & $0.1504 \pm 0.0068$ & $2.170 \pm 0.062$ & $346.008 \pm 10.822$ \\
+\bottomrule
+\end{tabular}
+
+\end{table}

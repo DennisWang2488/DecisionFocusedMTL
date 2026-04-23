@@ -1,6 +1,6 @@
 """Unified training loop for all DFL methods.
 
-Handles all method types (FPTO, DFL, FDFL, PLG, FPLG, SAA, WDRO),
+Handles all method types (FPTO, DFL, FDFL, PLG, FPLG, SAA, VarDRO, WDRO),
 MOO handlers (PCGrad, MGDA, CAGrad, FAMO), and pluggable decision
 gradient backends (finite-diff, SPSA, SPO+, etc.) through a single
 train_single_stage() function.
@@ -8,6 +8,7 @@ train_single_stage() function.
 
 from __future__ import annotations
 
+import copy
 from time import perf_counter
 from typing import Any, Dict, List, Tuple
 
@@ -18,13 +19,11 @@ from ..algorithms.mo_handler import (
     MultiObjectiveGradientHandler,
     WeightedSumHandler,
     PCGradHandler,
+    AlignMOHandler,
     MGDAHandler,
     CAGradHandler,
     PLGHandler3Obj,
     FAMOHandler,
-    NestedPLGDecPrimaryHandler,
-    NestedPLGFairPrimaryHandler,
-    NestedPLGPredPrimaryHandler,
 )
 from ..algorithms.torch_utils import (
     backward_param_grad_from_output_grad,
@@ -43,7 +42,7 @@ from ..tasks.base import BaseTask, SplitData, TaskData
 from ..tasks.md_knapsack import MultiDimKnapsackTask
 from ..tasks.medical_resource_allocation import MedicalResourceAllocationTask
 
-from .eval import evaluate_model
+from .eval import eval_split_medical, evaluate_model
 from .method_spec import MethodSpec
 
 
@@ -76,7 +75,11 @@ def _pred_weight(mode: str, t: int, alpha_schedule_cfg: Dict[str, Any]) -> float
         return 1.0
     if mode == "schedule":
         return alpha_value(t=t, schedule_cfg=alpha_schedule_cfg)
-    raise ValueError(f"Unknown pred_weight_mode: {mode}")
+    # Any numeric string is treated as a fixed prediction weight (mu).
+    try:
+        return float(mode)
+    except (TypeError, ValueError):
+        raise ValueError(f"Unknown pred_weight_mode: {mode}")
 
 
 def _active_spec(base_spec: MethodSpec, iter_idx: int, warmstart_steps: int) -> MethodSpec:
@@ -91,7 +94,7 @@ def _active_spec(base_spec: MethodSpec, iter_idx: int, warmstart_steps: int) -> 
 
 
 def _method_uses_fpto_warmstart(method_name: str, train_cfg: Dict[str, Any]) -> bool:
-    warmstart_methods = {str(x).strip().lower() for x in train_cfg.get("warmstart_methods", ["fplg", "plg"])}
+    warmstart_methods = {str(x).strip().lower() for x in train_cfg.get("warmstart_methods", ["fair_moo", "moo"])}
     return method_name.lower() in warmstart_methods
 
 
@@ -104,7 +107,17 @@ def _build_mo_handler(
     if mo_method == "weighted_sum":
         return WeightedSumHandler(weights=train_cfg.get("mo_weights", {}))
     if mo_method == "pcgrad":
-        return PCGradHandler()
+        return PCGradHandler(
+            normalize=bool(train_cfg.get("mo_pcgrad_normalize", False)),
+        )
+    if mo_method == "alignmo":
+        return AlignMOHandler(
+            tau_conflict=float(train_cfg.get("mo_alignmo_tau_conflict", -0.1)),
+            tau_scale=float(train_cfg.get("mo_alignmo_tau_scale", 2.0)),
+            mu_floor=float(train_cfg.get("mo_alignmo_mu_floor", 0.1)),
+            beta_ema=float(train_cfg.get("mo_alignmo_beta_ema", 0.9)),
+            T_warmup=int(train_cfg.get("mo_alignmo_T_warmup", 10)),
+        )
     if mo_method == "mgda":
         return MGDAHandler()
     if mo_method == "cagrad":
@@ -121,24 +134,6 @@ def _build_mo_handler(
             w_lr=float(train_cfg.get("mo_famo_w_lr", 0.025)),
             min_loss=float(train_cfg.get("mo_famo_min_loss", 1e-8)),
         )
-    if mo_method == "plg_dp":
-        return NestedPLGDecPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
-    if mo_method == "plg_fp":
-        return NestedPLGFairPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
-    if mo_method == "plg_pp":
-        return NestedPLGPredPrimaryHandler(
-            kappa1_0=float(train_cfg.get("mo_plg_kappa1_0", 1.0)),
-            kappa2_0=float(train_cfg.get("mo_plg_kappa2_0", 1.0)),
-            kappa_decay=float(train_cfg.get("mo_plg_kappa_decay", 0.01)),
-        )
     raise ValueError(f"Unknown mo_method: {mo_method}")
 
 
@@ -151,10 +146,6 @@ def _build_active_moo_payload(
     g_fair_param: np.ndarray,
     mo_handler: MultiObjectiveGradientHandler,
 ) -> tuple[Dict[str, np.ndarray], Dict[str, float]]:
-    if isinstance(mo_handler, (NestedPLGFairPrimaryHandler, NestedPLGPredPrimaryHandler)):
-        if not (iter_spec.use_dec and iter_spec.use_pred and iter_spec.use_fair):
-            raise ValueError("plg_fp/plg_pp require decision, prediction, and fairness objectives to all be enabled.")
-
     grads: Dict[str, np.ndarray] = {}
     losses: Dict[str, float] = {}
     if iter_spec.use_pred:
@@ -189,7 +180,7 @@ def _combine_prediction_gradients(
         "guided_dir_norm": float("nan"),
     }
     if iter_spec.use_dec and iter_spec.use_pred:
-        fairness_into_pred = iter_spec.use_fair and method_name in {"fplg", "grid_restart"}
+        fairness_into_pred = iter_spec.use_fair and method_name in {"fair_moo", "grid_restart"}
         pred_branch = g_pred_pred + beta_t * g_fair_pred if fairness_into_pred else g_pred_pred
         g_guided, guided_diag = merge_guided_dec_pred_gradient(
             g_dec=g_dec_pred,
@@ -235,7 +226,7 @@ def train_single_stage(
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Train one lambda stage for any method.
 
-    Handles all method types: base (FPTO, DFL, FDFL, PLG, FPLG), SAA, WDRO,
+    Handles all method types: base (FPTO, DFL, FDFL, PLG, FPLG), SAA, VarDRO, WDRO,
     MOO handlers, and pluggable decision gradient backends (finite-diff, SPSA, SPO+).
     """
     device = predictor.device
@@ -308,6 +299,39 @@ def train_single_stage(
     cos_pred_fair_list: List[float] = []
     norm_combined_list: List[float] = []
     iter_logs: List[Dict[str, Any]] = []
+
+    # --- Early stopping (val-based, per-stage scope) ---
+    # When eval_val_every_k_steps > 0 and a val split is present, evaluate val
+    # metrics every K steps inside the inner loop. Keep a snapshot of the best
+    # (predictor, optimizer, dual_lambda) state as measured by
+    # ``early_stop_metric`` (default: val regret). Restore at stage end.
+    #
+    # Scope is per-lambda-stage: the next stage starts from the restored best
+    # state of the previous stage, which is the desired behavior for
+    # ``continuation=True`` methods like FPLG.
+    eval_val_every_k = int(train_cfg.get("eval_val_every_k_steps", 0))
+    early_stop_metric = str(train_cfg.get("early_stop_metric", "val_regret"))
+    early_stop_min_steps = int(train_cfg.get("early_stop_min_steps", 0))
+    _val_y = None
+    if data.val is not None and getattr(data.val, "y", None) is not None:
+        _val_y = data.val.y
+    val_available = _val_y is not None and (
+        _val_y.size if hasattr(_val_y, "size") else len(_val_y)
+    ) > 0
+    early_stop_enabled = eval_val_every_k > 0 and val_available
+    if early_stop_enabled and isinstance(mo_handler, FAMOHandler):
+        raise ValueError(
+            "Early stopping with FAMO handler is not supported "
+            "(FAMOHandler._xi / _prev_losses snapshot not implemented)."
+        )
+    if early_stop_enabled and not isinstance(task, MedicalResourceAllocationTask):
+        raise ValueError(
+            "eval_val_every_k_steps currently only supports "
+            "MedicalResourceAllocationTask (uses eval_split_medical)."
+        )
+    best_val_metric = float("inf")
+    best_snapshot: Dict[str, Any] | None = None
+    best_step = -1
 
     # --- SAA: skip training, use mean ---
     saa_mean = 0.0
@@ -431,8 +455,9 @@ def train_single_stage(
             if iter_spec.use_fair else np.zeros_like(pred_np)
         )
 
-        # --- WDRO reweighting ---
-        if method_name == "wdro":
+        # --- VarDRO: f-divergence variance-regularized prediction gradient ---
+        # Implements E[loss] + eps * std(loss), following Duchi & Namkoong (2017).
+        if method_name == "var_dro":
             dro_eps = float(train_cfg.get("dro_epsilon", 0.1))
             true_np = yb if not isinstance(task, MedicalResourceAllocationTask) else batch.y
             per_sample_loss = ((pred_np - true_np) ** 2).reshape(pred_np.shape[0], -1).mean(axis=-1)
@@ -440,11 +465,50 @@ def train_single_stage(
             std_loss = per_sample_loss.std()
             if std_loss > 1e-12:
                 dro_weights = 1.0 + dro_eps * (per_sample_loss - mean_loss) / std_loss
+                dro_weights = np.maximum(dro_weights, 0.0)
             else:
                 dro_weights = np.ones_like(per_sample_loss)
             dro_weights = dro_weights.reshape(-1, *([1] * (g_pred_pred.ndim - 1)))
             g_pred_pred = g_pred_pred * dro_weights
             out["loss_pred"] = float(mean_loss + dro_eps * std_loss)
+
+        # --- WassDRO: Wasserstein DRO via input gradient penalty ---
+        # Implements E[loss] + eps * E[||nabla_x loss||], following
+        # Gao, Chen & Kleywegt (2024) "Wasserstein DRO and Variation Regularization".
+        # The penalty on the Lipschitz constant of the loss w.r.t. inputs
+        # provides robustness to Wasserstein perturbations in the data distribution.
+        wdro_penalty_val = 0.0
+        if method_name == "wdro":
+            wdro_eps = float(train_cfg.get("wdro_epsilon", 0.1))
+            # Re-forward with input gradients enabled for the penalty term
+            xb_wdro = xb_t.detach().clone().requires_grad_(True)
+            if isinstance(task, MedicalResourceAllocationTask):
+                raw_wdro = predictor.module(xb_wdro).reshape(-1)
+                pred_wdro = predictor.post_processor(raw_wdro)
+                yb_wdro = to_torch(batch.y, device=device, dtype=dtype)
+                per_sample_mse = (pred_wdro - yb_wdro) ** 2
+            else:
+                pred_wdro = predictor.module(xb_wdro)
+                if predictor.post_processor.transform != "none":
+                    pred_wdro = predictor.post_processor(pred_wdro)
+                yb_wdro = to_torch(yb, device=device, dtype=dtype)
+                per_sample_mse = ((pred_wdro - yb_wdro) ** 2).reshape(
+                    pred_wdro.shape[0], -1
+                ).mean(dim=-1)
+            # Gradient of per-sample losses w.r.t. inputs
+            grad_x = torch.autograd.grad(
+                per_sample_mse.sum(), xb_wdro, create_graph=True,
+            )[0]  # (batch, n_features)
+            # Per-sample L2 norm of input gradients (Lipschitz proxy)
+            grad_norms = (grad_x ** 2).sum(dim=-1).sqrt()  # (batch,)
+            penalty = wdro_eps * grad_norms.mean()
+            wdro_penalty_val = float(penalty.item())
+            # Backprop penalty to get its parameter gradient contribution
+            predictor.module.zero_grad(set_to_none=True)
+            penalty.backward()
+            wdro_penalty_param_grad = flatten_param_grads(predictor.module)
+            out["wdro_grad_penalty"] = wdro_penalty_val
+            out["loss_pred"] = float(per_sample_mse.mean().item()) + wdro_penalty_val
 
         # --- Alpha/beta weights ---
         alpha_t = _pred_weight(iter_spec.pred_weight_mode, t=t, alpha_schedule_cfg=train_cfg["alpha_schedule"])
@@ -491,6 +555,10 @@ def train_single_stage(
             retain_graph=True, device=device,
         )
 
+        # --- WassDRO: add gradient penalty contribution to pred param grad ---
+        if method_name == "wdro":
+            g_pred_param = g_pred_param + wdro_penalty_param_grad
+
         # --- MOO handler or standard backward ---
         if mo_handler is not None:
             mo_grads, mo_losses_dict = _build_active_moo_payload(
@@ -501,6 +569,8 @@ def train_single_stage(
                 g_fair_param=g_fair_param,
                 mo_handler=mo_handler,
             )
+            if hasattr(mo_handler, "set_step_context"):
+                mo_handler.set_step_context(mu=float(alpha_t), lam=float(beta_t))
             g_comb_param = mo_handler.compute_direction(mo_grads, mo_losses_dict, step=t, epsilon=1e-4)
 
             predictor.module.zero_grad(set_to_none=True)
@@ -622,6 +692,7 @@ def train_single_stage(
                 "stage_idx": stage_idx,
                 "lambda": lambda_value,
                 "iter": t,
+                "stage_type": "train",
                 "alpha_t": alpha_t,
                 "beta_t": beta_t,
                 "lr_t": lr_t,
@@ -659,7 +730,94 @@ def train_single_stage(
                 iter_row["mo_method"] = str(train_cfg.get("mo_method", ""))
             iter_logs.append(iter_row)
 
+        # --- Early-stop val check (optional, per K steps) ---
+        # Evaluates val metrics every ``eval_val_every_k`` steps and tracks
+        # the best snapshot. Gated on (val split present) AND (t+1 past
+        # ``early_stop_min_steps``). Appends a ``stage_type="val_check"`` row
+        # to iter_logs for post-hoc diagnostics.
+        if (
+            early_stop_enabled
+            and ((t + 1) % eval_val_every_k == 0)
+            and ((t + 1) >= early_stop_min_steps)
+        ):
+            predictor.module.eval()
+            with torch.no_grad():
+                val_check = eval_split_medical(
+                    task=task,
+                    predictor=predictor,
+                    split_name="val",
+                    fairness_smoothing=fairness_smoothing,
+                )
+            predictor.module.train()
+
+            # Selection metric: val_regret | val_regret_normalized |
+            # val_fairness | val_loss_total (regret + lam * fair)
+            esm = early_stop_metric.lower().strip()
+            if esm in ("val_regret", "regret"):
+                current = float(val_check.get("regret", float("inf")))
+            elif esm in ("val_regret_normalized", "regret_normalized"):
+                current = float(val_check.get("regret_normalized", float("inf")))
+            elif esm in ("val_fairness", "fairness"):
+                current = float(val_check.get("fairness", float("inf")))
+            elif esm in ("val_loss_total", "val_total", "total"):
+                current = float(val_check.get("regret", 0.0)) + float(
+                    lambda_value
+                ) * float(val_check.get("fairness", 0.0))
+            else:
+                current = float(val_check.get("regret", float("inf")))
+
+            is_best = current < best_val_metric
+            if is_best:
+                best_val_metric = current
+                best_step = t + 1
+                best_snapshot = {
+                    "predictor": copy.deepcopy(predictor.module.state_dict()),
+                    "optimizer": copy.deepcopy(optimizer.state_dict()),
+                    "dual_lambda": float(dual_lambda),
+                }
+
+            iter_logs.append(
+                {
+                    "task": task.name,
+                    "method": method_name,
+                    "seed": seed,
+                    "stage_idx": stage_idx,
+                    "lambda": lambda_value,
+                    "iter": t + 1,
+                    "stage_type": "val_check",
+                    "val_check_regret": float(val_check.get("regret", float("nan"))),
+                    "val_check_regret_normalized": float(
+                        val_check.get("regret_normalized", float("nan"))
+                    ),
+                    "val_check_fairness": float(
+                        val_check.get("fairness", float("nan"))
+                    ),
+                    "val_check_pred_mse": float(
+                        val_check.get("pred_mse", float("nan"))
+                    ),
+                    "val_check_metric_used": early_stop_metric,
+                    "val_check_selection_value": float(current),
+                    "val_check_is_best": int(bool(is_best)),
+                    "device": str(device),
+                }
+            )
+
     stage_wallclock = float(perf_counter() - stage_start)
+
+    # --- Restore best-val snapshot if early stopping engaged ---
+    # Scope: per-stage. Methods with ``continuation=True`` will start the next
+    # stage from this restored state, which is the intended behavior (each
+    # stage converges to its best val point before passing to the next).
+    early_stop_applied = False
+    if early_stop_enabled and best_snapshot is not None:
+        predictor.module.load_state_dict(best_snapshot["predictor"])
+        try:
+            optimizer.load_state_dict(best_snapshot["optimizer"])
+        except Exception:
+            # Stateless SGD load is a no-op; swallow any transient mismatch.
+            pass
+        dual_lambda = best_snapshot["dual_lambda"]
+        early_stop_applied = True
 
     # === EVALUATION ===
     # Train evaluation runs once per lambda stage (not per iteration) — it
@@ -707,6 +865,10 @@ def train_single_stage(
         "seed": seed,
         "stage_idx": stage_idx,
         "lambda": lambda_value,
+        "early_stop_enabled": int(bool(early_stop_enabled)),
+        "early_stop_applied": int(bool(early_stop_applied)) if early_stop_enabled else 0,
+        "early_stop_step": int(best_step) if (early_stop_enabled and best_step > 0) else int(steps),
+        "early_stop_metric": early_stop_metric if early_stop_enabled else "",
         "train_regret": _metric_or_nan(train_metrics, "regret"),
         "train_fairness": _metric_or_nan(train_metrics, "fairness"),
         "train_pred_mse": _metric_or_nan(train_metrics, "pred_mse"),

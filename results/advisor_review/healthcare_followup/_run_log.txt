@@ -1,0 +1,45 @@
+(CVXPY) Apr 14 07:05:12 AM: Encountered unexpected exception importing solver GLOP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+(CVXPY) Apr 14 07:05:12 AM: Encountered unexpected exception importing solver PDLP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+Healthcare follow-up — full grid
+================================
+Repo root:       E:\Codes\DecisionFocusedMTL
+Output dir:      E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup
+Fairness types:  ['mad', 'dp', 'atkinson', 'bias_parity']
+Alphas:          [0.5, 2.0]
+Methods:         ['FPTO', 'FDFL-Scal', 'FPLG', 'PCGrad', 'MGDA', 'SAA', 'WDRO']
+Seeds:           [11, 22, 33, 44, 55]
+Lambdas:         [0.0, 0.5, 1.0, 5.0]
+Steps/lambda:    70
+Total cells:     8
+
+  [hc_mad_a0.5] 80 stages in 199.1s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\mad\alpha_0.5\stage_results.csv
+[hc_grid] mad alpha=0.5: 199.1s, 80 rows
+  [hc_mad_a2.0] 80 stages in 217.6s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\mad\alpha_2.0\stage_results.csv
+[hc_grid] mad alpha=2.0: 217.6s, 80 rows
+  [hc_dp_a0.5] 80 stages in 196.5s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\dp\alpha_0.5\stage_results.csv
+[hc_grid] dp alpha=0.5: 196.5s, 80 rows
+  [hc_dp_a2.0] 80 stages in 216.2s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\dp\alpha_2.0\stage_results.csv
+[hc_grid] dp alpha=2.0: 216.2s, 80 rows
+  [hc_atkinson_a0.5] 80 stages in 196.1s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\atkinson\alpha_0.5\stage_results.csv
+[hc_grid] atkinson alpha=0.5: 196.1s, 80 rows
+  [hc_atkinson_a2.0] 80 stages in 212.3s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\atkinson\alpha_2.0\stage_results.csv
+[hc_grid] atkinson alpha=2.0: 212.3s, 80 rows
+  [hc_bias_parity_a0.5] 80 stages in 191.5s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\bias_parity\alpha_0.5\stage_results.csv
+[hc_grid] bias_parity alpha=0.5: 191.5s, 80 rows
+  [hc_bias_parity_a2.0] 80 stages in 211.0s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\bias_parity\alpha_2.0\stage_results.csv
+[hc_grid] bias_parity alpha=2.0: 211.0s, 80 rows
+
+=== Grid summary ===
+            mad alpha=0.5:  199.1s, 80 rows
+            mad alpha=2.0:  217.6s, 80 rows
+             dp alpha=0.5:  196.5s, 80 rows
+             dp alpha=2.0:  216.2s, 80 rows
+       atkinson alpha=0.5:  196.1s, 80 rows
+       atkinson alpha=2.0:  212.3s, 80 rows
+    bias_parity alpha=0.5:  191.5s, 80 rows
+    bias_parity alpha=2.0:  211.0s, 80 rows
+
+[grand total] 1640.5s = 27.34 min
+[summary] E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup\grid_summary.json

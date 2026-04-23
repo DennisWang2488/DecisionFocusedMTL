@@ -26,94 +26,132 @@ N_SAMPLE_FULL = 0     # 0 = use all patients (48,784)
 #   use_fair: use fairness gradient
 #
 # The "method" key maps to the training loop backend:
-#   - Core backends: fpto, dfl, fdfl, plg, fplg, saa, wdro
+#   - Core backends: fpto, dfl, fdfl, moo, fair_moo, saa, var_dro, wdro
 #
 # MOO methods set "mo_method" to override the default gradient combination.
+#
+# ---------------------------------------------------------------------------
+# Method taxonomy (grouped by training strategy)
+# ---------------------------------------------------------------------------
+#   1. Predict-then-Optimize (PTO):
+#        PTO, FPTO, SAA, WDRO, VarDRO
+#      No decision gradient during training; predictor is fit to outcomes
+#      (MSE, or a distributionally-robust surrogate) and the solver is
+#      applied post-hoc at evaluation time.
+#
+#   2. Static decision-focused (constant prediction weight):
+#        DFL, FDFL, FDFL-0.1, FDFL-0.5, FDFL-Scal
+#      The decision-regret gradient is combined with a fixed-weight
+#      prediction / fairness term.  FDFL-0.1 / FDFL-0.5 use mu ∈ {0.1, 0.5}
+#      as a small prediction-anchor term on top of FDFL's dec+fair; FDFL-Scal
+#      uses mu=1 (i.e. standard weighted-sum scalarization).
+#
+#   3. Dynamic decision-focused (adaptive per-step combination):
+#        PLG, FPLG, PCGrad, MGDA, CAGrad, FAMO, WS-*
+#      The gradient combination rule changes every step — either through
+#      PLG's alpha_t schedule or through a multi-objective handler that
+#      resolves conflicts between per-objective gradients online.
+# ---------------------------------------------------------------------------
+#
+# FDFL loss (new):
+#     L_FDFL = L_regret + mu * L_pred + lambda * F
+# where mu = pred_weight (static, see pred_weight_mode) and
+# lambda = fairness penalty weight (via the lambda sweep).
 # ---------------------------------------------------------------------------
 ALL_METHOD_CONFIGS = {
-    # ----- Base methods -----
-    "FPTO":   {"method": "fpto",  "use_dec": False, "use_pred": True,  "use_fair": True,
+    # ================================================================
+    # Predict-then-optimize (PTO) — no decision gradient during training
+    # ================================================================
+    "PTO":    {"method": "fpto",    "use_dec": False, "use_pred": True,  "use_fair": False,
+               "pred_weight_mode": "fixed1",
+               "lambdas": [0.0], "force_lambda_path_all_methods": False},
+    "FPTO":   {"method": "fpto",    "use_dec": False, "use_pred": True,  "use_fair": True,
                "pred_weight_mode": "fixed1"},
-    "DFL":    {"method": "dfl",   "use_dec": True,  "use_pred": False, "use_fair": False,
-               "pred_weight_mode": "zero"},
-    "FDFL":   {"method": "fdfl",  "use_dec": True,  "use_pred": False, "use_fair": True,
-               "pred_weight_mode": "zero"},
-
-    # ----- PLG-family methods (alpha_t schedule from PLG paper) -----
-    # PLG: 2-objective (dec+pred) with decaying prediction weight (the original PLG paper)
-    "PLG":    {"method": "plg",   "use_dec": True,  "use_pred": True,  "use_fair": False,
-               "pred_weight_mode": "schedule"},
-    # FPLG: 3-objective PLG extension (dec+pred+fair) with alpha_t schedule
-    "FPLG":   {"method": "fplg",  "use_dec": True,  "use_pred": True,  "use_fair": True,
-               "pred_weight_mode": "schedule", "continuation": True, "allow_orthogonalization": True},
-
-    # ----- Static-weight scalarized DFL -----
-    # FDFL-Scal: 3-objective (dec+pred+fair) with CONSTANT prediction weight (no alpha_t decay)
-    # Unlike FPLG, this uses fixed1 — a standard weighted-sum scalarization, not PLG's schedule.
-    "FDFL-Scal": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-                  "pred_weight_mode": "fixed1"},
-
-    # ----- Data-driven optimization baselines -----
-    "SAA":    {"method": "saa",  "use_dec": False, "use_pred": True,  "use_fair": False,
+    "SAA":    {"method": "saa",     "use_dec": False, "use_pred": True,  "use_fair": False,
                "pred_weight_mode": "fixed1"},
-    "WDRO":   {"method": "wdro", "use_dec": False, "use_pred": True,  "use_fair": False,
+    "WDRO":   {"method": "wdro",    "use_dec": False, "use_pred": True,  "use_fair": False,
+               "pred_weight_mode": "fixed1", "wdro_epsilon": 0.1},
+    "VarDRO": {"method": "var_dro", "use_dec": False, "use_pred": True,  "use_fair": False,
                "pred_weight_mode": "fixed1", "dro_epsilon": 0.1},
 
-    # ----- MOO methods (3-objective with MOO handler) -----
-    # NOTE: MOO handlers compute their own gradient combination, so
-    # pred_weight_mode is NOT used in the MOO code path (the handler
-    # receives raw per-objective gradients).  We set "fixed1" here for
-    # clarity — the alpha_t schedule is a PLG-specific technique and
-    # should NOT be the default for MOO methods.
+    # ================================================================
+    # Static decision-focused — constant prediction weight (mu)
+    # ================================================================
+    # DFL:  dec only (mu = 0, no fairness)
+    # FDFL: dec + fair, mu = 0 (pure decision-focused, no prediction anchor)
+    # FDFL-0.1 / FDFL-0.5: dec + mu * pred + lambda * fair, mu ∈ {0.1, 0.5}
+    # FDFL-Scal: mu = 1 (standard weighted-sum scalarization of dec+pred+fair)
+    "DFL":       {"method": "dfl",  "use_dec": True,  "use_pred": False, "use_fair": False,
+                  "pred_weight_mode": "zero"},
+    "FDFL":      {"method": "fdfl", "use_dec": True,  "use_pred": False, "use_fair": True,
+                  "pred_weight_mode": "zero"},
+    "FDFL-0.1":  {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+                  "pred_weight_mode": "0.1"},
+    "FDFL-0.5":  {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+                  "pred_weight_mode": "0.5"},
+    "FDFL-Scal": {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+                  "pred_weight_mode": "fixed1"},
+
+    # ================================================================
+    # Dynamic decision-focused — adaptive per-step combination
+    # ================================================================
+    # PLG / FPLG use the alpha_t schedule from the PLG paper.
+    # MOO handlers (PCGrad, MGDA, CAGrad, FAMO, WS-*) resolve
+    # per-objective gradient conflicts online.  pred_weight_mode is
+    # ignored in the MOO code path (the handler receives raw per-
+    # objective gradients); we set "fixed1" here for clarity.
+    "PLG":    {"method": "moo",   "use_dec": True,  "use_pred": True,  "use_fair": False,
+               "pred_weight_mode": "schedule"},
+    "FPLG":   {"method": "fair_moo",  "use_dec": True,  "use_pred": True,  "use_fair": True,
+               "pred_weight_mode": "schedule", "continuation": True, "allow_orthogonalization": True},
+    "PCGrad": {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
+               "mo_method": "pcgrad", "mo_pcgrad_normalize": True},
+    "MGDA":   {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
+               "mo_method": "mgda"},
+    "CAGrad": {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
+               "mo_method": "cagrad"},
+    "FAMO":   {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
+               "mo_method": "famo"},
+    "AlignMO": {"method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
+                "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
+                "mo_method": "alignmo",
+                "mo_alignmo_tau_conflict": -0.1,
+                "mo_alignmo_tau_scale": 2.0,
+                "mo_alignmo_mu_floor": 0.1,
+                "mo_alignmo_beta_ema": 0.9,
+                "mo_alignmo_T_warmup": 10},
     "WS-equal": {
-        "method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+        "method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
         "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
         "mo_method": "weighted_sum",
         "mo_weights": {"decision_regret": 0.333, "pred_loss": 0.333, "pred_fairness": 0.333},
     },
     "WS-dec": {
-        "method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+        "method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
         "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
         "mo_method": "weighted_sum",
         "mo_weights": {"decision_regret": 0.6, "pred_loss": 0.2, "pred_fairness": 0.2},
     },
     "WS-fair": {
-        "method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
+        "method": "fair_moo", "use_dec": True, "use_pred": True, "use_fair": True,
         "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
         "mo_method": "weighted_sum",
         "mo_weights": {"decision_regret": 0.2, "pred_loss": 0.2, "pred_fairness": 0.6},
     },
-    "MGDA":   {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "mgda"},
-    "PCGrad": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "pcgrad"},
-    "CAGrad": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "cagrad"},
-    "FAMO":   {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "famo"},
-    "PLG-DP": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "plg_dp"},
-    "PLG-FP": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "plg_fp"},
-    "PLG-PP": {"method": "fplg", "use_dec": True, "use_pred": True, "use_fair": True,
-               "pred_weight_mode": "fixed1", "continuation": True, "allow_orthogonalization": True,
-               "mo_method": "plg_pp"},
 
-    # ----- No-fairness variants (2-objective) -----
-    "PTO":        {"method": "fpto", "use_dec": False, "use_pred": True, "use_fair": False,
-                   "pred_weight_mode": "fixed1",
-                   "lambdas": [0.0], "force_lambda_path_all_methods": False},
-    "PCGrad-nf":  {"method": "plg", "use_dec": True, "use_pred": True, "use_fair": False,
-                   "pred_weight_mode": "fixed1", "mo_method": "pcgrad"},
-    "MGDA-nf":    {"method": "plg", "use_dec": True, "use_pred": True, "use_fair": False,
+    # ================================================================
+    # No-fairness MOO variants (2-objective: dec + pred)
+    # ================================================================
+    "PCGrad-nf":  {"method": "moo", "use_dec": True, "use_pred": True, "use_fair": False,
+                   "pred_weight_mode": "fixed1", "mo_method": "pcgrad",
+                   "mo_pcgrad_normalize": True},
+    "MGDA-nf":    {"method": "moo", "use_dec": True, "use_pred": True, "use_fair": False,
                    "pred_weight_mode": "fixed1", "mo_method": "mgda"},
-    "CAGrad-nf":  {"method": "plg", "use_dec": True, "use_pred": True, "use_fair": False,
+    "CAGrad-nf":  {"method": "moo", "use_dec": True, "use_pred": True, "use_fair": False,
                    "pred_weight_mode": "fixed1", "mo_method": "cagrad"},
 }
 
@@ -222,20 +260,22 @@ def compute_full_batch_size(data_csv: str, n_sample: int,
 # ---------------------------------------------------------------------------
 COLOR_MAP = {
     "FPTO": "#1f77b4", "FDFL": "#ff7f0e",
+    "FDFL-0.1": "#ffa64d", "FDFL-0.5": "#ff9800", "FDFL-Scal": "#d95f02",
     "WS-equal": "#9467bd", "WS-dec": "#8c564b", "WS-fair": "#e377c2", "WS-balanced": "#7f7f7f",
-    "MGDA": "#bcbd22", "PCGrad": "#17becf", "PLG-FP": "#aec7e8", "PLG-PP": "#ffbb78",
-    "CAGrad": "#98df8a", "FAMO": "#ff9896",
+    "MGDA": "#bcbd22", "PCGrad": "#17becf",
+    "CAGrad": "#98df8a", "FAMO": "#ff9896", "AlignMO": "#2ca02c",
     "DFL": "#c5b0d5", "PLG": "#c49c94", "FPLG": "#f7b6d2",
-    "SAA": "#e6550d", "WDRO": "#756bb1",
+    "SAA": "#e6550d", "VarDRO": "#756bb1", "WDRO": "#393b79",
     "PTO": "#636363", "PCGrad-nf": "#17becf", "MGDA-nf": "#bcbd22", "CAGrad-nf": "#98df8a",
 }
 
 MARKER_MAP = {
     "FPTO": "o", "FDFL": "s",
+    "FDFL-0.1": "s", "FDFL-0.5": "s", "FDFL-Scal": "s",
     "WS-equal": "v", "WS-dec": "<", "WS-fair": ">", "WS-balanced": "p",
-    "MGDA": "h", "PCGrad": "*", "PLG-FP": "X", "PLG-PP": "P",
-    "CAGrad": "d", "FAMO": "H",
+    "MGDA": "h", "PCGrad": "*",
+    "CAGrad": "d", "FAMO": "H", "AlignMO": "P",
     "DFL": "8", "PLG": "+", "FPLG": "x",
-    "SAA": "D", "WDRO": "p",
+    "SAA": "D", "VarDRO": "p", "WDRO": "2",
     "PTO": "o", "PCGrad-nf": "*", "MGDA-nf": "h", "CAGrad-nf": "d",
 }

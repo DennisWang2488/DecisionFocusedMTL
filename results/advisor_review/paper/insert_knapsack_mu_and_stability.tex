@@ -1,0 +1,83 @@
+% Intended to REPLACE the "Comparison with healthcare and the role of
+% gradient noise" paragraph at the end of \subsection{Synthetic
+% Multidimensional Knapsack} (sec:exp-knapsack) and the paragraph that
+% currently follows it. The existing gradient-cosine figure
+% (fig:gradient-knapsack) reference is preserved; only the surrounding
+% prose changes to incorporate the mu-sweep and normalized-PCGrad
+% findings without changing any numbers in the main knapsack tables.
+
+\textit{Prediction-anchor dependence under stochastic decision gradients.}
+A striking feature of the knapsack experiment is that removing the
+prediction anchor entirely is not a safe operating point for FDFL. With
+$\mu = 0$ in the loss $L_{\mathrm{regret}} + \mu\,L_{\mathrm{pred}} +
+\lambda F$, i.e.\ when the predictor is trained on decision regret and
+prediction-fairness alone, FDFL diverges on a substantial fraction of
+random seeds and attains average normalized regret of $0.84 \pm 0.36$
+at the redesigned $n_{\mathrm{train}} = 300$, $\alpha = 2$ MAD cell
+(5 seeds, 30 SPSA steps per $\lambda$). This is not a variance effect:
+two of the five seeds terminate with the predictor pushed into a
+degenerate region where subsequent SPSA estimates provide no useful
+gradient. Introducing even a small fixed weight restores stability
+completely: FDFL at $\mu = 0.1$ drops to $0.197 \pm 0.004$, at
+$\mu = 0.5$ to $0.186 \pm 0.005$, and at $\mu = 1$ (FDFL-Scal) to
+$0.175 \pm 0.007$. The choice among these three $\mu$ values is
+second-order---they all sit in the same performance band as the
+scalarized FDFL-Scal reported in Table~\ref{tab:knapsack-a2}. The
+practical message is that a positive prediction weight acts as a cheap
+stabilizer in the stochastic-gradient regime, and the empirical
+benefit of leaving $\mu = 0$, which the original FDFL specification
+allows, depends on the availability of an accurate decision-gradient
+estimator.
+
+\textit{MOO in the stochastic-gradient regime.}
+The contrasting behavior of the multi-objective methods across the two
+experiments is informative. In the healthcare setting at $\alpha = 2$,
+FPLG and FDFL-PCGrad jointly achieved the lowest regret (within
+$0.0007$ of each other, both below every two-stage baseline); in the
+knapsack setting, FDFL-Scal and $\mu$-anchored FDFL variants are on
+top and the MOO methods are noticeably less reliable. Two structural
+differences explain the shift. First, the \textit{gradient computation}
+differs: the healthcare experiment uses the exact analytical Jacobian,
+while the knapsack relies on SPSA perturbation-based approximation.
+MOO algorithms such as PCGrad depend on accurate gradient directions
+to identify and resolve conflicts between objectives; when the decision
+gradient is noisy, the conflict-resolution projections can remove
+useful signal or introduce spurious corrections. Second, the
+\textit{gradient alignment structure} differs (Figure~\ref{fig:gradient-knapsack}):
+prediction--fairness cosines and decision--prediction cosines are all
+small in the knapsack, indicating near-orthogonal objectives for which
+projection-based combination offers no advantage over a scalarized sum.
+
+A natural attempt at mitigation is to equalize the per-objective
+gradient magnitudes before PCGrad's conflict-resolution step, since
+the raw decision-regret norms under SPSA exceed the prediction-loss
+and fairness norms by roughly three orders of magnitude. We implemented
+this as an optional per-objective normalization inside the PCGrad
+handler, rescaling the summed direction back by the mean of the
+original gradient norms to preserve the step size. Normalization
+removes the directional imbalance on most seeds, but it does not
+eliminate the stochastic-gradient failure mode: over nine seeds on the
+redesigned knapsack, eight produce stable runs with regret
+$0.189 \pm 0.024$ (competitive with FDFL-Scal), while one seed still
+diverges catastrophically ($0.9999$, train regret $1.6 \times 10^9$),
+an observed failure rate of $\approx 11\%$. The residual failure mode
+is that the rescaling still transmits SPSA magnitude spikes to the
+effective step size, and a single oversized step into a degenerate
+region of parameter space is not recoverable under subsequent noisy
+gradient estimates. On the analytic-gradient healthcare task the same
+normalization has a small and $\alpha$-dependent effect: a $\approx 15\%$
+reduction in regret relative to the unnormalized variant at
+$\alpha = 0.5$ across all four fairness measures, and a $\approx 4\%$
+increase at $\alpha = 2$. Appendix~\ref{app:mu-followup} reports the
+full results of the $\mu$-sweep and the PCGrad normalization
+experiments.
+
+These findings suggest a refined practical guideline. For FDFL training,
+(i)~when decision gradients are computed analytically and the objective
+gradients exhibit meaningful conflict, MOO-based combination can match
+or slightly improve upon scalarized FDFL; (ii)~when decision gradients
+are approximate, a fixed prediction weight $\mu > 0$ is the first
+stabilizer to add, and it largely closes the gap between FDFL variants;
+(iii)~per-objective gradient normalization for PCGrad is a useful
+configuration option, but it should be framed as an $\alpha$-dependent
+trade-off rather than a universal improvement.

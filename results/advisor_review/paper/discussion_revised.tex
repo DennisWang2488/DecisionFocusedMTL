@@ -1,0 +1,65 @@
+% Revised \section{Conclusion and Discussion} for the IJOC manuscript.
+% The existing first two paragraphs (framework summary + method summary)
+% remain unchanged. The revision tightens the empirical-findings
+% paragraph and the practical-implications paragraph to match the
+% sharpened, data-backed story: DFL and a prediction-fairness penalty
+% are the primary drivers of the regret-fairness trade-off, while MOO
+% offers distinctive characteristics rather than uniform dominance.
+
+% ----- REPLACE the paragraph that starts "We evaluate FDFL in a
+% healthcare resource allocation problem using a synthetic dataset..."
+% with the following: -----
+
+We evaluate FDFL on two resource-allocation tasks: a healthcare
+allocation problem derived from real patient records (48{,}784
+patients, analytic decision gradients) and a synthetic multidimensional
+knapsack (SPSA-based stochastic decision gradients). The two settings
+are chosen to span the quality of the decision-gradient estimator,
+which the empirical results identify as the main moderator of which
+training strategy wins. On healthcare, where the analytical
+vector-Jacobian product from Proposition~\ref{prop:analytical_gradient_group-1}
+is available, every decision-focused end-to-end method beats every
+two-stage baseline on regret at $\alpha = 2$ by $\approx 16$--$17\%$,
+and the $\lambda$-sweep converts a clean fraction of that regret
+budget into lower prediction-fairness violation---at MAD $\alpha = 0.5$,
+for example, FDFL-Scal and FPLG reduce prediction-fairness violation
+by about $75\%$ going from $\lambda = 0$ to $\lambda = 2$ at a regret
+cost below $0.001$. Compared with DFL without prediction fairness,
+FDFL thus attains notably better prediction fairness with minimal
+loss in decision quality. On the knapsack, where the decision gradient
+is approximated by SPSA, the end-to-end benefit persists for the
+scalarized and $\mu$-anchored variants but becomes fragile for the
+unanchored variant ($\mu = 0$) and for the multi-objective handlers,
+which occasionally diverge on individual seeds. Adding any positive
+prediction weight $\mu > 0$ restores stability, and the choice of
+$\mu$ is second-order thereafter.
+
+% ----- REPLACE the paragraph that starts "We highlight two practical
+% implications of our study" with the following (keeps the same
+% opening sentence but sharpens the two bullet-level claims): -----
+
+We highlight two practical implications. First, E2EFO provides a
+general and flexible framework for integrating fairness into
+data-driven decision systems, and the distinction between prediction
+fairness and decision fairness is essential: prediction fairness
+corresponds to procedural equity---comparable predictive performance
+across groups---while decision fairness captures outcome equity---equitable
+distribution of allocation impacts. Our $\lambda$-sweep evidence shows
+that these two forms of fairness are simultaneously achievable in the
+FDFL framework without substantial regret loss, provided the decision
+gradient is accurate enough to carry the regret signal on its own.
+Second, the empirical results suggest a matching between the
+decision-gradient regime and the training strategy. When the decision
+gradient is analytically available, both the scalarized family and
+the multi-objective handlers are viable; the multi-objective family
+offers distinctive characteristics---most notably, no manual $\lambda$
+tuning, and a strong $\alpha = 0.5$ advantage that comes from
+resolving gradient conflict rather than from trading regret for
+fairness---but does not uniformly dominate scalarization. When the
+decision gradient is approximate, a positive fixed prediction weight
+$\mu > 0$ is the first stabilizer to add; multi-objective projection
+methods remain sensitive to gradient noise and require targeted
+corrections (such as per-objective normalization, documented in
+Appendix~\ref{app:mu-followup}) that resolve the directional imbalance
+without eliminating the tail risk. This matching of training strategy
+to gradient regime is itself a prescriptive contribution of the paper.

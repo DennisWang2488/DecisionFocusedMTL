@@ -1,0 +1,14 @@
+{
+  "method_label": "FDFL-Scal",
+  "config_name": "FDFL-Scal",
+  "alpha": 0.5,
+  "unfairness": "mild",
+  "seed": 55,
+  "lambdas": [
+    0.0,
+    0.5,
+    1.0,
+    5.0
+  ],
+  "elapsed_sec": 100.10813617706299
+}

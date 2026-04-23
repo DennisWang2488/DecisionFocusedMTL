@@ -1,0 +1,14 @@
+{
+  "method_label": "FPTO",
+  "config_name": "FPTO",
+  "alpha": 2.0,
+  "hidden_dim": 64,
+  "seed": 11,
+  "lambdas": [
+    0.0,
+    0.5,
+    1.0,
+    5.0
+  ],
+  "elapsed_sec": 22.406091451644897
+}

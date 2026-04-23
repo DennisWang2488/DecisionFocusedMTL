@@ -1,0 +1,20 @@
+(CVXPY) Apr 21 08:52:02 AM: Encountered unexpected exception importing solver GLOP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+(CVXPY) Apr 21 08:52:02 AM: Encountered unexpected exception importing solver PDLP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\problems\problem.py:1481: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  warnings.warn(
+E:\Codes\DecisionFocusedMTL\src\fair_dfl\tasks\md_knapsack.py:428: UserWarning: Knapsack solver fell back to SCS (MOSEK and CLARABEL unavailable or failed). Results may be inaccurate.
+  return self._run_solver()
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\atoms\elementwise\power.py:181: RuntimeWarning: divide by zero encountered in power
+  return np.power(values[0], float(self.p.value))
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\problems\problem.py:1481: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  warnings.warn(
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\atoms\elementwise\power.py:181: RuntimeWarning: divide by zero encountered in power
+  return np.power(values[0], float(self.p.value))
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\problems\problem.py:1481: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  warnings.warn(
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\atoms\elementwise\power.py:181: RuntimeWarning: divide by zero encountered in power
+  return np.power(values[0], float(self.p.value))
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\problems\problem.py:1481: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  warnings.warn(

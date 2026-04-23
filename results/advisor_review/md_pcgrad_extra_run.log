@@ -1,0 +1,17 @@
+(CVXPY) Apr 21 10:57:41 PM: Encountered unexpected exception importing solver GLOP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+(CVXPY) Apr 21 10:57:41 PM: Encountered unexpected exception importing solver PDLP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\problems\problem.py:1481: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  warnings.warn(
+C:\ProgramData\miniconda3\Lib\site-packages\cvxpy\problems\problem.py:1481: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.
+  warnings.warn(
+MD knapsack PCGrad extra-seed robustness ([66, 77, 88, 99])
+  [pcgrad_extra_s66] 1 stages in 73.0s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\md_knapsack_mu_sweep\extra_seeds\seed_66\stage_results.csv
+  seed 66: 73.0s
+  [pcgrad_extra_s77] 1 stages in 69.7s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\md_knapsack_mu_sweep\extra_seeds\seed_77\stage_results.csv
+  seed 77: 69.7s
+  [pcgrad_extra_s88] 1 stages in 69.2s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\md_knapsack_mu_sweep\extra_seeds\seed_88\stage_results.csv
+  seed 88: 69.2s
+  [pcgrad_extra_s99] 1 stages in 74.8s -> E:\Codes\DecisionFocusedMTL\results\advisor_review\md_knapsack_mu_sweep\extra_seeds\seed_99\stage_results.csv
+  seed 99: 74.8s

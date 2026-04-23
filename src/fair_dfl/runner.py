@@ -12,21 +12,14 @@ from .training import run_methods as _run_methods_unified, resolve_method_spec
 from .tasks import (
     MedicalResourceAllocationTask,
     MultiDimKnapsackTask,
-    PortfolioQPMultiConstraintTask,
-    PortfolioQPTask,
-    PortfolioQPSimplexTask,
-    PyEPONonlinearKnapsackTask,
-    PyEPOPortfolioQPTask,
-    PyEPOPortfolioQPSimplexTask,
-    ResourceAllocationTask,
 )
 from .tasks.base import BaseTask, SplitData, TaskData
 
 
 DEFAULT_METHODS = [
-    "fplg",
+    "fair_moo",
     "fdfl",
-    "plg",
+    "moo",
     "fpto",
     "dfl",
 ]
@@ -34,9 +27,10 @@ PUBLIC_METHODS = [
     "fpto",
     "dfl",
     "fdfl",
-    "plg",
-    "fplg",
+    "moo",
+    "fair_moo",
     "saa",
+    "var_dro",
     "wdro",
 ]
 
@@ -117,147 +111,6 @@ def _build_task(task_cfg: Dict[str, Any]) -> Tuple[BaseTask, TaskData]:
     name = str(task_cfg["name"])
     fairness_type = str(task_cfg.get("fairness_type", "mad"))
     fairness_ge_alpha = float(task_cfg.get("fairness_ge_alpha", 2.0))
-    if name == "resource_allocation":
-        task = ResourceAllocationTask(
-            n_samples_train=int(task_cfg["n_samples_train"]),
-            n_samples_val=int(task_cfg["n_samples_val"]),
-            n_samples_test=int(task_cfg["n_samples_test"]),
-            n_features=int(task_cfg["n_features"]),
-            n_items=int(task_cfg["n_items"]),
-            alpha_fair=float(task_cfg["alpha_fair"]),
-            budget=float(task_cfg["budget"]),
-            group_bias=float(task_cfg.get("group_bias", 0.0)),
-            noise_std=float(task_cfg.get("noise_std", 0.2)),
-            fairness_type=fairness_type,
-            fairness_ge_alpha=fairness_ge_alpha,
-        )
-        data_seed = int(task_cfg.get("data_seed", 42))
-        data = task.generate_data(seed=data_seed)
-        task.bind_context(groups=data.groups, costs=data.meta["costs"])
-        return task, data
-
-    if name == "portfolio_qp":
-        task = PortfolioQPTask(
-            n_samples_train=int(task_cfg["n_samples_train"]),
-            n_samples_val=int(task_cfg["n_samples_val"]),
-            n_samples_test=int(task_cfg["n_samples_test"]),
-            n_features=int(task_cfg["n_features"]),
-            n_assets=int(task_cfg["n_assets"]),
-            risk_aversion=float(task_cfg["risk_aversion"]),
-            group_bias=float(task_cfg.get("group_bias", 0.0)),
-            noise_std=float(task_cfg.get("noise_std", 0.3)),
-            fairness_type=fairness_type,
-            fairness_ge_alpha=fairness_ge_alpha,
-        )
-        data_seed = int(task_cfg.get("data_seed", 42))
-        data = task.generate_data(seed=data_seed)
-        task.bind_context(groups=data.groups, sigma=data.meta["sigma"])
-        return task, data
-
-    if name == "portfolio_qp_simplex":
-        task = PortfolioQPSimplexTask(
-            n_samples_train=int(task_cfg["n_samples_train"]),
-            n_samples_val=int(task_cfg["n_samples_val"]),
-            n_samples_test=int(task_cfg["n_samples_test"]),
-            n_features=int(task_cfg["n_features"]),
-            n_assets=int(task_cfg["n_assets"]),
-            risk_aversion=float(task_cfg["risk_aversion"]),
-            group_bias=float(task_cfg.get("group_bias", 0.0)),
-            noise_std=float(task_cfg.get("noise_std", 0.3)),
-            fairness_type=fairness_type,
-            fairness_ge_alpha=fairness_ge_alpha,
-            cvxpy_solvers=[str(s) for s in task_cfg.get("cvxpy_solvers", [])] or None,
-        )
-        data_seed = int(task_cfg.get("data_seed", 42))
-        data = task.generate_data(seed=data_seed)
-        task.bind_context(groups=data.groups, sigma=data.meta["sigma"])
-        return task, data
-
-    if name == "pyepo_nonlinear_knapsack":
-        task = PyEPONonlinearKnapsackTask(
-            n_samples_train=int(task_cfg["n_samples_train"]),
-            n_samples_val=int(task_cfg["n_samples_val"]),
-            n_samples_test=int(task_cfg["n_samples_test"]),
-            n_features=int(task_cfg["n_features"]),
-            n_items=int(task_cfg["n_items"]),
-            alpha_fair=float(task_cfg["alpha_fair"]),
-            budget=float(task_cfg["budget"]),
-            group_bias=float(task_cfg.get("group_bias", 0.0)),
-            noise_std=float(task_cfg.get("noise_std", 0.2)),
-            fairness_type=fairness_type,
-            fairness_ge_alpha=fairness_ge_alpha,
-            pyepo_dim=int(task_cfg.get("pyepo_dim", 1)),
-            pyepo_deg=int(task_cfg.get("pyepo_deg", 2)),
-            pyepo_noise_width=float(task_cfg.get("pyepo_noise_width", 0.1)),
-        )
-        data_seed = int(task_cfg.get("data_seed", 42))
-        data = task.generate_data(seed=data_seed)
-        task.bind_context(groups=data.groups, costs=data.meta["costs"])
-        return task, data
-
-    if name == "pyepo_portfolio_qp":
-        task = PyEPOPortfolioQPTask(
-            n_samples_train=int(task_cfg["n_samples_train"]),
-            n_samples_val=int(task_cfg["n_samples_val"]),
-            n_samples_test=int(task_cfg["n_samples_test"]),
-            n_features=int(task_cfg["n_features"]),
-            n_assets=int(task_cfg["n_assets"]),
-            risk_aversion=float(task_cfg["risk_aversion"]),
-            group_bias=float(task_cfg.get("group_bias", 0.0)),
-            noise_std=float(task_cfg.get("noise_std", 0.3)),
-            fairness_type=fairness_type,
-            fairness_ge_alpha=fairness_ge_alpha,
-            pyepo_deg=int(task_cfg.get("pyepo_deg", 2)),
-            pyepo_noise_level=float(task_cfg.get("pyepo_noise_level", 1.0)),
-        )
-        data_seed = int(task_cfg.get("data_seed", 42))
-        data = task.generate_data(seed=data_seed)
-        task.bind_context(groups=data.groups, sigma=data.meta["sigma"])
-        return task, data
-
-    if name == "pyepo_portfolio_qp_simplex":
-        task = PyEPOPortfolioQPSimplexTask(
-            n_samples_train=int(task_cfg["n_samples_train"]),
-            n_samples_val=int(task_cfg["n_samples_val"]),
-            n_samples_test=int(task_cfg["n_samples_test"]),
-            n_features=int(task_cfg["n_features"]),
-            n_assets=int(task_cfg["n_assets"]),
-            risk_aversion=float(task_cfg["risk_aversion"]),
-            group_bias=float(task_cfg.get("group_bias", 0.0)),
-            noise_std=float(task_cfg.get("noise_std", 0.3)),
-            fairness_type=fairness_type,
-            fairness_ge_alpha=fairness_ge_alpha,
-            pyepo_deg=int(task_cfg.get("pyepo_deg", 2)),
-            pyepo_noise_level=float(task_cfg.get("pyepo_noise_level", 1.0)),
-            cvxpy_solvers=[str(s) for s in task_cfg.get("cvxpy_solvers", [])] or None,
-        )
-        data_seed = int(task_cfg.get("data_seed", 42))
-        data = task.generate_data(seed=data_seed)
-        task.bind_context(groups=data.groups, sigma=data.meta["sigma"])
-        return task, data
-
-    if name == "portfolio_qp_multi_constraint":
-        task = PortfolioQPMultiConstraintTask(
-            n_samples_train=int(task_cfg["n_samples_train"]),
-            n_samples_val=int(task_cfg["n_samples_val"]),
-            n_samples_test=int(task_cfg["n_samples_test"]),
-            n_features=int(task_cfg["n_features"]),
-            n_assets=int(task_cfg["n_assets"]),
-            n_factors=int(task_cfg["n_factors"]),
-            risk_aversion=float(task_cfg["risk_aversion"]),
-            group_bias=float(task_cfg.get("group_bias", 0.0)),
-            noise_std=float(task_cfg.get("noise_std", 0.3)),
-        )
-        data_seed = int(task_cfg.get("data_seed", 42))
-        data = task.generate_data(seed=data_seed)
-        task.bind_context(
-            groups=data.groups,
-            sigma=data.meta["sigma"],
-            constraints=data.meta["constraints"],
-            targets=data.meta["targets"],
-        )
-        return task, data
-
     if name == "md_knapsack":
         task = MultiDimKnapsackTask(
             n_samples_train=int(task_cfg["n_samples_train"]),

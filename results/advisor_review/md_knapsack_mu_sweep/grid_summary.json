@@ -1,0 +1,41 @@
+{
+  "experiment": "md_knapsack_mu_sweep",
+  "methods": [
+    "FPTO",
+    "SAA",
+    "WDRO",
+    "FDFL",
+    "FDFL-0.1",
+    "FDFL-0.5",
+    "FDFL-Scal",
+    "FPLG",
+    "PCGrad",
+    "MGDA"
+  ],
+  "seeds": [
+    11,
+    22,
+    33,
+    44,
+    55
+  ],
+  "lambdas": [
+    0.0,
+    0.5,
+    1.0,
+    2.0
+  ],
+  "steps": 30,
+  "n_train": 300,
+  "alpha_fair": 2.0,
+  "spsa_n_dirs": 8,
+  "spsa_eps": 0.005,
+  "elapsed_sec_per_seed": [
+    0.021052122116088867,
+    0.009317398071289062,
+    0.01203155517578125,
+    1624.405258178711,
+    1718.89852643013
+  ],
+  "total_sec": 3343.34662938118
+}

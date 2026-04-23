@@ -1,0 +1,26 @@
+(CVXPY) Apr 23 06:54:09 PM: Encountered unexpected exception importing solver GLOP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+(CVXPY) Apr 23 06:54:09 PM: Encountered unexpected exception importing solver PDLP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+=== Track 1 — healthcare full-cohort analytic AlignMO run ===
+Output root: E:\Codes\DecisionFocusedMTL\results\alignmo_eval_full_hc
+Methods (new-alpha cells):   ['FPTO', 'FDFL-Scal', 'FPLG', 'PCGrad', 'MGDA', 'SAA', 'WDRO', 'AlignMO']
+Methods (reuse cells):       ['AlignMO']
+Seeds: [11, 22, 33]
+Lambdas: [0.0, 0.5, 1.0, 2.0]
+Steps/lambda: 70
+Existing alphas (AlignMO only): [0.5, 2.0]
+New alphas (full 8-method):     [1.5, 3.0]
+
+  [alignmo_full_hc_a0.5_s11] 4 stages in 17.4s -> E:\Codes\DecisionFocusedMTL\results\alignmo_eval_full_hc\alpha_0.5\seed_11\stage_results.csv
+[Track1] a=0.5 s=11 (AlignMO only): 17.4s, 4 rows (wall=17.4s)
+  [alignmo_full_hc_a0.5_s22] 4 stages in 16.4s -> E:\Codes\DecisionFocusedMTL\results\alignmo_eval_full_hc\alpha_0.5\seed_22\stage_results.csv
+[Track1] a=0.5 s=22 (AlignMO only): 16.4s, 4 rows (wall=16.4s)
+  [alignmo_full_hc_a0.5_s33] 4 stages in 16.3s -> E:\Codes\DecisionFocusedMTL\results\alignmo_eval_full_hc\alpha_0.5\seed_33\stage_results.csv
+[Track1] a=0.5 s=33 (AlignMO only): 16.3s, 4 rows (wall=16.3s)
+  [alignmo_full_hc_a2.0_s11] 4 stages in 16.5s -> E:\Codes\DecisionFocusedMTL\results\alignmo_eval_full_hc\alpha_2.0\seed_11\stage_results.csv
+[Track1] a=2.0 s=11 (AlignMO only): 16.5s, 4 rows (wall=16.6s)
+  [alignmo_full_hc_a2.0_s22] 4 stages in 16.9s -> E:\Codes\DecisionFocusedMTL\results\alignmo_eval_full_hc\alpha_2.0\seed_22\stage_results.csv
+[Track1] a=2.0 s=22 (AlignMO only): 16.9s, 4 rows (wall=17.0s)
+  [alignmo_full_hc_a2.0_s33] 4 stages in 16.4s -> E:\Codes\DecisionFocusedMTL\results\alignmo_eval_full_hc\alpha_2.0\seed_33\stage_results.csv
+[Track1] a=2.0 s=33 (AlignMO only): 16.4s, 4 rows (wall=16.4s)

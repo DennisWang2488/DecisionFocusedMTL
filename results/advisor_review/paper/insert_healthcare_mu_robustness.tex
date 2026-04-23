@@ -1,0 +1,27 @@
+% Intended to be inserted near the end of \subsection{Healthcare Resource
+% Allocation} (sec:exp-health), after the "Gradient conflict analysis"
+% paragraph and before \subsection{Synthetic Multidimensional Knapsack}.
+% This paragraph reports the FDFL mu-parameter robustness check and
+% keeps the main PCGrad numbers in Table~\ref{tab:healthcare} untouched.
+
+\textit{Sensitivity to the prediction weight $\mu$.}
+The scalarized end-to-end family is parameterized by a fixed prediction
+weight: the reported FDFL-Scal corresponds to $\mu=1$ in the training
+loss $L_{\mathrm{regret}} + \mu\,L_{\mathrm{pred}} + \lambda F$. Two
+natural questions are whether $\mu$ needs to be tuned in practice, and
+whether the original specification $\mu = 0$ (decision and fairness
+only, no explicit MSE anchor) is a viable operating point when the
+decision gradient is analytic. To check this, we reran the same
+healthcare grid with FDFL at $\mu \in \{0, 0.1, 0.5\}$ alongside the
+$\mu = 1$ column already reported. At MAD fairness and $\alpha = 2$,
+all four $\mu$ values agree to within $0.003$ on normalized regret
+(FDFL $\mu=0$: $0.128 \pm 0.002$; $\mu=0.1$: $0.128 \pm 0.002$;
+$\mu=0.5$: $0.129 \pm 0.002$; $\mu=1$: $0.131 \pm 0.002$), and the
+same clustering holds for DP, bias-parity, and Atkinson and at
+$\alpha = 0.5$. With the analytic decision gradient from
+Proposition~\ref{prop:analytical_gradient_group-1}, the regret term
+alone already supplies enough signal to keep the predictor calibrated,
+so adding an explicit MSE anchor is redundant. Appendix~\ref{app:mu-followup}
+documents the full follow-up, including the contrasting behavior in
+the synthetic knapsack experiment where $\mu = 0$ diverges under
+stochastic decision gradients.

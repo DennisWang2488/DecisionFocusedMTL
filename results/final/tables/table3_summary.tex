@@ -1,0 +1,29 @@
+\begin{table}[htbp]
+\centering
+\caption{Average rank across configurations (1 = best).}
+\label{tab:summary}
+\small
+\begin{tabular}{l|ccc|ccc}
+\toprule
+ & \multicolumn{3}{c|}{Healthcare} & \multicolumn{3}{c}{Knapsack} \\
+Method & Regret & Fair. & MSE & Regret & Fair. & MSE \\
+\midrule
+FPTO ($\lambda=0$) $\equiv$ PTO & 7.0 & 8.3 & 8.3 & -- & -- & -- \\
+FPTO ($\lambda=0.5$) & 7.0 & 5.3 & 6.3 & -- & -- & -- \\
+FPTO ($\lambda=1$) & 5.0 & 3.0 & 4.3 & -- & -- & -- \\
+FPTO ($\lambda=5$) & 3.3 & 5.0 & 2.7 & -- & -- & -- \\
+\midrule
+SAA & 12.5 & 10.0 & 9.5 & -- & -- & -- \\
+WDRO & 8.0 & 8.0 & 7.0 & -- & -- & -- \\
+\midrule
+FDFL-Scal ($\lambda=0$) $\equiv$ DFL & 9.0 & 9.0 & 9.5 & -- & -- & -- \\
+FDFL-Scal ($\lambda=0.5$) & 6.5 & 6.5 & 7.0 & -- & -- & -- \\
+FDFL-Scal ($\lambda=1$) & 4.5 & 4.0 & 5.0 & -- & -- & -- \\
+FDFL-Scal ($\lambda=5$) & 2.0 & 4.5 & 4.0 & -- & -- & -- \\
+\midrule
+FDFL-PCGrad & 4.0 & 2.5 & 2.0 & -- & -- & -- \\
+FDFL-MGDA & 9.5 & 12.0 & 12.0 & -- & -- & -- \\
+FDFL-CAGrad & 6.5 & 7.0 & 7.5 & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,282 @@
+% Working draft for AlignMO theory appendix.
+% Main result: oracle/population-fairness Pareto stationarity for convergent runs.
+% Stronger uniqueness/rate claims are isolated in a separate committed-mode corollary.
+
+\paragraph{Setup.}
+Fix user-specified weights $\mu,\lambda>0$ and let
+\[
+L(\theta)=\bigl(L_{\mathrm{dec}}(\theta),L_{\mathrm{pred}}(\theta),L_{\mathrm{fair}}(\theta)\bigr)
+\]
+be the population objective vector. Write
+$g_{\mathrm{dec}}=\nabla L_{\mathrm{dec}}$,
+$g_{\mathrm{pred}}=\nabla L_{\mathrm{pred}}$,
+and $g_{\mathrm{fair}}=\nabla L_{\mathrm{fair}}$.
+For a nonzero vector $g$, let $\widehat g=g/\|g\|$, and let $\widehat g=0$ when $g=0$.
+For fixed $\mu_{\mathrm{eff}}=\max\{\mu,\mu_{\mathrm{floor}}\}$ and
+\[
+\bar s(\theta)=\tfrac13\bigl(\|g_{\mathrm{dec}}(\theta)\|+\|g_{\mathrm{pred}}(\theta)\|+\|g_{\mathrm{fair}}(\theta)\|\bigr),
+\]
+define the four mode-specific direction fields
+\begin{align*}
+d_{\mathrm{scal}}(\theta)
+&= g_{\mathrm{dec}}(\theta)+\mu g_{\mathrm{pred}}(\theta)+\lambda g_{\mathrm{fair}}(\theta),\\
+d_{\mathrm{anch}}(\theta)
+&= \bar s(\theta)\Bigl(\widehat g_{\mathrm{dec}}(\theta)
+   +\mu_{\mathrm{eff}}\widehat g_{\mathrm{pred}}(\theta)
+   +\lambda \widehat g_{\mathrm{fair}}(\theta)\Bigr),\\
+d_{\mathrm{proj}}(\theta)
+&= P\bigl(g_{\mathrm{dec}}(\theta),\mu g_{\mathrm{pred}}(\theta),\lambda g_{\mathrm{fair}}(\theta)\bigr),\\
+d_{\mathrm{aproj}}(\theta)
+&= \bar s(\theta)\,
+P\bigl(\widehat g_{\mathrm{dec}}(\theta),
+       \mu_{\mathrm{eff}}\widehat g_{\mathrm{pred}}(\theta),
+       \lambda \widehat g_{\mathrm{fair}}(\theta)\bigr),
+\end{align*}
+where $P$ denotes the projection or conflict-resolution primitive used in the projected branches.
+
+\begin{lemma}[EMA stabilization and eventual mode commitment]
+\label{lem:alignmo-ema}
+Let $\phi:\Theta\to\mathbb R^q$ be continuous and let the EMA state evolve by
+\[
+e_t=\beta e_{t-1}+(1-\beta)\phi(\theta_t),
+\qquad 0<\beta<1.
+\]
+If $\theta_t\to\theta^\star$, then $e_t\to \phi(\theta^\star)$.
+Consequently, if $\theta^\star$ is separated from the routing boundaries
+\[
+\max\{|r_{dp}(\theta)|,|r_{df}(\theta)|\}=\tau_{\mathrm{scale}}
+\quad\text{and}\quad
+\min\{c_{dp}(\theta),c_{df}(\theta),c_{pf}(\theta)\}=\tau_{\mathrm{conflict}},
+\]
+then AlignMO's selected mode is eventually constant.
+\end{lemma}
+
+\begin{proof}
+Unrolling the recursion gives
+\[
+e_t-\phi(\theta^\star)
+=
+\beta^t(e_0-\phi(\theta^\star))
++(1-\beta)\sum_{s=1}^t \beta^{t-s}\bigl(\phi(\theta_s)-\phi(\theta^\star)\bigr).
+\]
+The first term vanishes because $0<\beta<1$, and the second vanishes because
+$\phi(\theta_s)\to\phi(\theta^\star)$ and the geometric weights sum to one.
+The mode-commitment claim follows because the threshold inequalities defining the mode
+have strict margin at $\theta^\star$.
+\end{proof}
+
+\begin{lemma}[Local bridge for group-MAD fairness away from kinks]
+\label{lem:alignmo-bridge}
+Let $m_{k,n}(\theta)$ denote the empirical groupwise MSE, let
+$m_k(\theta)$ be its population counterpart, and define
+$\mu_n(\theta)=K^{-1}\sum_{k=1}^K m_{k,n}(\theta)$ and
+$\mu(\theta)=K^{-1}\sum_{k=1}^K m_k(\theta)$.
+For
+\[
+F_n(\theta)=\frac1K\sum_{k=1}^K |m_{k,n}(\theta)-\mu_n(\theta)|
+\quad\text{and}\quad
+F(\theta)=\frac1K\sum_{k=1}^K |m_k(\theta)-\mu(\theta)|,
+\]
+assume that on a compact set $\mathcal K\subset\Theta$:
+\begin{enumerate}
+\item $\sup_{\theta\in\mathcal K}|m_{k,n}(\theta)-m_k(\theta)|\to 0$ and
+      $\sup_{\theta\in\mathcal K}\|\nabla m_{k,n}(\theta)-\nabla m_k(\theta)\|\to 0$
+      for every $k$;
+\item there exists $\gamma>0$ such that
+      $\inf_{\theta\in\mathcal K}\min_k |m_k(\theta)-\mu(\theta)|\ge \gamma$.
+\end{enumerate}
+Then
+\[
+\sup_{\theta\in\mathcal K}|F_n(\theta)-F(\theta)|\to 0,
+\qquad
+\sup_{\theta\in\mathcal K}\|\nabla F_n(\theta)-\nabla F(\theta)\|\to 0.
+\]
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Let
+\[
+\delta_n := \max_k \sup_{\theta\in\mathcal K}|m_{k,n}(\theta)-m_k(\theta)|,
+\qquad
+\Delta_n := \max_k \sup_{\theta\in\mathcal K}\|\nabla m_{k,n}(\theta)-\nabla m_k(\theta)\|.
+\]
+For the value bridge, add and subtract the population-centered quantity
+$K^{-1}\sum_k |m_{k,n}(\theta)-\mu(\theta)|$ and use the reverse triangle inequality:
+\[
+\bigl||a-b|-|a-c|\bigr|\le |b-c|.
+\]
+Since $|\mu_n(\theta)-\mu(\theta)|\le \delta_n$, this gives
+\[
+\sup_{\theta\in\mathcal K}|F_n(\theta)-F(\theta)| \le 2\delta_n.
+\]
+For the gradient bridge, the margin condition fixes the sign pattern of
+$m_k(\theta)-\mu(\theta)$ on $\mathcal K$; by uniform convergence, the same sign pattern
+holds for $m_{k,n}(\theta)-\mu_n(\theta)$ for all sufficiently large $n$, for example whenever
+$2\delta_n<\gamma$.
+Differentiating the absolute values under this stable sign pattern gives
+\[
+\nabla F_n(\theta)
+=\frac1K\sum_{k=1}^K s_k(\theta)\bigl(\nabla m_{k,n}(\theta)-\nabla \mu_n(\theta)\bigr),
+\]
+and likewise for $\nabla F(\theta)$. Since
+\[
+\|\nabla \mu_n(\theta)-\nabla \mu(\theta)\|
+\le
+\frac1K\sum_{k=1}^K\|\nabla m_{k,n}(\theta)-\nabla m_k(\theta)\|
+\le \Delta_n,
+\]
+we obtain
+\[
+\sup_{\theta\in\mathcal K}\|\nabla F_n(\theta)-\nabla F(\theta)\| \le 2\Delta_n.
+\]
+\end{proof}
+
+\begin{proposition}[Conditional convergent-run Pareto-stationarity sanity check]
+\label{prop:alignmo-main}
+Consider AlignMO with a fixed pair $(\mu,\lambda)$ and update
+\[
+\theta_{t+1}=\theta_t-\eta_t\bigl(d_t+\xi_t\bigr),
+\]
+where $d_t$ is the mode-selected direction computed from the population objectives, and $\xi_t$ is an auxiliary perturbation term. In the oracle/population-fairness version of the theorem one has $\xi_t\equiv 0$.
+Assume:
+\begin{enumerate}
+\item each population loss $L_j$ is continuously differentiable on an open set containing a compact forward-invariant set $\mathcal K$, and each $\nabla L_j$ is Lipschitz on $\mathcal K$;
+\item the step sizes satisfy $\eta_t>0$, $\sum_t \eta_t=\infty$, and $\sum_t \eta_t^2<\infty$;
+\item the iterate sequence stays in $\mathcal K$ and converges to some $\theta^\star\in\mathcal K$;
+\item the diagnostic map
+      \[
+      \theta\mapsto
+      \bigl(c_{dp}(\theta),c_{df}(\theta),c_{pf}(\theta),r_{dp}(\theta),r_{df}(\theta)\bigr)
+      \]
+      is continuous at $\theta^\star$, and $\theta^\star$ lies at positive margin from the two routing boundaries
+      \[
+      \max\{|r_{dp}(\theta)|,|r_{df}(\theta)|\}=\tau_{\mathrm{scale}}
+      \quad\text{and}\quad
+      \min\{c_{dp}(\theta),c_{df}(\theta),c_{pf}(\theta)\}=\tau_{\mathrm{conflict}};
+      \]
+\item every mode-specific field that can be selected in a neighborhood of $\theta^\star$
+      is continuous at $\theta^\star$. For the normalized branches this may be ensured, for example,
+      by requiring each normalized gradient to be either zero at $\theta^\star$ or bounded away from zero on a neighborhood of $\theta^\star$;
+\item the perturbation satisfies $\xi_t\to 0$;
+\item the primitive $P$ is continuous on nondegenerate inputs, and every zero of
+      $d_{\mathrm{proj}}$ or $d_{\mathrm{aproj}}$ is Pareto-stationary for
+      $(L_{\mathrm{dec}},L_{\mathrm{pred}},L_{\mathrm{fair}})$.
+\end{enumerate}
+Then $\theta^\star$ is Pareto-stationary.
+\end{proposition}
+
+\begin{proof}
+Lemma~\ref{lem:alignmo-ema} implies that every EMA diagnostic converges to its instantaneous
+value at $\theta^\star$. Since $\theta^\star$ is separated from the routing thresholds,
+the selected mode is eventually constant;
+write this committed mode as $m^\star\in\{\mathrm{scal},\mathrm{anch},\mathrm{proj},\mathrm{aproj}\}$.
+Hence for all sufficiently large $t$,
+\[
+\theta_{t+1}
+=
+\theta_t-\eta_t\bigl(d_{m^\star}(\theta_t)+\xi_t\bigr).
+\]
+
+We first show that $d_{m^\star}(\theta^\star)=0$.
+Suppose, for contradiction, that $d_{m^\star}(\theta^\star)\neq 0$.
+Let
+$v=d_{m^\star}(\theta^\star)/\|d_{m^\star}(\theta^\star)\|$.
+By continuity of $d_{m^\star}$ and the fact that $\xi_t\to 0$,
+there exists $c>0$ such that for all large $t$,
+\[
+\langle d_{m^\star}(\theta_t)+\xi_t, v\rangle \ge c.
+\]
+Therefore
+\[
+\langle \theta_{t+1}-\theta_t, v\rangle
+=
+-\eta_t\langle d_{m^\star}(\theta_t)+\xi_t, v\rangle
+\le -c\eta_t.
+\]
+Summing over $t$ yields
+\[
+\langle \theta_T-\theta_{T_0}, v\rangle \le -c\sum_{t=T_0}^{T-1}\eta_t,
+\]
+which diverges to $-\infty$ because $\sum_t\eta_t=\infty$, contradicting the convergence of $\theta_t$.
+Thus $d_{m^\star}(\theta^\star)=0$.
+
+If $m^\star=\mathrm{scal}$, then
+\[
+g_{\mathrm{dec}}(\theta^\star)+\mu g_{\mathrm{pred}}(\theta^\star)+\lambda g_{\mathrm{fair}}(\theta^\star)=0.
+\]
+Normalizing the positive coefficients to sum to one gives a convex combination of the three gradients equal to zero, so $\theta^\star$ is Pareto-stationary.
+
+If $m^\star=\mathrm{anch}$, then
+\[
+\widehat g_{\mathrm{dec}}(\theta^\star)
++\mu_{\mathrm{eff}}\widehat g_{\mathrm{pred}}(\theta^\star)
++\lambda \widehat g_{\mathrm{fair}}(\theta^\star)=0.
+\]
+If all three gradients are nonzero, multiplying each term by the reciprocal of its norm rewrites this as a positive linear combination of the raw gradients equal to zero; after renormalization to the simplex, this is exactly Pareto-stationarity. If one of the gradients is already zero, the same conclusion is immediate.
+
+If $m^\star\in\{\mathrm{proj},\mathrm{aproj}\}$, the claim follows from Assumption~(7).
+\end{proof}
+
+\paragraph{Corollary (Eventual scalarized commitment: local uniqueness and linear rate).}
+Let
+\[
+V_{\mathrm{scal}}(\theta)
+:=
+L_{\mathrm{dec}}(\theta)+\mu L_{\mathrm{pred}}(\theta)+\lambda L_{\mathrm{fair}}(\theta).
+\]
+Assume there exists $T$ such that for all $t\ge T$, AlignMO stays in the scalarized mode, so the
+post-commitment update can be written as
+\[
+\theta_{t+1}=\theta_t-\alpha_t\bigl(\nabla V_{\mathrm{scal}}(\theta_t)+\xi_t\bigr).
+\]
+Assume $\alpha_t>0$ and $\sum_{t\ge T}\alpha_t=\infty$, there is a convergent run with limit $\theta^\star$,
+the perturbation satisfies $\xi_t\to 0$,
+and $V_{\mathrm{scal}}$ is $m$-strongly convex and has $L$-Lipschitz gradient
+on a neighborhood $U$ of $\theta^\star$.
+Then:
+\begin{enumerate}
+\item $\theta^\star$ is the unique stationary point of $V_{\mathrm{scal}}$ in $U$, and hence the unique local limit compatible with the committed scalarized dynamics in $U$. In particular, $\theta^\star$ is Pareto-stationary.
+\item If, after time $T$, the update is exact gradient descent on $V_{\mathrm{scal}}$ with a fixed step size
+      \[
+      \theta_{t+1}=\theta_t-\eta \nabla V_{\mathrm{scal}}(\theta_t),
+      \qquad 0<\eta<\frac{2}{L},
+      \]
+      and the iterates remain in $U$, then there exists $\rho\in(0,1)$ such that
+      \[
+      \|\theta_t-\theta^\star\|\le \rho^{\,t-T}\|\theta_T-\theta^\star\|
+      \qquad\text{for all } t\ge T.
+      \]
+\end{enumerate}
+
+\begin{proof}[Proof sketch]
+Once the mode commits to scalarized, the committed field is exactly
+$d_{\mathrm{scal}}=\nabla V_{\mathrm{scal}}$.
+If $\nabla V_{\mathrm{scal}}(\theta^\star)\neq 0$, the same projection argument used in the proof of
+Proposition~\ref{prop:alignmo-main} contradicts convergence of the run, hence
+$\nabla V_{\mathrm{scal}}(\theta^\star)=0$.
+Strong convexity implies that $\nabla V_{\mathrm{scal}}$ has a unique zero in $U$,
+so the stationary point is unique. Since
+\[
+\nabla V_{\mathrm{scal}}(\theta^\star)
+=
+g_{\mathrm{dec}}(\theta^\star)+\mu g_{\mathrm{pred}}(\theta^\star)+\lambda g_{\mathrm{fair}}(\theta^\star)=0
+\]
+with positive coefficients, $\theta^\star$ is Pareto-stationary.
+The linear-rate claim is the standard gradient-descent contraction theorem for an
+$m$-strongly convex, $L$-smooth objective.
+\end{proof}
+
+\paragraph{Remark.}
+Proposition~\ref{prop:alignmo-main} is the intended IJOC-scale sanity-check theorem:
+under standard smoothness, boundedness, and vanishing-perturbation assumptions, a convergent AlignMO run cannot settle at a nonstationary point away from switching boundaries.
+The scalarized-commitment corollary is deliberately stronger and more local.
+It shows what additional structure buys us if one mode dominates asymptotically.
+An $O(1/t)$-type rate for Robbins--Monro steps under strong convexity is also plausible,
+but requires extra noise and perturbation bookkeeping that we do not pursue here.
+
+\paragraph{Remark on empirical fairness.}
+Lemma~\ref{lem:alignmo-bridge} is a local $n\to\infty$ bridge on margin-separated compacta for the
+group-MAD fairness term. It does \emph{not} by itself imply the along-training perturbation condition
+$\xi_t\to 0$ for a fixed dataset. Therefore Proposition~\ref{prop:alignmo-main} should currently be read as an
+oracle/population-fairness statement unless one separately proves a fixed-sample control such as
+$\|\xi_t\|\le \varepsilon_n$ along the training trajectory.

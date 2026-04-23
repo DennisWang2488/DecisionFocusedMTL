@@ -1,0 +1,200 @@
+{
+  "variant": "a",
+  "summary": [
+    {
+      "variant": "a",
+      "fairness_type": "mad",
+      "alpha": 0.5,
+      "seed": 11,
+      "elapsed_sec": 49.09510064125061,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "mad",
+      "alpha": 0.5,
+      "seed": 22,
+      "elapsed_sec": 48.430803298950195,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "mad",
+      "alpha": 0.5,
+      "seed": 33,
+      "elapsed_sec": 47.9446074962616,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "mad",
+      "alpha": 2.0,
+      "seed": 11,
+      "elapsed_sec": 53.72011947631836,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "mad",
+      "alpha": 2.0,
+      "seed": 22,
+      "elapsed_sec": 54.41808080673218,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "mad",
+      "alpha": 2.0,
+      "seed": 33,
+      "elapsed_sec": 60.17550230026245,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "dp",
+      "alpha": 0.5,
+      "seed": 11,
+      "elapsed_sec": 55.93012452125549,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "dp",
+      "alpha": 0.5,
+      "seed": 22,
+      "elapsed_sec": 54.50888133049011,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "dp",
+      "alpha": 0.5,
+      "seed": 33,
+      "elapsed_sec": 54.02475190162659,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "dp",
+      "alpha": 2.0,
+      "seed": 11,
+      "elapsed_sec": 59.307865619659424,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "dp",
+      "alpha": 2.0,
+      "seed": 22,
+      "elapsed_sec": 60.058985233306885,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "dp",
+      "alpha": 2.0,
+      "seed": 33,
+      "elapsed_sec": 59.120336294174194,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "atkinson",
+      "alpha": 0.5,
+      "seed": 11,
+      "elapsed_sec": 54.85159182548523,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "atkinson",
+      "alpha": 0.5,
+      "seed": 22,
+      "elapsed_sec": 54.383944034576416,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "atkinson",
+      "alpha": 0.5,
+      "seed": 33,
+      "elapsed_sec": 53.8477680683136,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "atkinson",
+      "alpha": 2.0,
+      "seed": 11,
+      "elapsed_sec": 60.446263790130615,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "atkinson",
+      "alpha": 2.0,
+      "seed": 22,
+      "elapsed_sec": 59.3071985244751,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "atkinson",
+      "alpha": 2.0,
+      "seed": 33,
+      "elapsed_sec": 59.776726722717285,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "bias_parity",
+      "alpha": 0.5,
+      "seed": 11,
+      "elapsed_sec": 54.94641304016113,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "bias_parity",
+      "alpha": 0.5,
+      "seed": 22,
+      "elapsed_sec": 53.770265102386475,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "bias_parity",
+      "alpha": 0.5,
+      "seed": 33,
+      "elapsed_sec": 54.949235916137695,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "bias_parity",
+      "alpha": 2.0,
+      "seed": 11,
+      "elapsed_sec": 60.24276685714722,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "bias_parity",
+      "alpha": 2.0,
+      "seed": 22,
+      "elapsed_sec": 57.940449476242065,
+      "n_rows": 16
+    },
+    {
+      "variant": "a",
+      "fairness_type": "bias_parity",
+      "alpha": 2.0,
+      "seed": 33,
+      "elapsed_sec": 58.61594223976135,
+      "n_rows": 16
+    }
+  ],
+  "grand_total_sec": 1340.061965227127,
+  "n_runs": 24,
+  "total_rows": 384
+}

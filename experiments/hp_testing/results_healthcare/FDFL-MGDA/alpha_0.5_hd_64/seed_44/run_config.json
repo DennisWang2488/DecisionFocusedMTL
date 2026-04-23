@@ -1,0 +1,11 @@
+{
+  "method_label": "FDFL-MGDA",
+  "config_name": "MGDA",
+  "alpha": 0.5,
+  "hidden_dim": 64,
+  "seed": 44,
+  "lambdas": [
+    0.0
+  ],
+  "elapsed_sec": 2.6041901111602783
+}
