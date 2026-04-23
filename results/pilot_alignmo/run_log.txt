@@ -1,0 +1,70 @@
+(CVXPY) Apr 23 05:21:49 AM: Encountered unexpected exception importing solver GLOP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+(CVXPY) Apr 23 05:21:49 AM: Encountered unexpected exception importing solver PDLP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+=== AlignMO Phase 1 pilot ===
+Output root:     E:\Codes\DecisionFocusedMTL\results\pilot_alignmo
+Regimes:         ['analytic', 'spsa']
+Alphas:          [0.5, 1.5, 2.0, 3.0]
+Seeds:           [11, 22, 33]
+Methods:         ['FPTO', 'FDFL-Scal', 'FDFL-0.1', 'FDFL-0.5', 'FDFL', 'FPLG', 'PCGrad', 'MGDA']
+Lambdas:         [0.0, 0.5, 1.0, 2.0]
+Steps/lambda:    50
+n_sample:        1000
+Total cells:     24
+Total stages:    768
+
+  [pilot_alignmo_analytic_a0.5_s11] 26 stages in 7.5s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_0.5\seed_11\stage_results.csv
+[pilot] regime=analytic alpha=0.5 seed=11: 7.5s, 26 rows (cum=7.5s)
+  [pilot_alignmo_analytic_a0.5_s22] 26 stages in 6.9s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_0.5\seed_22\stage_results.csv
+[pilot] regime=analytic alpha=0.5 seed=22: 6.9s, 26 rows (cum=6.9s)
+  [pilot_alignmo_analytic_a0.5_s33] 26 stages in 6.8s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_0.5\seed_33\stage_results.csv
+[pilot] regime=analytic alpha=0.5 seed=33: 6.8s, 26 rows (cum=6.8s)
+  [pilot_alignmo_analytic_a1.5_s11] 26 stages in 6.8s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_1.5\seed_11\stage_results.csv
+[pilot] regime=analytic alpha=1.5 seed=11: 6.8s, 26 rows (cum=6.8s)
+  [pilot_alignmo_analytic_a1.5_s22] 26 stages in 6.9s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_1.5\seed_22\stage_results.csv
+[pilot] regime=analytic alpha=1.5 seed=22: 6.9s, 26 rows (cum=6.9s)
+  [pilot_alignmo_analytic_a1.5_s33] 26 stages in 6.9s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_1.5\seed_33\stage_results.csv
+[pilot] regime=analytic alpha=1.5 seed=33: 6.9s, 26 rows (cum=6.9s)
+  [pilot_alignmo_analytic_a2.0_s11] 26 stages in 6.8s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_2.0\seed_11\stage_results.csv
+[pilot] regime=analytic alpha=2.0 seed=11: 6.8s, 26 rows (cum=6.8s)
+  [pilot_alignmo_analytic_a2.0_s22] 26 stages in 6.8s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_2.0\seed_22\stage_results.csv
+[pilot] regime=analytic alpha=2.0 seed=22: 6.8s, 26 rows (cum=6.8s)
+  [pilot_alignmo_analytic_a2.0_s33] 26 stages in 6.7s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_2.0\seed_33\stage_results.csv
+[pilot] regime=analytic alpha=2.0 seed=33: 6.7s, 26 rows (cum=6.8s)
+  [pilot_alignmo_analytic_a3.0_s11] 26 stages in 6.9s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_3.0\seed_11\stage_results.csv
+[pilot] regime=analytic alpha=3.0 seed=11: 6.9s, 26 rows (cum=6.9s)
+  [pilot_alignmo_analytic_a3.0_s22] 26 stages in 7.0s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_3.0\seed_22\stage_results.csv
+[pilot] regime=analytic alpha=3.0 seed=22: 7.0s, 26 rows (cum=7.0s)
+  [pilot_alignmo_analytic_a3.0_s33] 26 stages in 7.0s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\analytic\alpha_3.0\seed_33\stage_results.csv
+[pilot] regime=analytic alpha=3.0 seed=33: 7.0s, 26 rows (cum=7.0s)
+  [pilot_alignmo_spsa_a0.5_s11] 26 stages in 887.4s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_0.5\seed_11\stage_results.csv
+[pilot] regime=spsa alpha=0.5 seed=11: 887.4s, 26 rows (cum=887.4s)
+  [pilot_alignmo_spsa_a0.5_s22] 26 stages in 954.6s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_0.5\seed_22\stage_results.csv
+[pilot] regime=spsa alpha=0.5 seed=22: 954.6s, 26 rows (cum=954.6s)
+  [pilot_alignmo_spsa_a0.5_s33] 26 stages in 881.3s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_0.5\seed_33\stage_results.csv
+[pilot] regime=spsa alpha=0.5 seed=33: 881.3s, 26 rows (cum=881.3s)
+  [pilot_alignmo_spsa_a1.5_s11] 26 stages in 999.5s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_1.5\seed_11\stage_results.csv
+[pilot] regime=spsa alpha=1.5 seed=11: 999.5s, 26 rows (cum=999.5s)
+  [pilot_alignmo_spsa_a1.5_s22] 26 stages in 1069.1s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_1.5\seed_22\stage_results.csv
+[pilot] regime=spsa alpha=1.5 seed=22: 1069.1s, 26 rows (cum=1069.1s)
+  [pilot_alignmo_spsa_a1.5_s33] 26 stages in 1027.7s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_1.5\seed_33\stage_results.csv
+[pilot] regime=spsa alpha=1.5 seed=33: 1027.7s, 26 rows (cum=1027.7s)
+  [pilot_alignmo_spsa_a2.0_s11] 26 stages in 891.6s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_2.0\seed_11\stage_results.csv
+[pilot] regime=spsa alpha=2.0 seed=11: 891.6s, 26 rows (cum=891.6s)
+  [pilot_alignmo_spsa_a2.0_s22] 26 stages in 1127.7s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_2.0\seed_22\stage_results.csv
+[pilot] regime=spsa alpha=2.0 seed=22: 1127.7s, 26 rows (cum=1127.7s)
+  [pilot_alignmo_spsa_a2.0_s33] 26 stages in 1188.1s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_2.0\seed_33\stage_results.csv
+[pilot] regime=spsa alpha=2.0 seed=33: 1188.1s, 26 rows (cum=1188.2s)
+  [pilot_alignmo_spsa_a3.0_s11] 26 stages in 1453.8s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_3.0\seed_11\stage_results.csv
+[pilot] regime=spsa alpha=3.0 seed=11: 1453.8s, 26 rows (cum=1453.9s)
+  [pilot_alignmo_spsa_a3.0_s22] 26 stages in 2792.8s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_3.0\seed_22\stage_results.csv
+[pilot] regime=spsa alpha=3.0 seed=22: 2792.8s, 26 rows (cum=2792.9s)
+  [pilot_alignmo_spsa_a3.0_s33] 26 stages in 2667.2s -> E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\spsa\alpha_3.0\seed_33\stage_results.csv
+[pilot] regime=spsa alpha=3.0 seed=33: 2667.2s, 26 rows (cum=2667.2s)
+
+=== pilot summary ===
+  cells:          24
+  total rows:     624
+  total elapsed:  16024.0s = 267.07 min
+[summary] E:\Codes\DecisionFocusedMTL\results\pilot_alignmo\grid_summary.json

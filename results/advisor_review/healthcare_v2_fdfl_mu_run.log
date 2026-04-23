@@ -1,0 +1,61 @@
+(CVXPY) Apr 21 09:23:55 AM: Encountered unexpected exception importing solver GLOP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+(CVXPY) Apr 21 09:23:55 AM: Encountered unexpected exception importing solver PDLP:
+RuntimeError('Unrecognized new version of ortools (9.15.6755). Expected < 9.10.0. Please open a feature request on cvxpy to enable support for this version.')
+Healthcare v2 follow-up — FDFL mu variants + normalized PCGrad
+==================================================================
+Output dir:      E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\variant_a
+Fairness types:  ['mad', 'dp', 'atkinson', 'bias_parity']
+Alphas:          [0.5, 2.0]
+Methods:         ['FPTO', 'SAA', 'WDRO', 'FDFL', 'FDFL-0.1', 'FDFL-0.5', 'FDFL-Scal', 'FPLG', 'PCGrad', 'MGDA']
+Seeds:           [11, 22, 33, 44, 55]
+CSV name:        stage_results_fdfl_mu.csv  (non-destructive append)
+Total cells:     40
+
+  [mad alpha=0.5 seed=11] 28 rows in 98.1s
+  [mad alpha=0.5 seed=22] 28 rows in 93.6s
+  [mad alpha=0.5 seed=33] 28 rows in 91.8s
+  [mad alpha=0.5 seed=44] 28 rows in 88.0s
+  [mad alpha=0.5 seed=55] 28 rows in 88.9s
+  [mad alpha=2.0 seed=11] 28 rows in 102.2s
+  [mad alpha=2.0 seed=22] 28 rows in 103.4s
+  [mad alpha=2.0 seed=33] 28 rows in 98.1s
+  [mad alpha=2.0 seed=44] 28 rows in 90.8s
+  [mad alpha=2.0 seed=55] 28 rows in 99.7s
+  [dp alpha=0.5 seed=11] 28 rows in 87.4s
+  [dp alpha=0.5 seed=22] 28 rows in 89.2s
+  [dp alpha=0.5 seed=33] 28 rows in 89.3s
+  [dp alpha=0.5 seed=44] 28 rows in 81.9s
+  [dp alpha=0.5 seed=55] 28 rows in 89.5s
+  [dp alpha=2.0 seed=11] 28 rows in 100.5s
+  [dp alpha=2.0 seed=22] 28 rows in 103.1s
+  [dp alpha=2.0 seed=33] 28 rows in 98.8s
+  [dp alpha=2.0 seed=44] 28 rows in 91.6s
+  [dp alpha=2.0 seed=55] 28 rows in 99.1s
+  [atkinson alpha=0.5 seed=11] 28 rows in 89.5s
+  [atkinson alpha=0.5 seed=22] 28 rows in 89.3s
+  [atkinson alpha=0.5 seed=33] 28 rows in 87.5s
+  [atkinson alpha=0.5 seed=44] 28 rows in 81.4s
+  [atkinson alpha=0.5 seed=55] 28 rows in 87.0s
+  [atkinson alpha=2.0 seed=11] 28 rows in 95.8s
+  [atkinson alpha=2.0 seed=22] 28 rows in 95.6s
+  [atkinson alpha=2.0 seed=33] 28 rows in 95.9s
+  [atkinson alpha=2.0 seed=44] 28 rows in 89.0s
+  [atkinson alpha=2.0 seed=55] 28 rows in 95.8s
+  [bias_parity alpha=0.5 seed=11] 28 rows in 87.2s
+  [bias_parity alpha=0.5 seed=22] 28 rows in 86.5s
+  [bias_parity alpha=0.5 seed=33] 28 rows in 86.8s
+  [bias_parity alpha=0.5 seed=44] 28 rows in 80.1s
+  [bias_parity alpha=0.5 seed=55] 28 rows in 87.0s
+  [bias_parity alpha=2.0 seed=11] 28 rows in 95.7s
+  [bias_parity alpha=2.0 seed=22] 28 rows in 92.8s
+  [bias_parity alpha=2.0 seed=33] 28 rows in 90.3s
+  [bias_parity alpha=2.0 seed=44] 28 rows in 84.4s
+  [bias_parity alpha=2.0 seed=55] 28 rows in 91.5s
+
+=== Summary ===
+  cells:         40
+  total rows:    1120
+  total elapsed: 3674.4s = 61.24 min
+[grand_summary] E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\grand_summary_fdfl_mu.csv  (1120 rows)
+[summary]       E:\Codes\DecisionFocusedMTL\results\advisor_review\healthcare_followup_v2\grid_summary_fdfl_mu.json

@@ -1,0 +1,1480 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%%	Author Submission Template for INFORMS Journal on Computing (IJOC)
+%%	INFORMS, <informs@informs.org>
+%%	Ver. 1.00, June 2024
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Use dblanonrev for Double Anonymous Review submission
+% Use sglanonrev for Single Anonymous Review submission
+% For example, submission to Operations Research, OPRE will have
+% \documentclass[opre,dblanonrev]{informs4}
+%
+% \documentclass[ijoc,dblanonrev]{informs4}
+\documentclass[ijoc,sglanonrev]{informs4}
+\usepackage{eqndefns-left} % For checking the display equation width and equation environment definitions %
+\RequirePackage{tgtermes}
+\RequirePackage{newtxtext}
+\RequirePackage{newtxmath}
+\RequirePackage{bm}
+\RequirePackage{endnotes}
+
+%\OneAndAHalfSpacedXI
+\OneAndAHalfSpacedXII % Current default line spacing
+%%\DoubleSpacedXI
+%%\DoubleSpacedXII
+
+% Optional LaTeX Packages
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+% Private macros here (check that there is no clash with the style)
+
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{wrapfig}
+\usepackage{algpseudocode}
+%\usepackage{subfig}
+\usepackage{subcaption}
+\usepackage{tabularx}
+\usepackage{siunitx} 
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{booktabs}
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+
+% Natbib setup for author-number style
+\usepackage{natbib}
+ \bibpunct[, ]{(}{)}{,}{a}{}{,}%
+ \def\bibfont{\small}%
+ \def\bibsep{\smallskipamount}%
+ \def\bibhang{24pt}%
+ \def\newblock{\ }%
+ \def\BIBand{and}%
+
+
+%% Setup of the equation numbering system. Outcomment only one.
+%% Preferred default is the first option.
+\EquationsNumberedThrough    % Default: (1), (2), ...
+%\EquationsNumberedBySection % (1.1), (1.2), ...
+
+%% Setup of theorem styles. Outcomment only one.
+%% Preferred default is the first option.
+\TheoremsNumberedThrough     % Preferred (Theorem 1, Lemma 1, Theorem 2)
+%\TheoremsNumberedByChapter  % (Theorem 1.1, Lema 1.1, Theorem 1.2)
+\ECRepeatTheorems  %  
+
+% For new submissions, leave this number blank.
+% For revisions, input the manuscript number assigned by the on-line
+% system along with a suffix ".Rx" where x is the revision number.
+\MANUSCRIPTNO{IJOC-0001-2024.00}
+
+%%%%%%%%%%%%%%%%
+\begin{document}
+%%%%%%%%%%%%%%%%
+
+% Outcomment only when entries are known. Otherwise leave as is and
+%   default values will be used.
+%\setcounter{page}{1}
+%\VOLUME{00}%
+%\NO{0}%
+%\MONTH{Xxxxx}% (month or a similar seasonal id)
+%\YEAR{0000}% e.g., 2005
+%\FIRSTPAGE{000}%
+%\LASTPAGE{000}%
+%\SHORTYEAR{00}% shortened year (two-digit)
+%\ISSUE{0000} %
+%\LONGFIRSTPAGE{0001} %
+%\DOI{10.1287/xxxx.0000.0000}%
+
+% Author's names for the running heads
+% Sample depending on the number of authors;
+% \RUNAUTHOR{Jones}
+% \RUNAUTHOR{Jones and Wilson}
+% \RUNAUTHOR{Jones, Miller, and Wilson}
+% \RUNAUTHOR{Jones et al.} % for four or more authors
+% Enter authors following the given pattern:
+%\RUNAUTHOR{}
+\RUNAUTHOR{Wang and Chen}
+
+% Title or shortened title suitable for running heads. Sample:
+% \RUNTITLE{Predictive Maintenance in Manufacturing}
+% Enter the (shortened) title:
+\RUNTITLE{E2EFO with DF-MTFL}
+
+% Full title. Sample:
+% \TITLE{Optimal Resource Allocation in Humanitarian Logistics: A Stochastic Programming Approach}
+% Enter the full title:
+\TITLE{End-to-End Fairness Optimization with Decision Focused Multi-Task Fair Learning}
+
+% Block of authors and their affiliations starts here:
+% NOTE: Authors with same affiliation, if the order of authors allows,
+%   should be entered in ONE field, separated by a comma.
+%   \EMAIL field can be repeated if more than one author
+\ARTICLEAUTHORS{%
+%\AUTHOR{John Doe,\textsuperscript{a} Jane Smith,\textsuperscript{b}}
+%\AFF{\textsuperscript{a}Department of Industrial Engineering, University of XYZ, \EMAIL{john.doe@xyz.edu; \textsuperscript{b}Department of Computer Science, University of ABC, \EMAIL{jane.smith@abc.edu}} 
+\AUTHOR{Yu Wang \textsuperscript{a}, Violet (Xinying) Chen \textsuperscript{b}}
+\AFF{School of Business, Stevens Institute of Technology, \textsuperscript{a}\EMAIL{ywang88@stevens.edu},
+\textsuperscript{b}\EMAIL{{vchen3@stevens.edu}}
+}
+
+} % end of the block
+
+\ABSTRACT{%
+% Enter your abstract
+Many real-world systems rely on predictive models to inform algorithmic decisions, where fairness concerns can arise both in the prediction stage and in the resulting decisions. 
+We introduce end-to-end fairness optimization (E2EFO) as a unifying framework that integrates fairness across the entire prediction-to-decision pipeline.
+We focus on resource allocation problems, where a fair prediction task aims to estimate the allocation impacts without disparity, and then a fair decision task seeks to equitably distribute these impacts. 
+Within this framework, we propose fair decision-focused learning (FDFL), a training approach that jointly optimizes for better prediction fairness and  decision regret, which measures the loss in decision fairness due to imperfect predictions. 
+To enable gradient-based training, we develop three methods for computing gradients through the decision optimization problem, including exact closed-form gradients for a tractable class of $\alpha$-fairness maximizing allocation problems and two gradient approximation methods for general fairness-optimizing decisions.
+In healthcare resource allocation experiments, FDFL consistently achieves lower decision regret and improves prediction fairness with minimal loss in decision quality. 
+This work underscores the value of addressing fairness holistically in data-driven decision systems and offers a practical framework for improving procedural and outcome fairness in high-stakes applications.
+}%
+
+\FUNDING{This research was supported by [grant number, funding agency].}
+
+%Supplemental Material:
+%Data Ethics & Reproducibility Note:
+
+% Sample
+%\KEYWORDS{Stochastic programming, Decision support,Uncertainty, Disaster response, Optimization}
+
+% Fill in data. If unknown, outcomment the field
+\KEYWORDS{Equity, Fair Machine Learning, Data-driven decisions} 
+%\HISTORY{Received: Month DD, YYYY; Accepted: Month DD, YYYY; Published Online: Month DD, YYYY}
+
+\maketitle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Text of your paper here
+{\color{blue} 
+Target area: Artificial Intelligence and Optimization
+Editorial statement: The Artificial Intelligence \& Optimization area focuses on the development and computational study of methods that integrate modern artificial intelligence techniques, data-driven modeling, and optimization technology for algorithm design and decision-making. Topics of interest include but are not limited to:
+
+AI for Optimization: Use AI methods to improve optimization algorithms, solvers, and systems. Examples include machine learning for selecting branching rules or cutting planes, integrating trained neural networks into optimization models, and stand-alone neural combinatorial optimization solvers.
+
+Optimization for AI: Use optimization methods to improve AI algorithms and systems. Examples include integrating optimization knowledge into the machine learning pipeline for decision-focused learning, using integer optimization to find optimal decision trees or subset selection for regression, and designing neural networks of minimal size.
+
+Data-Driven Optimization and Decision Systems: Use data, statistical modeling, and machine learning to construct, parameterize, analyze, and computationally evaluate optimization-based decision systems. Examples include predictive-prescriptive analytics, data-driven stochastic and robust optimization, learning objectives or constraints from data, and large-scale or distributed implementations of data-driven decision models.
+
+\textbf{Possible Outline}
+
+1. Introduction: motivate fairness relevant in prediction-informed decisions, research gap in end-to-end fairness view, emphasize DFL methods as natural tools
+
+2. Related works: modify structure to focus more on algorithm rather than fairness. (1) Data-driven optimization: sequential predict-then-optimize, SAA, stochastic optimization, robust optimization (2) Decision-focused learning (3) Fairness in prediction and optimization 
+
+For (1) and (2), two key survey papers: \cite{mandi2024decision}, \cite{sadana2025survey}
+
+3. Problem formulation: end-to-end fairness optimization.  Formulation needs to clarify prediction loss, prediction fairness, decision loss (non-fair version in conventional DFL, separate from decision fairness?), decision fairness. 
+
+(1) Algorithm framework: PTO or DFL, prediction fairness or not, decision fairness or not
+(2) Fairness definition (3) An illustrative example 
+
+4. Theoretical results on FDFL (generalizing DFL to incorporate fairness components) (1) Generalization bounds (2) Regret expansion to conclude some comparisons between FDFL vs FPTO, partially extending ETO vs IEO result from literature 
+
+5. Algorithms (1) Preliminary: existing PTO (SAA, optimization) and DFL methods applicable if compatible with problem structure. Raise two challenges in FDFL: (a) Nonlinearity in decision fairness makes many linear objective specific DFL methods invalid -> justifying the need to develop customized method (b) Choice of weights on fairness -> justifying the consideration of multi-objective learning (2) Closed form gradient for alpha fairness for challenge a (3) Multi-objective algorithm for challenge b 
+
+6. Experiments: use full Obermeyer data instead of the 5000 samples. We may need one more dataset? 
+
+Methods to compare: (1) two stage methods: current PTO, new SAA, new robust optimization (2) integrated methods: current FDFL (exact and approximate gradients), cvxpylayer (existing?), new multiobjective algorithm 
+}
+
+\section{Introduction}\label{sec:Intro}
+% Motivate prediction-based decision making: broad applications including allocate medical resources based on medical need forecast, predict child mistreatment and place needed children into foster care, predict creditworthiness then decide whether to grant loans, decide targeted interventions to schools based on forecast dropout, predict risk for reentry into homelessness then decide resource allocation based on risks
+Data-driven predictions increasingly inform real-world decisions in a wide range of critical domains. In healthcare, forecasts of medical needs guide the allocation of scarce resources such as care management programs for people with complex health needs \citep{doi:10.1126/science.aax2342}. In social services, the predicted risk of child maltreatment is considered in the screening of children for intervention \citep{chouldechova2018case}. In power systems, forecasts of renewable energy supply inform cost-effective scheduling and dispatch of electricity across the power grid \citep{chen2021feature}. In finance, loan processing decisions need to account for the expected creditworthiness of loan applicants. These decision-making processes typically consist of two stages: a prediction task, which generates estimates of unknown parameters, and a subsequent decision task that uses these estimates as inputs. % These decisions typically involve a prediction task to generate predictions that then serve as input to a decision task. 
+
+Many real-world applications require fairness in prediction-based decisions. A growing body of literature distinguishes between considering fairness in both how predictions are obtained and how decisions are made \citep{paulus2020predictably,kuppler2022fair,scantamburlo2024prediction}. Prediction fairness seeks to eliminate discriminative or undesirable disparities in predictions, reflecting technical concerns about statistical properties of the predictor. Decision fairness aims to attain equitable decision outcomes, reflecting moral concerns about the justice of decisions. \cite{kuppler2022fair} argue that both aspects should be jointly addressed to design fair and just decision systems.
+%, as they characterize independent concepts. 
+%, that is, fair predictions do not guarantee fair decisions and vice versa. 
+% Discuss that fairness must be considered in prediction and decision: cite philosophical paper, give concrete examples of issues from only considering fairness in one stage
+%Philosophy papers: (1) \cite{paulus2020predictably} gave examples in healthcare contexts: "Reducing model bias and differential performance may be insufficient to eliminate fairness concerns in decision contexts characterized by predictive polarity (such as when predictions are used to ration health care resources), where unambiguously favorable (or unfavorable) decisions are associated with a higher (or lower) score." Polar predictions refer to cases where one pole (low or high) of predictions are associated with clear benefits or harms. "In this context, the decision-maker’s interest in efficient decision-making (i.e., based on accurate prognostication using all available information) is not aligned with the subject’s interest in receiving the lowest (or highest) possible risk prediction." Fair predictions may not be aligned with what individuals want: they may prefer "biased" predictions labeling them as low or high depending on the contexts
+
+To illustrate the insufficiency of only accounting for one type of fairness, we consider a simple example. Suppose a decision maker allocates a fixed amount of beneficial resources to recipients belonging to two groups: an advantaged group A and a disadvantaged group D. Each recipient has a demand for the resource and derives a benefit from receiving it. 
+%Practical examples of such settings include distributing public health services to local neighborhoods based on estimated health needs, or allocating financial aid to students based on projected educational return. 
+A predictive model estimates individual benefits, which then guide the resource allocation. We assume that historical data carry systemic bias against group D; consequently, a standard predictive model, trained on historical data to maximize accuracy, tends to be more accurate for group A and underestimates the benefits for members of group D. Based on these standard predictions, the decision maker can seek fairness by adopting a fair decision policy aimed at equalizing the total benefits received by the two groups. To compensate for the underestimation of benefits for group D, a fair policy tends to allocate disproportionately more resources to group D, even when their true benefits may not justify it. This compensatory over-allocation, however, can create reverse discrimination against group A. This outcome demonstrates that fair decisions alone may not correct the negative impacts of biased predictions. 
+
+Alternatively, the decision maker can seek fairness with a fair predictor that reduces underestimation for group D, possibly at the expense of introducing more noise into group A's predictions. If the decision maker then applies a standard decision policy aimed solely at maximizing total benefits across all recipients, the allocation will disproportionately favor group A, which contains more recipients with high predicted benefits. As a result, group D suffers from under-allocation, despite the more balanced prediction performances. In this case, addressing prediction fairness alone may be insufficient to ensure fair outcomes in final decisions. 
+
+We study a generic decision process that consists of a prediction task and a decision task. The prediction task uses data to forecast uncertain or unknown quantities, which are needed to formulate the optimization model for choosing decisions. The prediction task accounts for \emph{prediction fairness} to mitigate or eliminate unfair bias or discrimination. The decision task seeks \emph{decision fairness} to attain desirable equity performance in the decision outcomes. We refer to this as the End-to-End Fairness Optimization (E2EFO) problem. 
+
+As a problem of decision-making under uncertainty, E2EFO can be solved with two paradigms: predict-then-optimize (PTO) or decision-focused learning (DFL) \citep{kotary2021}. PTO methods address prediction and decision tasks separately: predictions are made first to attain desirable prediction accuracy and fairness, and then input into a fairness-embedded optimization model. DFL methods adopt the integrated strategy to train prediction models that directly optimize the quality of downstream decisions \citep{donti2017task,wilder2019melding,spo2020}. In other words, DFL departs from the conventional PTO approach by embedding the decision objective into the predictor training formulation. In both paradigms, a key measure of decision quality is regret, defined as the optimality gap between a decision and the optimal decision in terms of the ground-truth decision objective. Recent theoretical literature has established that DFL methods attain superior regret performance over PTO methods under mis-specified prediction models, that is, candidate prediction models do not cover the true data generating process \citep{elmachtoub2023estimate,elmachtoubdissecting}. Model misspecification is common in practice due to incomplete knowledge on data generation \cite{bennouna2025contextual} or intentional choice of simple models for interpretability \cite{fudenberg2026complexity}. In E2EFO contexts, undesirable bias could arise from selective labels due to systemic inequities \cite{lakkaraju2017selective}, where the true potential outcomes for historically disadvantaged groups are unobserved, thus creating a structural gap that necessitates model misspecification. Drawing from these practical challenges, we focus on the DFL paradigm for robust decision performance. 
+
+Existing DFL methods for prediction-informed decisions typically emphasize decision quality as the primary goal via regret minimization. In E2EFO, decision quality and prediction quality are both important, as these tasks have respective fairness implications. An effective way to handle multiple objectives in prediction is multi-task learning (add reference). The tripartite objective of E2EFO—accuracy, parity, and regret—frequently generates conflicting gradient directions during training. A standard scalarized loss may lead to 'gradient interference,' where the dominance of the prediction loss prevents the model from ever reaching the region of the parameter space that satisfies fairness or decision quality. By adopting a multi-task learning framework, we can employ gradient surgery to resolve these conflicts, ensuring that progress in decision regret does not come at the undue expense of predictive integrity.
+
+Therefore, we propose Decision-Focused Multi-Task Fair Learning (DF-MTFL) as a general framework for solving E2EFO. Specifically, we build upon gradient-based MTL algorithms. DF-MTL advances the respective threads of DFL and MTL in the following key aspects:
+%We build on this foundation to propose Fair Decision-Focused Learning (FDFL), where predictions are generated with joint consideration of prediction and decision fairness. FDFL advances standard DFL in two key respects:
+(1) we explicitly integrate prediction fairness into the learning objective through regularization, and
+(2) we extend the framework to accommodate the nonlinear, fairness-oriented objectives common in resource allocation problems.
+
+%In this paper, we formulate end-to-end fairness optimization (E2EFO) as a paradigm for considering fairness in end-to-end decisions. E2EFO aims to optimize fairness in decisions generated based on predictions. We develop fair decision-focused learning (FDFL) as an integrated approach to E2EFO. The FDFL framework builds upon standard decision-focused learning (DFL), an end-to-end machine learning approach that trains a prediction model to optimize downstream decision accuracy \cite{donti2017task,wilder2019melding,spo2020}. DFL is an alternative to the conventional two-stage PTO approaches, where a prediction model is trained to optimize the predictive accuracy separately from the decision process. By contrast, DFL emphasizes obtaining decisions that are accurate in terms of the downstream objective, even in the presence of prediction errors.
+% Adopt decision-focused learning to solve E2EFO. DFL is a growing method to train predictors to make good decisions. Our setting is novel in two aspects: (1) include prediction fairness in training predictior (2) nonlinear decision loss. 
+
+%[Move this to related works?]
+%Recent works have revealed limitations of PTO approaches, for example, \cite{donti2017task} demonstrated the possible mismatch between prediction and decision goals and argued that prediction-focused methods are prone to model selection bias. \cite{wang2024} further conceptualized the gaps between good predictions and good decisions due to various factors including treatment effect heterogeneity and feedback loops between decisions and predicted outcomes. The integrated structure of DFL methods mitigates these limitations and supports an improved alignment between prediction accuracy and decision accuracy. 
+
+%In our FDFL framework, prediction fairness focuses on eliminating undesirable disparity in forecasts and is formulated with constraints or regularization terms in predictor training. All fairness formulations in existing in-processing fair supervised machine learning methods \cite{mehrabi2021survey} are applicable to capture prediction fairness in FDFL. Decision fairness characterizes the equity goal of decision outcomes and is represented in the objective function of the optimization task. The optimization objective is a utility-based fairness measure assessing the desirability of a decision's utility distribution with respect to the underlying fairness perspective. Such fairness measures are broadly applied in operations research and mechanism design \citep{Chen2023,finocchiaro2021bridging}. FDFL aims to learn a predictor that yields fair decisions aligning both the prediction and decision objectives. Compared with standard DFL, FDFL aligns prediction and optimization performances in terms of both accuracy and fairness. 
+
+We summarize our main contributions as follows. 
+\begin{enumerate}
+    \item We propose end-to-end fairness optimization (E2EFO) as a unifying framework for incorporating fairness into prediction-informed decision-making. Within this general framework, we focus on prediction fairness, defined in terms of disparities in prediction errors, and decision fairness, represented by the $\alpha$-fairness of the resulting utility distribution from decisions.
+    \item We develop fair decision focused learning (FDFL) algorithms to train predictors within the E2EFO framework. FDFL jointly optimizes for low decision regret, which is the gap in the decision fairness objective between prediction-based decisions and true optimal decisions, and high prediction fairness. To enable gradient-based training, we derive exact gradients for a tractable class of decision problems and introduce two general gradient approximation methods for general fairness-maximizing optimization problems lacking a closed-form solution.
+    \item We demonstrate the performance of FDFL algorithms and fairness-embedded predict-then-optimize (FPTO) through a healthcare resource allocation experiment. Our results show that, when prediction and decision objectives are misaligned, FDFL substantially reduces decision regret compared to a strong FPTO baseline. We further show that integrating prediction fairness into FDFL leads to fairer predictions with minimal impact on decision quality.
+    %, and illustrate the benefit of accounting for prediction fairness in training. In particular, when prediction and decision objectives are misaligned, we observe that the exact gradient based FDFL method consistently outperforms other approaches. 
+\end{enumerate}
+%We make the following contributions in this paper. First, we formulate the E2EFO problem and develop the FDFL framework to find optimal fair decisions. Second, we propose gradient-based algorithms for FDFL training. We first present a perturbation-based gradient approximation method to support FDFL with a general fair optimization decision model. Then utilizing the closed-form solutions to a specific class of fairness optimization model, we derive exact gradient formulas and design an efficient specialized FDFL algorithm for this class of problem. Lastly, we demonstrate the benefits of FDFL in comparison with traditional two-stage approaches through a stylized example for theoretical intuition and real data based experiments for empirical insights. 
+
+The remainder of the paper is organized as follows. Section \ref{sec:literature} reviews related works on fairness and decision-focused learning. Section \ref{sec:prob} introduces the E2EFO problem and formalizes the FDFL method. Section \ref{sec:FDFL-alg} presents training algorithms for FDFL based on different gradient computation techniques. Section \ref{sec:exp} reports experimental results on a healthcare resource allocation problem. Lastly, Section \ref{sec:conclusion} concludes the paper and discusses future research directions.
+
+\section{Related Works} \label{sec:literature}
+We review three lines of literature related to our study: (1) data-driven optimization methods adopting the sequential predict-then-optimize pipeline; (2) decision-focused learning methods integrating downstream optimization into the prediction model; and (3) outcome-aware fairness in algorithmic decision making. 
+
+\subsection{Data-driven Optimization}
+
+\subsection{Decision-focused Learning}
+Prediction-based decision making is supported by two main paradigms: predict-then-optimize (PTO), also known as prediction-focused learning, and decision-focused learning (DFL). PTO methods first estimate unknown parameters to maximize estimation accuracy, then plug in these predictions to solve an decision optimization problem. Although PTO aligns with classical stochastic optimization \citep{bertsimas2020predictive}, it can suffer from misalignment between prediction and decision goals. Several works have shown that even accurate predictions may yield poor decisions if the prediction stage does not reflect the desirable optimization structure \citep{donti2017task, spo2020, wilder2019melding, qi2022integrating}. \citet{wang2024} further conceptualized the gaps between good predictions and good decisions due to various factors including treatment effect heterogeneity and feedback loops.  
+
+DFL addresses these limitations by integrating prediction and optimization into a unified pipeline. DFL trains the predictive model to directly optimize decision performance, enabling the prediction component to anticipate its impact on final decisions. Literature has studied DFL for a variety of decision tasks, including linear programming \citep{wilder2019melding, spo2020, berthet2020learning}, quadratic programming \citep{amos2017optnet, agrawal2019differentiable}, and general nonlinear optimization \citep{shah2022decision}. 
+Recent works continue to develop more scalable or general-purpose techniques, such as directional gradients \citep{huang2024decision}, negative identity backpropagation \citep{sahoo2022backpropagation}, surrogate learning via noise contrastive estimation \citep{mulamba2020contrastive}, and landscape surrogates \citep{zharmagambetov2023landscape}. We refer readers to \cite{mandi2024decision} for a comprehensive survey of DFL methods. 
+
+Performance differences between DFL and PTO have been explored in theoretical studies. For example, \cite{cameron2022perils} linked the performance gap between DFL and PTO to the price of correlation in stochastic optimization, and identified scenarios where PTO leads to optimal decisions and where PTO can perform unboundedly worse than DFL. 
+\cite{elmachtoub2023estimate} proved that PTO performs better than DFL in terms of regret stochastic dominance, when the predictor model class is well-specified and data is sufficient, and the reverse result applies to the misspecified setting. 
+\cite{ho2022risk} identified conditions on prediction models that can guarantee high quality decisions, and provided a framework for checking these conditions. Their results are applicable to examine various predictor training methods, including both PTO and DFL, in prediction-based decisions. 
+In addition to theoretical results, applications of DFL have demonstrated performance gains over PTO in practical contexts such as inventory management \citep{chung2022decision, qi2023practical}.
+%These theoretical results have useful implications for our FDFL framework. Since fairness objectives often involve multiple interrelated predictions and operate under some degree of model misspecification, e.g., due to historical biases in training data, the theoretical advantages of DFL may extend to FDFL. Additionally, as the tension between prediction accuracy and fairness creates additional complexity not captured in existing theoretical analyses, our work lays a foundation for further theoretical study related to end-to-end fairness. 
+
+%\cite{qi2023practical} develop an end-to-end framework for inventory management in multiperiod setting. Their approach directly learn the replenishment amounts from input features about demand patterns and inventory items. They demonstrate the advantage of E2E method over PTO baselines in generating inventory decisions that require lower costs. 
+%\cite{chung2022decision} investigate an inventory allocation problem in healthcare contexts. The allocation goal is to minimize the expected shortfalls among all facilities. They propose a decision-focused learning approach utilizing Taylor expansion of decision loss as the training objective.
+
+As growing research on DFL lays the foundation for integrating prediction and decision, some works have extended DFL to fairness-aware settings. \citet{kotary2022end} included fairness constraints in a ranking decision task, and leveraged linearity of the problem to develop a DFL method to learn fair rankings. \citet{dinh2024learning} also studied fair ranking. They defined a fair ranking decision model with the optimization of ordered weighted average functions, and proposed a DFL training algorithm with customized forward and backward propagation computation. Our work extends this literature by presenting a general paradigm for fair end-to-end optimization through fairness-aware DFL algorithms. In contrast to the mentioned papers in fair ranking, we focus on fair resource allocation as the decision problem. 
+
+
+\subsection{Fairness in Prediction and Optimization}
+Fairness has been extensively studied in both machine learning and optimization, though the two communities often pursue different fairness goals. Fair machine learning methods focus on achieving parity across groups or individuals in predictive models to reduce discriminatory biases. Commonly studied fairness criteria include demographic parity \citep{dwork2012fairness}, equalized odds \citep{hardt2016equality}, accuracy parity \citep{berk2021fairness}, predictive rate parity \citep{kleinberg2016inherent} , and individual fairness \citep{dwork2012fairness}. These goals have been operationalized through a range of techniques, including pre-processing methods that modify input data to eliminate potential bias (e.g., \cite{zemel2013learning, calmon2017optimized}), in-processing methods that include fairness constraints or regularization during training  (e.g., \cite{zafar2019fairness, olfat2018spectral, donini2018empirical}), and post-processing methods that adjust prediction outputs to attain desirable fairness (e.g., \cite{hardt2016equality, alabdulmohsin2020fair}). 
+The survey \cite{mehrabi2021survey} provided a comprehensive review of fairness definitions and techniques in machine learning.
+
+Fairness in optimization takes a complementary approach that emphasizes the fairness of decision outcomes, which are typically measured in terms of how utilities, capturing decision-related benefits or costs, are distributed among individuals or groups \citep{Chen2023}. Utility-based fairness metrics have been widely studied in operations research and mechanism design. Examples include measures of inequality (e.g., Gini coefficient \citep{dalton1920measurement}) that can be minimized to seek equality, Rawlsian max-min fairness \citep{rawls1971theory} that emphasizes prioritizing disadvantaged individuals or groups, and combined metrics that seek to balance both fairness and efficiency (e.g., $\alpha$-fairness \citep{mo2000fair}). Applications of fairness optimization span various domains, such as, facility location \citep{shehadeh2023reducing}, organ allocation \citep{bertsimas2013fairness}, food rescue operations \citep{EisTzu19}, infrastructure investment prioritization \citep{baghersad2025trade}, and crew roster scheduling \citep{breugem2022equality}. 
+
+%\subsection{Outcome-Aware Fair Decision Making}
+Recent works in both machine learning and optimization increasingly emphasize outcome-aware fairness, which seeks fairness in the real-world consequences of predictive and prescriptive decision-making systems. A central motivation is that fair predictions do not guarantee equitable long-term outcomes and impacts. For instance, \citet{liu2018delayed} showed that fairness in predictive models, which aims to benefit certain protected groups, does not necessarily lead to long-term improvements for the targeted groups. Similarly, \citet{corbett2023measure} found that imposing standard fairness requirements in machine learning models can inadvertently disadvantage the groups that they intend to protect. This perspective motivates frameworks that embed fairness throughout the full decision pipeline. \citet{scantamburlo2024prediction} proposed a conceptual separation between prediction modelers and decision makers, arguing for a holistic view that aligns their fairness goals in decision making. 
+
+An emerging line of research operationalizes outcome-aware fairness by directly learning fair decision policies. \citet{kilbertus2020fair} argued that in selective label settings, learning decision policies can provide better utility and fairness performances than learning predictions followed by score-based decision rules. 
+\citet{tang2023learning} studied online resource allocation to sequentially arriving individuals, whose allocation outcomes are uncertain but can be learned from individual characteristics. The authors developed allocation policies that aim to optimize long-run outcomes while enforcing capacity and fairness constraints, and provided theoretical performance guarantees in both full-information and sample-based setups. 
+\citet{jia2024learning} investigated multi-stage selection problems, and proposed learning interpretable linear selection rules to optimize selection outcomes subject to fairness constraints. The core of their learning approach is using a mixed integer conic optimization problem to obtain asymptotically consistent solutions to an intractable chance-constrained model. 
+\citet{chohlas2024learning} formalized consequentialist algorithmic fairness, which evaluates algorithmic policies or decisions based on their real-world outcomes. Building on the consequentialist principles, the authors provided a policy learning framework that includes the elicitation of stakeholder preferences and the optimization of preference-informed policies.
+%\cite{corbett2023measure, chohlas2024learning} explored the application of a consequentialist approach, where the fairness of a decision algorithm or policy is evaluated based on the produced real-world outcomes. Building on the consequentialist principles, \cite{chohlas2024learning} presented a practical framework that includes the elicitation of stakeholder preferences and the optimization of preference-informed policies. The authors also developed a contextual bandit algorithm to operationalize this framework. 
+
+%learn a decision policy instead of learning scores then design score-based policy \cite{kilbertus2020fair} study binary decision policies that follow the format of a stochastic mapping from features. Conventional approaches predict risk scores from features, then apply threshold rules in policy. Under imperfect predictions in selective label setting, that is, labels exist conditional on previous decisions, they demonstrate the advantage of learning to decide over learning to predict. They propose an algorithm to directly learn a policy, that maximizes utility subject to fairness constraints, with exploration to overcome bias in historical data. 
+
+%\cite{tang2023learning} study online allocation of different types of treatment to heterogeneous individuals arriving sequentially over time. Each individual is characterized by random covariate and potential outcome for receiving treatment. The policy goal is to maximize long run performance of treatment outcomes. The authors develop policies that have theoretical performance guarantee under full-information and sample-based setups. Fairness in the allocation process can be accounted for using fairness constraints.
+
+%\cite{jia2024learning} consider the learning of multi-stage selection policy that aims to maximize the selection precision subject to fairness constraints. The core to their approach is reformulation of the highly intractable selection problem into mixed binary conic optimization problem.
+
+A persistent gap in the literature is that these outcome-aware frameworks have not simultaneously addressed prediction fairness and decision fairness. Our work fills this gap by linking both aspects of fairness in end-to-end learning.
+
+\section{Problem Formulation: End-to-End Fairness Optimization} \label{sec:prob}
+We consider a general resource allocation problem where a decision maker distributes limited resources among stakeholders. 
+%This setting encompasses broad applications, such as public funding allocation, medical supply provision, or candidate selection in hiring and college admission, with an explicit emphasis on ensuring fair outcomes. 
+The decision maker aims to promote beneficial downstream impacts, such as improved access, health, or opportunity, through these allocations. Stakeholders' outcomes depend on the amount of resources they receive, and these impacts are typically not observable in advance to inform the allocation process. To address this challenge, we study a setting where predicted outcomes guide allocations in a way that balances effectiveness and fairness. 
+%Since stakeholders' outcomes depend on the amount of resources they receive, these outcomes are often not known in advance to inform the decision-making process. Motivated by this practical challenge, we study a setting where predicted outcomes guide allocations in a way that balances effectiveness and fairness. 
+
+Suppose a decision maker allocates one type of resource to $n$ stakeholders, indexed by $i \in [n] = \{1, \ldots, n\}$. Let $\mathbf{d} \in \mathbb{R}^n_{\geq 0}$ denote allocation decisions, where $d_i$ represents the amount of resources given to stakeholder $i$. Allocation outcomes depend on how stakeholders are affected by the resources. For $i \in [n]$, we use a parameter $r_i$ to capture the impact of the resource on stakeholder $i$, aggregating relevant benefits and burdens. The vector $\mathbf{r} \in \mathbb{R}^n$ denotes the impact parameters of all stakeholders, which are unknown at the time of decision-making. 
+
+%We assume $\mathbf{r}$ is unknown, representing the realistic scenario in which the effects of allocation are not fully observable. 
+We assume the decision maker has access to feature data 
+$\mathcal{D} = \{\mathbf{x}_1, \dots, \mathbf{x}_n\}$, where $\mathbf{x}_i$ describes stakeholder $i$. The \textbf{prediction task} uses $\mathcal{D}$ to estimate $\hat{\mathbf{r}} = f_{\theta}(\mathcal{D})$, parameterized by $\theta \in \Theta$, as a predictive approximation of $\mathbf{r}$. To mitigate potential biases in historical data or structural inequities in feature-to-parameter mapping, we include a prediction fairness criterion $F(\hat{\mathbf{r}})$, which quantifies disparities in the predictions. A fair predictor aims to keep $F(\hat{\mathbf{r}})$ small to reduce bias propagation into predictions. 
+%should ensure that $F(\hat{\mathbf{r}})$ is sufficiently small to limit the degree to which bias in input data propagates into unfair predictions.
+
+Given predicted parameters $\hat{\mathbf{r}}$, the decision maker chooses an allocation to promote fairness in stakeholder outcomes. Each stakeholder $i$ derives utility $u_i = U_i(d_i;\hat{r}_i)$, where $U_i: \mathbb{R} \rightarrow \mathbb{R}$ is a utility function characterizing $i$'s overall gains from allocation. Thus, a decision vector $\mathbf{d}$ induces a utility distribution $\mathbf{u} = (u_1,\ldots,u_n)$.
+%Each stakeholder $i$ derives utility $u_i$ from the received resources according to a utility function $U_i: \mathbb{R} \rightarrow \mathbb{R}$, which characterizes $i$'s overall gains from allocation. Thus, a decision vector $\mathbf{d}$ induces a utility distribution $\mathbf{u} = (u_1,\ldots,u_n)$, where $u_i = U_i(d_i;\hat{r}_i)$. 
+To evaluate the fairness of an allocation, we introduce a fairness measure $W: \mathbb{R}^n \to \mathbb{R}$ that maps a utility vector to a scalar score: $W(\mathbf{d};\hat{\mathbf{r}}) = W(U_1(d_1;\hat{r}_1),\ldots,U_n(d_n;\hat{r}_n))$. Higher values of $W$ reflect more equitable outcomes. The \textbf{decision task} solves the following optimization problem. 
+\begin{equation} \label{eq:opt_prob}
+\begin{aligned}
+\max_{\mathbf{d}} \quad & W(\mathbf{d};\hat{\mathbf{r}}) ~ \text{s.t.} \quad \mathbf{d} \in \mathcal{S}
+\end{aligned}
+\end{equation}
+%We assume that the feasible set $\mathcal{S} \subseteq \mathbb{R}^{n}$ is non-empty, compact, and convex, and independent of $\hat{\mathbf{r}}$. We also assume $W$ to be concave in $\mathbf{d}$, which holds when $W$ is a concave function and each utility function $U_i$ is concave and non-decreasing in $d_{i}$, or when $W$ is convex and each $U_i$ is convex and non-increasing. 
+We assume that the feasible set $\mathcal{S} \subseteq \mathbb{R}^{n}$ is non-empty, compact, and independent of $\hat{\mathbf{r}}$. Let $\hat{\mathbf{d}} \coloneqq \mathbf{d^*}(\hat{\mathbf{r}})$ denote the optimal solution to \eqref{eq:opt_prob} with the predicted parameters. If the true parameters $\mathbf{r}$ were known, the optimal decision $\mathbf{d^*} \coloneqq \mathbf{d^*}(\mathbf{r})$ could be obtained by solving \eqref{eq:opt_prob} with $\mathbf{r}$ as input.
+
+We refer to this two-stage prediction-informed decision-making process as the \textbf{end-to-end fairness optimization} (E2EFO) framework. The predictive model $f_{\theta}$ trained on $\{\mathcal{D},\mathbf{r}\}$, which contains historical records of allocations and their observed impacts, is used to estimate stakeholder-specific impact parameters from features. 
+%The prediction task uses training data $\{\mathcal{D},\mathbf{r}\}$, obtained from historical records of allocations and their observed impacts, to learn a predictive model $f_{\theta}$, parameterized by $\theta \in \Theta$, mapping stakeholder features to outcome-influencing parameters: $\hat{\mathbf{r}}_{i} \coloneqq f_{\theta}(\mathbf{x}_i)$ for all $i \in [n]$. 
+Prediction quality can be evaluated using standard \textit{prediction accuracy} (e.g., mean squared error) and \textit{prediction fairness} $F(\hat{\mathbf{r}})$.
+%, which quantifies the disparities in predictive performances across groups or individuals. 
+While the training process relies on data where $\mathbf{r}$ is observed, in actual deployment, the true parameters $\mathbf{r}$ are not available and predictions $\hat{\mathbf{r}} = f_\theta(\mathcal{D})$ are used in the decision model \eqref{eq:opt_prob} to obtain $\mathbf{d^*}(\hat{\mathbf{r}})$. 
+Decision performance can be assessed by \textit{decision accuracy} via how close $\mathbf{d^*}(\hat{\mathbf{r}})$ is to $\mathbf{d^*}(\mathbf{r})$ and \textit{decision fairness} via $W$. 
+%Similar to the predictions, we assess the quality of allocation through two complementary lenses: \textit{decision accuracy}, which measures how close the prediction-based decision $\mathbf{d^*}(\hat{\mathbf{r}})$ is to the true optimal decision $\mathbf{d^*}(\mathbf{r})$, and \textit{decision fairness}, which evaluates fairness in the resulting utility distribution as measured by $W$. 
+
+Together, these components define a closed-loop system in which predictions and decisions interact to shape fairness outcomes. Section \ref{sec:fairness-def} introduces the fairness metrics used in our framework. Section \ref{sec:FDFL-framework} presents learning-based approaches to solving the E2EFO problem, then Section \ref{sec:example} provides a stylized example to illustrate the performance differences among these approaches. 
+%In the following sections, we specify the prediction and decision fairness metrics (Section \ref{sec:fairness-def}) and describe training formulations for the prediction task (Section \ref{sec:FDFL-framework}). An illustrative example in Section \ref{sec:example} demonstrates the need of end-to-end fairness and the performance differences among training methods. 
+
+\subsection{Fairness Definitions} \label{sec:fairness-def}
+The E2EFO framework accommodates a wide range of fairness definitions. In this section, we specify the fairness metrics used in our study. We distinguish between fairness in the prediction task and fairness in the decision task. For consistency, we adopt either group-based fairness or individual-based fairness in both tasks, although mixed perspectives are possible in practice.
+
+\paragraph{Prediction Fairness.} 
+The prediction task should ensure that the estimation of stakeholder-specific parameters does not systematically disadvantage particular groups or individuals. We evaluate prediction fairness with accuracy disparity metrics, which quantify variability in prediction errors to capture inequality in the error distribution. Such metrics have been widely applied in fair regression methods \citep{berk2017convex, agarwal2019fair}.
+%, which matches the setup of our prediction task. 
+
+In the group-based setting, stakeholders are partitioned into $K$ groups $G_1, \ldots, G_K$, with group $G_k$ contains $g_k$ individuals. The mean squared error (MSE) in the predictions for group $k$ is $MSE^{(t)}_k = \frac{1}{g_k}\sum_{i \in G_k} (r_{i}-\hat{r}_{i})^2$, and $\overline{MSE} = \frac{\sum_{k=1}^K MSE_k}{K}$ is the average error of all groups. 
+We apply the mean absolute deviation (MAD) as the measure of variability, and the group-based accuracy disparity is given by:
+\begin{equation} \label{def:group-acc-parity}
+    F(\hat{\mathbf{r}}) = \frac{1}{K} \sum_{k=1}^K |MSE_k - \overline{MSE}|.
+\end{equation}
+%Group-based accuracy disparity quantifies the difference in average prediction errors among predefined stakeholder groups, e.g., demographic subpopulation. We adopt the mean absolute deviation (MAD) as the measure of variability and compute prediction errors with the standard mean squared error (MSE) definition. Suppose stakeholders are partitioned into $K$ groups $G_1, \ldots, G_K$ of sizes $g_1,\ldots,g_K$, and group $k$'s prediction error is computed as $MSE^{(t)}_k = \frac{1}{g_k}\sum_{i \in G_k} (r_{i}-\hat{r}_{i})^2$. Among all groups, the accuracy disparity is $F(\hat{\mathbf{r}}) = \frac{1}{K}\sum_{k=1}^K |MSE_k - \overline{MSE}|$, where $\overline{MSE} = \frac{\sum_{k=1}^K MSE_k}{K}$.
+
+In the individual-based setting, the prediction error for stakeholder $i$ is $e_{i} = (r_{i}-\hat{r}_{i})^2$, and the mean error is $\overline{e} = \frac{\sum_{i=1}^n e_{i}}{n}$. The mean absolute deviation (MAD) of all individual errors gives the following individual-based accuracy disparity:
+\begin{equation} \label{def:ind-acc-parity}
+    F(\hat{\mathbf{r}}) = \frac{1}{n} \sum_{i=1}^n |e_i - \overline{e}|.
+\end{equation}
+%Individual-based accuracy disparity assesses the distribution of individual prediction errors. We adopt a similar approach as in the group-based case. Stakeholder $i$'s predictor error is $e_{i} = (r_{i}-\hat{r}_{i})^2$. Then the accuracy disparity among all stakeholders is computed as $F(\hat{\mathbf{r}}) = \frac{1}{n}\sum_{i=1}^n |e_{i} - \overline{e}|$, where $\overline{e} = \frac{\sum_{i=1}^n e_{i}}{n}$. 
+
+\paragraph{Decision Fairness.}
+The decision task aims to achieve equity in stakeholder outcomes from resource allocation. These outcomes are represented with utility functions, whose definitions may vary across contexts. In our setup, we assume that the parameter $r_i$ captures $i$'s utility gain per unit of resource. Given a predicted parameter $\hat{r}_i$, we define the utility derived from allocation $d_i$ as:
+%then the true utility gained from a decision $d_i$ is $r_i d_i$. To formalize, for each $i \in [n]$, given a predicted parameter $\hat{r}_i$, we use the following linear utility function.
+\begin{equation} \label{eq:udef}
+   U_i(d_i; \hat{r}_i) = \hat{r}_i d_{i}.
+\end{equation}
+
+Let $\mathbf{u} = (u_1,\ldots,u_n)$ denote the utility distribution generated from decisions $\mathbf{d}$. A fairness measure $W$ aggregates utility values into a scalar indicator of overall fairness. We adopt the widely used $\alpha$-fairness (e.g., \cite{mo2000fair,bertsimas2011price}), a family of measures offering a tunable trade-off between efficiency and equity:
+%As reviewed in Section \ref{sec:literature}, there are many fairness measures that fall into three broad categories: fairness via equality, fairness for the disadvantaged, and combined measures balancing fairness and efficiency. Recall that we focus on $W$ that gives a concave function of $\mathbf{d}$, which requires $W$ to be convex or concave in $\mathbf{u}$ depending on the shape of utility functions. 
+\begin{equation} \label{eq:alphafairness}
+    W_{\alpha}(\mathbf{u}) = 
+\begin{cases}
+    \sum_{i=1}^{n} \frac{u_i^{1 - \alpha}}{1-\alpha}, & \text{if } \alpha \geq 0 \text{ and } \alpha \neq 1; \\
+    \sum_{i=1}^{n} \log(u_i), & \text{if } \alpha = 1.
+\end{cases}
+\end{equation}
+When $\alpha = 0$, this measure simplifies to a sum of all utilities, reflecting a pure efficiency goal to maximize the total utility. As $\alpha$ increases, the measure places greater emphasis on equity, with $\alpha \to \infty$ recovering the Rawlsian max-min criterion, which is a pure equity goal to prioritize the worst-off stakeholder. The standard definition \eqref{eq:alphafairness} applies at the individual level. When using individual-based prediction fairness \eqref{def:ind-acc-parity} and $W_{\alpha}(\mathbf{u})$ as the decision objective, the E2EFO problem targets fair outcomes for individual stakeholders.
+
+%When a decision maker emphasizes fairness among groups, we capture prediction fairness with group-based accuracy disparity \eqref{def:group-acc-parity} and generalize $\alpha$-fairness to apply among groups. We define the group-based $\alpha$-fairness measure as the following.
+To capture group-level fairness, we generalize $\alpha$-fairness to operate across groups. Let $g_k(\mathbf{u})$ denote an intra-group fairness score for group $G_k$, defined as:
+\begin{equation} \label{eq:alpha-group-g}
+g_k(\mathbf{u}) = 
+\begin{cases}
+    \sum_{i \in G_k} \frac{u_i^{1 - \alpha}}{1-\alpha}, & \text{if } 0 \leq \alpha < 1; \\
+    \sum_{i \in G_k} \log(u_i), & \text{if } \alpha = 1; \\
+    \frac{\alpha - 1}{\sum_{i \in G_k} u_i^{1-\alpha}}, & \text{if } \alpha > 1.
+\end{cases}
+\end{equation}
+When $\alpha \leq 1$, this function applies the standard $\alpha$-fairness definition. When $\alpha > 1$, we apply a monotonic transformation to ensure positivity while preserving the relative order of fairness among groups. A higher value of $g_k(\mathbf{u})$ indicates a more equitable utility distribution within group $G_k$.
+%The function \eqref{eq:alpha-group-g} applies the standard definition \eqref{eq:alphafairness} when $\alpha \leq 1$. When $\alpha > 1$, instead of the original formula in \eqref{eq:alphafairness} that leads to a negative value, we apply an order-preserving transformation to ensure that $g_k(\mathbf{u})$ is positive. 
+
+We then define group-based $\alpha$-fairness by aggregating these intra-group fairness scores:
+\begin{equation} \label{eq:alpha-group-W}
+    W^g_{\alpha}(\mathbf{u}) = 
+\begin{cases}
+    \sum_{k=1}^{K} \frac{g_k^{1 - \alpha}(\mathbf{u})}{1-\alpha}, &\text{if } \alpha \geq 0 \text{ and } \alpha \neq 1; \\
+    \sum_{k=1}^{K} \log(g_k(\mathbf{u})), &\text{if } \alpha = 1.
+\end{cases}
+\end{equation}
+This two-level formulation ensures that both intra-group fairness (via $g_k$) and inter-group fairness (via $W^g_{\alpha}$) are taken into account. When E2EFO uses group-based prediction fairness \eqref{def:group-acc-parity} and group-based decision fairness objective \eqref{eq:alpha-group-W}, the framework emphasizes fairness among groups.
+
+
+
+\subsection{Decision Focused Multi-Task Fair Learning} \label{sec:FDFL-framework}
+To solve an E2EFO problem, we 
+%follow a separate view to 
+first learn a predictor to estimate $\hat{\mathbf{r}}$ then solve for the optimal decisions $\mathbf{d}^*(\hat{\mathbf{r}})$ from \eqref{eq:opt_prob}. 
+The decision task involves a well-structured optimization problem that can often be efficiently handled by standard solvers. In contrast, the prediction task admits greater modeling flexibility, as there are different ways to formulate the training problem depending on the prediction goals. 
+
+A common baseline is the predict-then-optimize (PTO) approach, which focuses solely on prediction quality. PTO learns a function $f_{\theta}$ using training data $\{\mathcal{D},\mathbf{r}\}$ to minimize a standard prediction loss $L(\theta)$, such as the mean squared error. To account for prediction fairness, a fairness penalty $F(f_{\theta}(\mathcal{D}))$ can be added as a constraint: $\min_{\theta \in \Theta} L(\theta_t) ~ \text{s.t.} ~ F(f_{\theta}(\mathcal{D})) \leq \epsilon$ where $\epsilon$ is a predefined tolerance level, or as a regularizer: $\min_{\theta \in \Theta} L(\theta) + \lambda F(f_{\theta}(\mathcal{D}))$ where $\lambda > 0$ balances prediction accuracy and fairness. 
+
+%A key limitation of PTO is that high prediction accuracy and fairness does not necessarily translate into accurate and fair decisions, particularly when the decision optimization model is highly sensitive to small changes in predictions. 
+A key limitation of PTO is its potential misalignment with the decision objective. Even highly accurate and fair predictions may lead to low-quality decisions if the decision problem is sensitive to small prediction errors. To address this limitation, we adopt Fair Decision-Focused Learning (FDFL), an end-to-end approach that trains predictive models with explicit consideration of decision performance. 
+FDFL replaces the prediction-error based loss with a regret-based loss, which measures the gap in fairness performance between the optimal decision under true parameters and the prediction-based decision. This loss function has been applied in standard decision-focused learning methods \citep{pyepo2023}. 
+\begin{equation} \label{eq-def:regret}
+    L_{regret}(\theta) = W(\mathbf{d^*}(\mathbf{r});\mathbf{r}) - W(\mathbf{d}^*(f_{\theta}(\mathcal{D}));\mathbf{r}).
+\end{equation}
+This regret-based loss becomes zero when the predicted parameters lead to decisions that are as fair as the optimal decision under true parameters. To incorporate prediction fairness, FDFL adds the same fairness disparity measure $F(f_\theta(\mathcal{D}))$, either as a constraint: $\min_{\theta \in \Theta} L_{regret}(\theta) ~ \text{s.t.} ~ F(f_{\theta}(\mathcal{D})) \leq \epsilon$, or as a regularized objective, $\min_{\theta \in \Theta} L_{regret}(\theta) + \lambda F(f_{\theta}(\mathcal{D}))$ where $\lambda > 0$.
+
+Compared to PTO that emphasizes accurate estimation of $\hat{\mathbf{r}}$, FDFL prioritizes decision quality, specifically generating decisions $\hat{\mathbf{d}}$ that are as fair as $\mathbf{d^*}(\mathbf{r})$. While both approaches can integrate fairness, their training objectives are different. 
+
+We next present an example showing how this prediction-decision integration in FDFL can lead to superior performance in end-to-end fairness optimization.
+
+
+\subsubsection{Generalization Bounds}
+
+\subsubsection{Regret Comparisons}
+
+
+\subsection{An Illustrative Example} \label{sec:example}
+We present a stylized example to illustrate how different training approaches in the prediction task affect both prediction and decision performances in an E2EFO problem. Suppose a decision maker allocates $20$ units of divisible resources to $15$ stakeholders belonging to two groups: $G_1$ has $10$ members and $G_2$ has $5$. Each stakeholder is described by a single feature $x_i$, which is used to predict their impact parameter $r_i$. 
+
+The decision task maximizes group-based $\alpha$-fairness $W^g_{\alpha}(\mathbf{u})$ with $\alpha = 0.5$, subject to the constraints $\mathbf{d} \geq 0$ and $\sum_{i=1}^{15} d_i \leq 20$. Prediction fairness is evaluated using group-based accuracy disparity, which simplifies in the two-group setting to $F(\hat{\mathbf{r}}) = |MSE_1 - MSE_2|$, where $MSE_k$ denotes the mean squared error for group $G_k$.
+
+We compare four methods to learn a linear predictor of $\mathbf{r}$. Two methods follow a predict-then-optimize paradigm: PTO solves a standard linear regression to minimize the MSE between $\mathbf{r}, \hat{\mathbf{r}}$, and fair PTO (FPTO) accounts for prediction fairness by adding accuracy disparity as a regularization term to the prediction error. The other two methods adopt an end-to-end view to emphasize decision quality: DFL fits a linear predictor to minimize the decision regret associated with $\mathbf{d}^*(\hat{\mathbf{r}})$, and FDFL augments DFL with an accuracy disparity regularizer. In both FPTO and FDFL, we set $\lambda = 0.5$ for the prediction fairness term. 
+
+\begin{wraptable}{r}{0.6\textwidth}
+  \centering
+  \begin{tabular}{lcccc}
+    \toprule
+     Methods & Prediction & Accuracy & Decision & Decision \\
+        & MSE & Disparity & MSE & Regret \\
+    \midrule
+    PTO   & \textbf{6.767} & 14.606 & 0.097 & 0.072 \\
+    FPTO  & 10.983 & \textbf{0.000} & 0.077 & 0.092 \\
+    DFL   & 108.341 & 116.433 & 0.070 & \textbf{0.058} \\
+    FDFL  & 9.429 & \textbf{0.000} & \textbf{0.066} & 0.064 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Performance Summary}
+  \vspace{-0.7cm}
+  \label{tab:ex-summary}
+\end{wraptable}
+Figure~\ref{fig:ex-regression} shows the data points for both groups and the fitted regression lines from all methods. Table~\ref{tab:ex-summary} summarizes key performance metrics of prediction and decision quality. 
+The results show notable differences among the four methods. 
+PTO achieves the lowest prediction MSE but exhibits disparity in prediction accuracy between groups. FPTO eliminates this disparity at the cost of slightly worse prediction accuracy. In terms of decision quality, both PTO and FPTO are inferior to their end-to-end counterparts, DFL and FDFL. The end-to-end methods attain lower decision MSE and decision regrets, indicating that prediction-based decisions $\hat{\mathbf{d}}$ are closer to the true optimal decisions $\mathbf{d}^*(\mathbf{r})$ both in allocation amounts and in fairness levels. Notably, FDFL improves upon DFL by substantially reducing prediction errors and prediction disparities, while maintaining strong decision performance. Overall, FDFL emerges as the most effective approach, balancing fair and accurate predictions with high-quality decision outcomes.
+
+\begin{figure}[ht]
+  \centering
+  \begin{subfigure}[t]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{Plots/regression-lines.png}
+    \caption{Data and regression results}
+    \label{fig:ex-regression}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{Plots/pred-mse.png}
+    \caption{Prediction errors}
+    \label{fig:ex-predmse}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.32\textwidth}
+    \includegraphics[width=\linewidth]{Plots/dec-mse.png}
+    \caption{Decision errors}
+    \label{fig:ex-decmse}
+  \end{subfigure}
+  \caption{Regression results, group comparisons of prediction and decision errors}
+  \label{fig:ex-results}
+\end{figure}
+
+We further compare group-level performances. Figure~\ref{fig:ex-predmse} shows that incorporating prediction fairness helps eliminate accuracy gaps between groups in both the predict-then-optimize and end-to-end paradigms. In Figure~\ref{fig:ex-decmse}, we observe that prediction disparities in PTO are amplified in the decision stage, and the fair predictions in FPTO still lead to disparities in decision errors. These results highlight the misalignment between prediction and decision under PTO and FPTO. In contrast, DFL attains a smaller decision error gap between groups despite its high prediction accuracy disparity, and FDFL achieves both fair predictions and equitable decision outcomes between groups.
+
+\section{Fair Decision Focused Learning Algorithm} \label{sec:FDFL-alg}
+{\color{blue}
+Challenge A: Differentiating Through Nonlinear Fairness; Present the Closed-Form Gradient for $\alpha$-fairness over knapsack constraints as an exact, high-speed solution
+
+Challenge B: The Multi-Objective Trade-off; Propose the Multi-Objective Gradient Adjustment algorithm (e.g., based on MGDA or similar) to reach Pareto stationary solutions without manual $\lambda$ tuning
+}
+
+We next present algorithmic approaches for training predictive models under the FDFL setup. We adopt the training formulation that integrates prediction fairness as a regularization term. 
+\begin{equation} \label{sys:fdfl-train}
+     \min_{\theta \in \Theta}~ L_{regret}(\theta) + \lambda F(f_{\theta}(\mathcal{D})) = \min_{\theta \in \Theta}~ W(\mathbf{d^*}(\mathbf{r});\mathbf{r}) - W(\mathbf{d}^*(f_{\theta}(\mathcal{D}));\mathbf{r}) + \lambda F(f_{\theta}(\mathcal{D})).
+\end{equation}
+For notation ease, we refer to the training objective as $\mathcal{L}(\theta)$. To enable gradient-based training methods such as backpropagation, we impose the following assumptions to ensure that $\mathcal{L}(\theta)$ is subdifferentiable with respect to $\theta$.
+\begin{assumption} \label{assp: ftheta}
+The prediction model $f_{\theta}$ is differentiable in $\theta$.
+\end{assumption}
+\begin{assumption} \label{assp: dec-diff}
+The optimal solution $\mathbf{d}^*(\hat{\mathbf{r}})$ to the parametric decision optimization problem \eqref{eq:opt_prob} is differentiable in the predicted parameters $\hat{\mathbf{r}}$.
+\end{assumption}
+In the regret term, the first component $W(\mathbf{d^*}(\mathbf{r});\mathbf{r})$ is constant with respect to $\theta$, and therefore its gradient vanishes. The second component, $W(\mathbf{d}^*(\hat{\mathbf{r}});\mathbf{r}) = W(\mathbf{d}^*(f_{\theta}(\mathcal{D}));\mathbf{r})$, depends on $\theta$ through the predicted parameters $\hat{\mathbf{r}} = f_{\theta}(\mathcal{D})$ and the resulting optimal decisions $\mathbf{d}^*(\hat{\mathbf{r}})$. Under Assumptions~\ref{assp: ftheta} and \ref{assp: dec-diff}, we apply the chain rule to compute the regret gradient as:
+\begin{equation} \label{eq:grad-chain-regret}
+\nabla_{\theta} L_{\text{regret}}(\theta) = -\frac{\partial W(\mathbf{d}^*(\hat{\mathbf{r}});\mathbf{r})}{\partial \mathbf{d}^*(\hat{\mathbf{r}})} \cdot \frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}} \cdot \frac{\partial \hat{\mathbf{r}}}{\partial \theta}.
+\end{equation}
+In this decomposition, the first term is the gradient of the decision objective $W$ with respect to allocation decisions $\mathbf{d}$, which is well defined for our chosen decision fairness measures \eqref{eq:alphafairness} and \eqref{eq:alpha-group-W}. The last term is the Jacobian of the predictor $f_{\theta}$, which is straightforward to compute using automatic differentiation in standard machine learning frameworks. 
+
+The middle term, $\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$, requires differentiating through an optimization problem and poses the main technical challenge. Prior works have derived regularity conditions under which this middle term is well defined. For example, Theorem 1 in \citet{amos2017optnet} and Theorem 4.4 in \citet{still2018lectures} provide sufficient conditions for the differentiability of the optimal solution mapping in parametric convex optimization. In our case, Assumption~\ref{assp: dec-diff} holds for allocation problems maximizing group-based or individual-based $\alpha$-fairness over a knapsack, which we explore further in Section~\ref{sec:closed} and numerical experiments in Section~\ref{sec:exp}
+
+We now turn to the prediction fairness regularizer $F(f_{\theta}(\mathcal{D}))$. Both group-based and individual-based accuracy disparity measures, defined in \eqref{def:group-acc-parity} and \eqref{def:ind-acc-parity}, are subdifferentiable with respect to $\hat{\mathbf{r}}$.
+%\footnote{Both accuracy disparity measures are differentiable when the inner components inside the absolute value terms are nonzero.}. 
+Using the chain rule and Assumption~\ref{assp: ftheta}, we compute the gradient of the regularizer as:
+\begin{equation} \label{eq:grad-chain-pred}
+  \frac{\partial{F(f_{\theta}(\mathcal{D}))}}{\partial{\boldsymbol\theta}} = \frac{\partial{F(\hat{\mathbf{r}})}}{\partial{\hat{\mathbf{r}}}} \cdot \frac{\partial{\hat{\mathbf{r}}}}{\partial{\boldsymbol{\theta}}}.
+\end{equation}
+
+Since both components of $\mathcal{L}(\theta)$ are subdifferentiable in $\theta$, we apply standard first-order method for optimization. Algorithm~\ref{alg:dfl} summarizes the training procedure to learn $f_{\theta}$. In each epoch, a forward propagation step evaluates the training loss, then a back propagation step computes a gradient $\nabla_{\theta} \mathcal{L}$ or a subgradient $\partial_{\theta}\mathcal{L}$ and updates the predictor parameters accordingly. 
+
+\begin{algorithm}[ht]
+\caption{Gradient-based Training for Fair Decision Focused Learning}
+\label{alg:dfl}
+\small  % Reduce font size
+\setlength{\abovedisplayskip}{3pt}  % Reduce spacing
+\setlength{\belowdisplayskip}{3pt}
+\begin{algorithmic}[1]
+\Require Training data $\mathcal{D}$; Target labels $\mathbf{r}$; decision objective $W(\mathbf{d};\mathbf{r})$; prediction fairness $F$; learning rate $\eta$.
+%Training set $\{(\mathbf{x}, \mathbf{r})\}$; objective $W(\mathbf{d};\hat{\mathbf{r}})$; fairness regularizer $F(\theta)$; learning rate $\eta$
+\State Initialize predictor parameter $\theta \in \Theta$ for $f_{\theta}$.
+\For{each training epoch}
+    \State $\hat{\mathbf{r}} \gets f_\theta(\mathcal{D})$. \Comment{Predict parameters in decision model}
+    \State $\mathbf{d}^*(\hat{\mathbf{r}}) \gets \arg\max_{\mathbf{d}\in\mathcal{S}}\,W(\mathbf{d};\hat{\mathbf{r}})$. \Comment{Solve  optimal decision based on predicted parameters}
+    \State $\mathcal{L}(\theta) \gets W(\mathbf{d}^*(\hat{\mathbf{r}});\mathbf{r}) - W(\mathbf{d}^*(\mathbf{r});\mathbf{r}) + \lambda F(\hat{\mathbf{r}})$. \Comment{Evaluate loss (end of forward propagation)}
+    \State Compute gradient $\nabla_{\theta}\mathcal{L}$ and update $\theta \gets \theta - \eta\nabla_{\theta}\mathcal{L}$. \Comment{Backward propagation}
+    \State If gradient is not available, compute subgradient $\partial_{\theta}\mathcal{L}$ and update $\theta \gets \theta - \eta\partial_{\theta}\mathcal{L}$.
+\EndFor
+\State \Return $\theta$
+\end{algorithmic}
+\end{algorithm}
+
+The key computational challenge in this algorithm lies in computing the gradient or subgradient in each iteration. Among all the terms involved in the gradient formulas, \eqref{eq:grad-chain-regret} and \eqref{eq:grad-chain-pred}, $\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$ is the most technically difficult. In the following subsections, we discuss strategies for computing or approximating this term. The other terms, including gradients of $W, F, f_{\theta}$, are generally straightforward to compute in practice. 
+
+\paragraph{Remark on theoretical consideration.}
+This work focuses on developing and empirically evaluating FDFL algorithms as practical methods for integrating fairness into end-to-end prediction and decision-making. We note that the decision regret loss is generally nonconvex in the predictor parameters. Although the differentiability of the decision regret enables gradient-based training, our training procedure does not offer guarantees of global optimality. Rigorous theoretical analysis of regret-based losses, covering aspects such as convexity, statistical consistency and generalization guarantees, is an important direction for future research. Recent advances in end-to-end learning (e.g., \cite{ho2022risk,elmachtoub2023estimate}) offer promising foundations for advancing theoretical understandings of E2EFO and FDFL.
+
+\subsection{Closed-Form Gradients for $\alpha$-Fairness Optimization} \label{sec:closed}
+In specific settings, the decision optimization problem admits closed-form solutions, allowing us to derive an exact analytical formula for the gradient term $\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$ and use it in the regret gradient computation \eqref{eq:grad-chain-regret}. This approach avoids the need for implicit differentiation or numerical approximation. Such exact gradient computation is possible for a specific class of decision problem: maximizing $\alpha$-fairness over a non-negative knapsack, where stakeholder utilities are linear in resource allocations. We explore this setup with both group-based and individual-based fairness objectives. 
+
+Suppose a decision maker has a total budget of $Q > 0$ to distribute resources among $n$ stakeholders belonging to $K$ groups. For each unit of resource, the stakeholder $i$ is associated with an allocation cost $c_i > 0$ and a benefit parameter $r_i$ (or its prediction $\hat{r}_i$). The allocation goal is to maximize the $\alpha$-fairness of the resulting utility distribution under a budget constraint. Given predicted parameters $\hat{\mathbf{r}}$, the corresponding decision optimization problem is formulated as follows.
+\begin{gather} \label{eqsys:alpha-g}
+\begin{aligned}
+\text{Group-based: }
+    & \max_{\mathbf{d}} ~ \sum_{i=1}^n W_{\alpha}^g (\mathbf{u}) \\
+    \text{ s.t. } & u_i = \hat{r}_id_i ~ \forall i, \sum_{i=1}^n c_id_i \leq Q, ~\mathbf{d} \geq 0.
+\end{aligned}
+\end{gather}
+\begin{gather} \label{eqsys:alpha-ind}
+\begin{aligned}
+\text{Individual-based: }
+    & \max_{\mathbf{d}} ~ \sum_{i=1}^n W_{\alpha} (\mathbf{u}) \\
+    \text{ s.t. } & u_i = \hat{r}_id_i ~ \forall i, \sum_{i=1}^n c_id_i \leq Q, ~\mathbf{d} \geq 0.
+\end{aligned}
+\end{gather}
+% Both models maximize a concave function in $\mathbf{d}$ subject to linear constraints that can be strictly satisfied, hence they are convex optimization problems with strong duality. In Proposition \ref{prop:closed_form_solution_group} and \ref{prop:closed_form_solution}, we use the respective KKT conditions of \eqref{eqsys:alpha-g} and \eqref{eqsys:alpha-ind} to derive optimal solutions in closed form. Differentiating the solution, $\mathbf{d}^*(\hat{\mathbf{r}})$, with respect to the input parameter, $\hat{\mathbf{r}}$, leads to the analytical gradient formulas given in Proposition XX and \ref{prop:analytical_gradient}. In these results, we focus on $\alpha \in (0,1) \bigcup (1,\infty)$, which is the case we investigate in numerical experiments. The remaining cases with $\alpha = 0$, $\alpha = 1$ and $\alpha \rightarrow \infty$ are discussed in Appendix XX along with the complete proofs for all formulas.
+
+We assume all parameters $\hat{r}_i, c_i, Q$ are positive. For $\alpha > 0$, both models maximize a strictly concave function in $\mathbf{d}$ over a compact convex set, ensuring the existence of a unique optimal solution.  
+In the following propositions, we use the Karush-Kuhn-Tucker (KKT) conditions to derive closed-form formulas for the optimal allocation decisions. For notation ease, we state the solution formulas for when true benefit parameters $\mathbf{r}$ is used as input. We then differentiate these formulas with respect to $\mathbf{r}$ to obtain exact analytical gradients. In the training iterations, to compute $\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$, we need to replace $\mathbf{r}$ with $\hat{\mathbf{r}}$ in the gradient formulas derived in Proposition \ref{prop:analytical_gradient_group-1} or \ref{prop:analytical_gradient-1}.
+
+In the main text, we discuss the general case where $\alpha \in (0,1) \bigcup (1,\infty)$. Special cases including $\alpha = 0$, $\alpha = 1$, and $\alpha \to \infty$ are treated separately and discussed in Appendix~\ref{app:proofs}. The proofs for all propositions are also given in Appendix~\ref{app:proofs}.
+
+\begin{proposition} [Closed-Form Decisions, Group-based Fairness]
+\label{prop:closed_form_solution_group-1}
+Let $\alpha \in (0, 1) \cup (1, \infty)$, the optimal solution to \eqref{eqsys:alpha-g} with parameter $\mathbf{r}$ is given by:
+\[
+d_i^* = \begin{cases}
+\frac{Q c_i^{-\frac{1}{\alpha}}r_i^{\frac{1-\alpha}{\alpha}}S_{k(i)}^{\frac{1}{\alpha-2}}}{\sum_{k=1}^K S_k^{1 +\frac{1}{\alpha-2}}} , & \text{ if } 0 < \alpha < 1; \\
+\\
+\frac{Q c_i^{-\frac{1}{\alpha}}r_i^{\frac{1-\alpha}{\alpha}} S_{k(i)}^{\frac{-\alpha+2}{-\alpha^2 + 2\alpha-2}}}{\sum_{k=1}^K S_k^{1 + \frac{-\alpha+2}{-\alpha^2 + 2\alpha-2}}}, & \text{ if } \alpha > 1
+\end{cases}, ~\forall i \in [n].
+\]
+where $k(i)$ is the group of stakeholder $i$, and for each group $k \in [K]$, $S_k = \sum_{i \in G_k} \left(c_i^{-1/\alpha} r_i^{1/\alpha} \right)^{1-\alpha}$.
+%$|G_k|$ is its group size, 
+\end{proposition}
+
+\begin{proposition} [Analytical Gradient Formulas, Group-based Fairness]
+\label{prop:analytical_gradient_group-1}
+Let $\mathbf{d}^*$ denote the optimal solution to \eqref{eqsys:alpha-g} with parameter $\mathbf{r}$, and define $\beta = \begin{cases} \frac{1}{\alpha-2}, \text{ if } 0 < \alpha < 1; \\
+\frac{-\alpha+2}{-\alpha^2 + 2\alpha-2}, \text{ if } \alpha > 1
+\end{cases}$. For $k \in [K]$, $S_k = \sum_{i \in G_k} \left(c_i^{-1/\alpha}r_i^{1/\alpha}\right)^{1-\alpha}$. For $i \in [n]$, $k(i)$ denote the group it belongs to. 
+
+The Jacobian $\frac{\partial \mathbf{d^*(\mathbf{r})}}{\partial \mathbf{r}}$ consists of the following components: for all $i \in [n]$,
+\begin{itemize}
+    \item  Derivative of decision $d_i$ with respect to $i$'s own benefit:
+    \[ \frac{\partial d_i^*}{\partial r_i} = \frac{1-\alpha}{\alpha}Qc_i^{-\frac{1}{\alpha}}r_i^{\frac{1}{\alpha}-2} \frac{S_{k(i)}^{\beta}}{\sum_{k=1}^K S_k^{1+\beta}} + Qc_i^{-\frac{1}{\alpha}}r_i^{\frac{1}{\alpha}-1} \frac{\partial S_{k(i)}^{\beta}}{\partial r_i} \left( \frac{1}{\sum_{k=1}^K S_k^{1+\beta}} - \frac{S_{k(i)}^{\beta}}{(\sum_{k=1}^K S_k^{1+\beta})^2}\right).
+    \]
+     \item  Derivative of decision $d_i$ with respect to the benefit of another member in the same group of $i$:
+     \[\frac{\partial d_i^*}{\partial r_k} = Qc_i^{-\frac{1}{\alpha}}r_i^{\frac{1}{\alpha}-1} \frac{\partial S_{k(i)}}{\partial r_k} \left( \frac{\beta S_{k(i)}^{\beta-1}}{\sum_{k=1}^K S_k^{1+\beta}} - \frac{(1+\beta)S_{k(i)}^{2\beta}}{(\sum_{k=1}^K S_k^{1+\beta})^2}\right), ~\forall k \neq i, k \in G_{k(i)}.\]
+     \item Derivative of decision $d_i$ with respect to the benefit of a member in a different group: 
+     \[
+     \frac{\partial d_i^*}{\partial r_j} = -Qc_i^{-\frac{1}{\alpha}}r_i^{\frac{1}{\alpha}-1}S_{k(i)}^{\beta}\frac{\partial S_{k(j)}}{\partial r_j} \frac{(\beta+1)S_{k(j)}^{\beta}}{(\sum_{k=1}^K S_k^{1+\beta})^2}, ~\forall j \notin G_{k(i)}. 
+     \]
+\end{itemize}
+In these formulas, the gradient of $S_k$ is given by
+\[
+\frac{\partial S_k}{\partial r_i} = \frac{1-\alpha}{\alpha}c_i^{1-\frac{1}{\alpha}}r_i^{\frac{1}{\alpha}-2}, ~\forall i \in G_k;
+~ \frac{\partial S_k}{\partial r_i} = 0, ~\forall i \notin G_k.
+\]
+\end{proposition}
+
+\begin{proposition} [Closed-Form Decisions, Individual-based Fairness]
+%[Closed-Form Solution for the $\alpha$-Fairness Problem]
+\label{prop:closed_form_solution-1}
+%For the alpha-fairness maximization problem with linear utility $u_i = r_i g_i d_i$, the optimal solution $d_i^*$ is given by:
+Let $\alpha \in (0, 1) \cup (1, \infty)$, the optimal solution to \eqref{eqsys:alpha-ind} with parameter $\mathbf{r}$ is given by:
+\[
+d_i^* = \frac{c_i^{-\frac{1}{\alpha}} \cdot r_i^{\frac{1}{\alpha} - 1} \cdot Q}{\sum_{j=1}^n c_j^{1-\frac{1}{\alpha}} \cdot r_j^{\frac{1}{\alpha} - 1}}, ~\forall i \in [n].
+\]
+\end{proposition}
+%The closed-form solution enables direct computation of gradients required in the training process. Specifically, we can derive the analytical expression for how the optimal decisions change with respect to changes in the unknown parameters.
+
+\begin{proposition} [Analytical Gradient Formulas, Individual-based Fairness]
+\label{prop:analytical_gradient-1}
+Let $\mathbf{d}^*$ denote the optimal solution to \eqref{eqsys:alpha-ind} with parameter $\mathbf{r}$, and define $S = \sum_{i=1}^n c_i^{1 - \frac{1}{\alpha}} \cdot r_i^{\frac{1}{\alpha}-1}$. 
+
+The Jacobian $\frac{\partial \mathbf{d^*(\mathbf{r})}}{\partial \mathbf{r}}$ consists of the following components: for all $i \in [n]$,
+\[
+\begin{aligned}
+    & \frac{\partial d_i^*}{\partial r_i} = \frac{Q \left( -1 + \frac{1}{\alpha} \right)c_i^{-\frac{1}{\alpha}} \cdot r_i^{\frac{1}{\alpha}-2} \left( S - c_i^{1-\frac{1}{\alpha}}\cdot r_i^{\frac{1}{\alpha}-1}\right)}{S^2}; \\
+    & \frac{\partial d_i^*}{\partial r_k} = \frac{-Q  \left( -1 + \frac{1}{\alpha} \right)c_i^{-\frac{1}{\alpha}} \cdot r_i^{\frac{1}{\alpha}-1} \cdot r_k^{\frac{1}{\alpha}-2} \cdot c_k^{1-\frac{1}{\alpha}}}{S^2}, ~\forall k \neq i.
+\end{aligned}
+\]
+\end{proposition}
+
+
+
+\subsection{Gradient Approximation Techniques} \label{sec:alg-approx-grad}
+When a closed-form solution to the decision optimization model is not available, the gradient component $\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$ cannot be derived analytically. In such cases, we rely on gradient approximation techniques, which are broadly applicable to a wide range of decision models and are compatible with the gradient computation chain used in backpropagation. Even when exact gradients are available, approximate methods may offer computational benefits, as explored in our numerical experiments.
+
+\subsubsection{Finite Difference Approximation} \label{sec:finite-diff}
+A simple and general strategy for gradient approximation is the finite difference method. 
+This technique has been applied in DFL with linear decision optimization models, such as the differentiable black-box optimizer (DBB) approach proposed in \cite{poganvcic2020differentiation}. Given a predicted parameter vector $\hat{\mathbf{r}}$, we consider a perturbation along the gradient of the decision objective with respect to the decision variables: $\mathbf{r}' = \hat{\mathbf{r}} + \epsilon \frac{\partial{W(\mathbf{d^*}(\mathbf{\hat{r}}),\mathbf{r})}}{\partial{\mathbf{d^*}(\mathbf{\hat{r}})}}$. Then we can approximate the Jacobian at $\hat{\mathbf{r}}$ as:
+\begin{equation} \label{eq:grad-approx} 
+\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}} \approx \frac{1}{\epsilon}(\mathbf{d}^*(\mathbf{r}') - \mathbf{d}^*(\hat{\mathbf{r}})).
+\end{equation}
+Here, $\epsilon > 0$ controls the size of perturbation. This approach provides non-zero approximate gradients and requires only two calls to the decision solver (for generating $\mathbf{d}^*(\mathbf{r}'), \mathbf{d}^*(\hat{\mathbf{r}})$) per gradient computation. A key limitation of this technique is the lack of theoretical guarantees on approximation quality. Moreover, the approximation may introduce numerical instability if $\epsilon$ is chosen poorly. 
+Nonetheless, it provides a useful and flexible baseline for fair decision optimization models where solvers are available but gradients are not analytically tractable.
+
+%For completeness, we survey additional approximation methods from the DFL literature in Appendix~\ref{app:dfl-methods}, which are applicable when the decision objective is linear in both predicted parameters $\hat{\mathbf{r}}$ and decision variables $\mathbf{d}$.
+
+\subsubsection{Folded Optimization based Approximation} \label{sec:foldopt}
+A more principled, yet still general, technique for computing gradients through optimization models is the Folded Optimization (Fold-Opt) approach proposed by \citet{kotaryfoldopt2023}. Fold-Opt provides a framework for differentiating through a wide range of optimization problems, including both convex and non-convex models, by leveraging the fixed point structure of iterative solution algorithms for these problems. 
+
+%While closed-form solutions provide exact and efficient gradients, they are only derivable for specific problem classes. For more general decision optimization models where an analytical solution is intractable, we require a different approach to compute gradients for FDFL. One powerful and general method is Folded Optimization (Fold-Opt), introduced by \citet{kotaryfoldopt2023}. Fold-Opt provides a framework for differentiating through a wide range of optimization problems, including both convex and non-convex ones, by analyzing the fixed-point properties of their iterative solvers.
+
+%The core idea behind Fold-Opt is that many optimization problems are solved using an iterative algorithm that repeatedly applies an update rule $U$, which can be expressed as $\mathbf{d}_{k+1}(\hat{\mathbf{r}}) = U(\mathbf{d}_k(\hat{\mathbf{r}}), \hat{\mathbf{r}})$, and the iterations converge to
+Let the decision problem be solved using an iterative algorithm that repeatedly applies an update rule $U$: $\mathbf{d}_{k+1}(\hat{\mathbf{r}}) = U(\mathbf{d}_k(\hat{\mathbf{r}}), \hat{\mathbf{r}})$. The sequence of updates converges the optimal solution, $\mathbf{d}_{k}(\hat{\mathbf{r}}) \rightarrow \mathbf{d}^*(\hat{\mathbf{r}})$ as $k \rightarrow \infty$. 
+At convergence, the fixed-point condition holds: $\mathbf{d}^*(\hat{\mathbf{r}}) = U(\mathbf{d}^*(\hat{\mathbf{r}}), \hat{\mathbf{r}})$. Using the implicit function theorem, we can differentiate the fixed-point condition and obtain the following linear system defining the Jacobian $\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$:
+\begin{gather*}
+\begin{aligned}
+    & \frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}} = \frac{\partial U(\mathbf{d}^*(\hat{\mathbf{r}}), \hat{\mathbf{r}})}{\partial \mathbf{d}^*(\hat{\mathbf{r}})} \cdot \frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}} + \frac{\partial U(\mathbf{d}^*(\hat{\mathbf{r}}), \hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}} \\
+\Rightarrow ~ & \left (\mathbf{I} - \underbrace{\frac{\partial U(\mathbf{d}^*(\hat{\mathbf{r}}), \hat{\mathbf{r}})}{\partial \mathbf{d}^*(\hat{\mathbf{r}})}}_{\Phi} \right) \frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}  = \underbrace{\frac{\partial U(\mathbf{d}^*(\hat{\mathbf{r}}), \hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}}_{\Psi}
+\end{aligned} 
+\end{gather*}
+where $I$ is the identity matrix and the Jacobians of $U$ are computed at the fixed point $(\mathbf{d}^*(\hat{\mathbf{r}}), \hat{\mathbf{r}})$.
+
+Although the linear system can be solved directly to obtain $\frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$, this approach is often inefficient due to the complexity of explicitly forming and inverting $I - \Phi$. Fold-Opt implements a more efficient alternative method. Instead of computing the decision Jacobian, it directly computes the Jacobian-vector product needed in the gradient chain, $\frac{\partial W(\mathbf{d}^*(\hat{\mathbf{r}});\mathbf{r})}{\partial \mathbf{d}^*(\hat{\mathbf{r}})} \cdot \frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}}$. 
+To obtain this product, Fold-Opt solves for $\mathbf{v} \in \mathbb{R}^n$ from the transposed linear system, $\mathbf{v}^T (I - \Phi) = (\frac{\partial W(\mathbf{d}^*(\hat{\mathbf{r}});\mathbf{r})}{\partial \mathbf{d}^*(\hat{\mathbf{r}})})^T$, then computes $\frac{\partial W(\mathbf{d}^*(\hat{\mathbf{r}});\mathbf{r})}{\partial \mathbf{d}^*(\hat{\mathbf{r}})} \cdot \frac{\partial \mathbf{d}^*(\hat{\mathbf{r}})}{\partial \hat{\mathbf{r}}} = v^T \Psi$. \cite{kotaryfoldopt2023} showed that this strategy significantly reduces computational and memory overhead. 
+
+In our implementation, we apply Fold-Opt to FDFL by unfolding a projected gradient descent solver for the decision problem. The update rule takes the form $U(\mathbf{d}, \hat{\mathbf{r}}) = \mathcal{P}_{\mathcal{S}}(\mathbf{d} + \eta \nabla_{\mathbf{d}} W(\mathbf{d}; \hat{\mathbf{r}}))$, where $\mathcal{P}_{\mathcal{S}}$ denotes the projection onto the feasible set $\mathcal{S}$ and $\eta$ is the step size. As we have described above, Fold-Opt uses this update rule to approximate the required vector-Jacobian product, supporting efficient backpropagation in each training iteration.
+
+%The main practical advantage of Fold-Opt is that it avoids explicitly forming the potentially large Jacobian matrices ($\frac{\partial U}{\partial \mathbf{d}^*}$ and $\frac{\partial U}{\partial \hat{\mathbf{r}}}$). Instead, it solves the linear system for the required Jacobian-vector product using iterative methods like the conjugate gradient method or GMRES. These iterative solvers only require the ability to compute matrix-vector products, which can be done efficiently using reverse-mode automatic differentiation on a single application of the update function $U$.
+
+%This approach offers several key benefits. First, it is highly general, applicable to any optimization problem solvable by an iterative method with a differentiable update step. Second, it is modular, allowing the use of highly optimized, black-box solvers for the forward pass to find $\mathbf{d}^*$, while only requiring the simple update rule $U$ for the backward pass. This makes it more computationally and memory-efficient than methods that require unrolling the entire solver on the computation graph. 
+
+%For our FDFL framework, we can apply Fold-Opt to our fairness optimization problems using an algorithm like Projected Gradient Descent (PGD). The update rule would be $U(\mathbf{d}, \hat{\mathbf{r}}) = \mathcal{P}_{\mathcal{S}}(\mathbf{d} + \eta \nabla_{\mathbf{d}} W(\mathbf{d}; \hat{\mathbf{r}}))$, where $\mathcal{P}_{\mathcal{S}}$ is the projection onto the feasible set $\mathcal{S}$ and $\eta$ is the step size. This allows our framework to handle complex fairness objectives and constraints that do not admit a closed-form solution.
+
+\section{Numerical Experiments} \label{sec:exp}
+
+We evaluate the proposed FDFL framework and multi-objective training algorithms on two resource allocation problems: a healthcare program enrollment task using real patient data (Section~\ref{sec:exp-health}), and a synthetic multidimensional knapsack problem (Section~\ref{sec:exp-knapsack}). Across both settings, we compare two-stage predict-then-optimize methods, data-driven optimization baselines, scalarized end-to-end training, and multi-objective FDFL variants.
+
+\subsection{Healthcare Resource Allocation} \label{sec:exp-health}
+
+\paragraph{Problem description and dataset.}
+%We consider the allocation of enrollment slots in a care management program, where the goal is to distribute a limited budget across patients to maximize group-level $\alpha$-fairness of patient benefits. This setting is motivated by the work of \citet{doi:10.1126/science.aax2342}, who documented racial disparities in a widely used commercial healthcare algorithm. We use their publicly available dataset of 48{,}784 patients, each described by approximately 140 features including demographics, comorbidity indices (Elixhauser and Romano scores), prior healthcare costs, laboratory results, and medication indicators. The prediction target is the patient's benefit from receiving the intervention, and the protected attribute is a binary indicator of patient race, defining two groups for group-based fairness evaluation. Each patient is associated with a resource cost, and the total budget is set to 30\% of the aggregate cost, reflecting a realistic scarcity constraint. The decision model maximizes the group-based $\alpha$-fairness objective $W_{\alpha}^g(\mathbf{u})$ in \eqref{eqsys:alpha-g}, subject to a budget constraint on total allocation costs.
+
+We evaluate our framework on a healthcare resource allocation problem using the dataset from \citet{doi:10.1126/science.aax2342}, a synthetic dataset gneerated from real medical records. The synthetic version preserves the joint statistical structure of the original cohort while protecting patient privacy and contains 48,784 records each described by approximately 140 features: demographics, comorbidity indices (Elixhauser and Romano), prior healthcare costs, laboratory results, medication indicators, and
+program enrollment decisions. The original study identified racial bias in widely deployed commercial risk-prediction algorithms: at equivalent risk scores, Black patients were substantially sicker than White patients yet less likely to be identified for the care
+management program. In the deployed system, enrollment decisions follow a two-stage rule---automatic enrollment for patients above the $97$th percentile of risk scores, and primary-care-physician referral for those above the $55$th percentile---which we use to
+ground the prediction target below.
+
+\emph{Prediction task.} 
+For each patient $i$ we model the utility of an enrollment decision $d_i \in [0,1]$ as $u_i(d_i) = r_i\, g_i\, d_i$, where $r_i$ is the risk score recorded in the dataset and $g_i$ is an unobserved gain factor representing how much the patient would benefit from enrollment. Ground-truth $g_i$ values are derived from avoidable costs (with nearest-neighbor imputation for patients lacking direct cost records) and a logistic regression on patient features that produces a continuous proxy for the binary $55$th-percentile enrollment threshold. The predictor $f_\theta$ is trained to estimate $g_i$ from the $\approx 140$ patient features. 
+
+\emph{Decision task.} 
+Given the predicted benefits $\hat{\mathbf u} = f_\theta(\mathcal D)$, the decision task is to allocate a fixed enrollment budget across patients to maximize the group-based $\alpha$-fairness welfare $W^g_\alpha(\mathbf u)$ from \eqref{eqsys:alpha-g}, subject to a budget constraint $\sum_i c_i d_i \le Q$ where $c_i$ is the per-patient enrollment cost. The total budget $Q$ is set to $30\%$ of the aggregate cost, reflecting realistic scarcity. The protected attribute is a binary indicator of patient race, defining two groups for group-based fairness evaluation. While this formulation abstracts away some clinical complexity of program-enrollment decisions, it isolates the end-to-end fairness trade-off between prediction quality and allocation equity that FDFL is designed to address.
+
+
+\paragraph{Methods compared.}
+We compare methods from four categories. (1)~\textit{Two-stage predict-then-optimize}: PTO trains a predictor by minimizing prediction MSE only; FPTO adds prediction fairness regularization (accuracy disparity) with weight $\lambda \in \{0.5, 1, 2\}$. PTO is equivalent to FPTO with $\lambda = 0$. (2)~\textit{Data-driven optimization baselines}: SAA (Sample Average Approximation) uses sample predictions directly without learning; WDRO (Wasserstein Distributionally Robust Optimization) provides a robust baseline. (3)~\textit{Scalarized end-to-end}: DFL minimizes decision regret only; FDFL-Scal adds prediction fairness regularization with a \emph{static} weight $\lambda \in \{0.5, 1, 2\}$, where DFL is equivalent to FDFL-Scal with $\lambda = 0$. FPLG additionally applies a \emph{scheduled} prediction weight $\alpha_t$ that decays over training iterations, so early steps emphasize prediction accuracy (similar to a warm-start) and later steps emphasize decision regret and fairness. FPLG is also swept over $\lambda \in \{0, 0.5, 1, 2\}$. (4)~\textit{Multi-objective end-to-end}: FDFL-PCGrad and FDFL-MGDA use multi-objective gradient methods to jointly balance three objectives---decision regret, prediction MSE, and prediction fairness---\emph{without} requiring manual $\lambda$ tuning.
+
+The MOO methods treat the three training signals as separate objectives and combine their gradients using established multi-objective optimization algorithms: PCGrad projects away conflicting gradient components, while MGDA finds the minimum-norm point in the convex hull of objective gradients.
+
+\paragraph{Experimental setup.}
+All learning-based methods use a two-layer MLP with hidden dimension 64 and ReLU activations. Training uses full-batch SGD with learning rate $1 \times 10^{-3}$ and a mild reciprocal decay $\mathrm{lr}_t = \mathrm{lr}_0 / (1 + 5 \times 10^{-4} \cdot t)$, for 70 gradient steps per $\lambda$ value. For scalarized methods (FPTO, FDFL-Scal, FPLG), the model is trained sequentially through $\lambda \in \{0, 0.5, 1, 2\}$ with warm-starting, yielding a Pareto sweep over the fairness--regret trade-off. The MOO methods use a single run ($\lambda = 0$) since they balance objectives internally. Decision gradients are computed using the analytical vector-Jacobian product derived in Proposition~\ref{prop:analytical_gradient_group-1}, which avoids forming the full $n \times n$ Jacobian. We report results for two fairness levels: $\alpha = 0.5$ (moderate concavity, closer to utilitarian) and $\alpha = 2$ (strong concavity, closer to egalitarian). All experiments are repeated over 5 random seeds; crucially, each seed uses its own random 50/50 train/test partition, so cross-seed variance captures both initialization noise and split-level variability. We report mean $\pm$ standard deviation.
+
+We evaluate three metrics: (i)~\textit{Normalized decision regret} $L_{\text{regret}} / W(\mathbf{d}^*(\mathbf{r});\mathbf{r})$, which measures the gap between the oracle decision and the prediction-based decision relative to the oracle objective value (lower is better); (ii)~\textit{Prediction fairness violation}, defined in the main table as the mean absolute deviation (MAD) of group-wise prediction MSEs \eqref{def:group-acc-parity} (lower means more equitable predictions); and (iii)~\textit{Prediction MSE} (lower is better). To check that the comparative findings do not hinge on the particular choice of per-group statistic, we rerun the full pipeline under three alternative prediction-fairness measures---demographic parity on mean predictions, bias parity on mean residuals, and the Atkinson index over per-group MSE---and report the full tables in Appendix~\ref{app:fairness}. The ranking of the end-to-end methods at $\alpha = 2$ is preserved in all three alternative measures.
+
+\paragraph{Results.}
+Table~\ref{tab:healthcare} reports the results across all methods and both $\alpha$ settings. Figure~\ref{fig:pareto-healthcare} visualizes the three-objective trade-offs as two-dimensional Pareto front projections.
+
+\input{Tables/table_healthcare}
+
+% TODO: This 8-panel Pareto grid is currently too busy to read well, especially
+% in the alpha=0.5 panels where the FPTO family, WDRO, and FDFL-PCGrad cluster
+% almost on top of each other, and in the mad/atkinson panels where FDFL-Scal
+% and FPLG sit at much larger fairness values than the rest of the methods,
+% flattening the x-axis range. Things to try later: (a) split the figure into
+% two 1x4 rows (one per alpha) or into two full figures, (b) log-scale the
+% fairness axes for MAD and bias_parity cells, (c) drop the train-overlay
+% dashed markers (they duplicate the solid markers in most cells), (d) drop
+% the SAA outlier so the axis tightens around the competitive cluster, or
+% (e) show only the Pareto-best point per method as a single-panel plot per
+% % fairness type. For now we keep the figure as-is and defer the redesign.
+
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=0.92\textwidth]{Plots/fig_pareto_healthcare.pdf}
+%   \caption{Pareto front projections for healthcare resource allocation across four choices of per-group fairness statistic (MAD of per-group MSE, demographic parity on mean predictions, the Atkinson index over per-group MSE, and bias parity on mean residuals; rows) and two welfare curvatures ($\alpha \in \{0.5, 2\}$; columns). FPTO, FDFL-Scal, and FPLG trace $\lambda$-sweep curves ($\lambda \in \{0, 0.5, 1, 2\}$); FDFL-PCGrad, FDFL-MGDA, SAA, and WDRO appear as single points. Solid markers are test performance, dashed open markers are training. Each marker is the mean over 5 seeds, each with its own train/test split; error bars show $\pm 1$ standard deviation. Table~\ref{tab:healthcare} reports the top-row (MAD) numerical values; Tables~\ref{tab:healthcare-dp}, \ref{tab:healthcare-bp}, \ref{tab:healthcare-atk} report the other rows.}
+%   \label{fig:pareto-healthcare}
+% \end{figure}
+
+\textit{Comparison at $\alpha = 0.5$ (moderate fairness).}
+\emph{(i) Two-stage vs.\ decision-focused end-to-end.}
+At $\alpha = 0.5$, where the decision objective has only moderate concavity, the two-stage predict-then-optimize family dominates the scalarized decision-focused family on every metric. All four FPTO variants attain normalized regret in the narrow range 0.0495--0.0508, fairness violation 17.40--23.94, and prediction MSE 133.8--145.6. In contrast, DFL ($\equiv$ FDFL-Scal with $\lambda = 0$) attains regret of 0.0749, fairness violation 119.7, and MSE 396.1---roughly doubling the regret and tripling the fairness violation and MSE of PTO. FPLG, the scheduled-weight variant, lands in the same region (regret 0.0735--0.0754, fairness $\approx 119$--120 across the whole $\lambda$ sweep). The $\alpha = 0.5$ welfare is near-linear in predicted utility, so the decision-regret gradient carries almost no signal that prediction MSE does not already provide, and any departure from MSE-optimal training hurts both metrics.
+
+\emph{(ii) Effect of prediction-fairness regularization within each family.}
+Within the scalarized end-to-end family, fairness regularization is far less effective: FDFL-Scal's fairness violation does shrink monotonically from 119.7 at $\lambda = 0$ to 30.0 at $\lambda = 2$, but it remains an order of magnitude larger than any FPTO value, and its regret stays essentially flat at 0.0731--0.0749. FPLG, which uses the same $\lambda$ knob on top of a scheduled prediction weight $\alpha_t$, shows an even smaller response: both its regret and its fairness violation remain essentially constant across the full $\lambda$ sweep. The reason is the one identified above: at $\alpha = 0.5$ the training signal is dominated by the decision-regret gradient, so an explicit fairness term cannot overcome the orientation the predictor has already been pushed into.
+
+\emph{(iii) Multi-objective end-to-end methods.}
+The two MOO variants split sharply. FDFL-PCGrad achieves the lowest normalized regret of \emph{any} method in the experiment (0.0488 $\pm$ 0.0004), together with a comparable fairness violation (21.28) and prediction MSE (131.6)---all without any $\lambda$ tuning. The orthogonal-projection step of PCGrad resolves the (mild) conflict between the three training gradients and lands on an operating point very close to PTO's, with marginally better regret. FDFL-MGDA, in contrast, reproduces the DFL failure mode (regret 0.0759, fairness 120.0, MSE 397.1): its minimum-norm convex combination ends up dominated by the decision-regret direction, which as established above carries no useful signal at $\alpha = 0.5$. Finally, SAA is the worst method overall at both $\alpha$ values due to its lack of learning (regret 0.0754, fairness 58.5).
+
+\textit{Comparison at $\alpha = 2$ (stronger fairness).}
+\emph{(i) Two-stage vs.\ decision-focused end-to-end.}
+At $\alpha = 2$, the strongly concave decision objective creates a genuine multi-objective trade-off, and the family ordering reverses: every decision-focused end-to-end method beats every two-stage baseline on regret. The scalarized end-to-end methods (FDFL-Scal and FPLG, all $\lambda$ values) attain normalized regret between 0.1273 and 0.1350, and the MOO end-to-end methods (FDFL-PCGrad at 0.1282 and FDFL-MGDA at 0.1309, both discussed in (iii) below) land in the same band. The two-stage family (FPTO and WDRO) trails at 0.1499--0.1582---more than $10\times$ the seed standard deviation gap---with PTO at 0.1534 and WDRO at 0.1499, so the best end-to-end method beats the best two-stage baseline by roughly 16\%--17\% in normalized regret. This is the regime where decision-focused training earns its reputation: the welfare's concavity decouples the decision-regret gradient from the prediction-MSE gradient, so reshaping the predictor around the allocation problem pays off.
+
+\emph{(ii) Effect of prediction-fairness regularization within each family.}
+Within the two-stage family, prediction-fairness regularization continues to trade regret for fairness monotonically: FPTO moves from $(0.1534, 23.94)$ at $\lambda = 0$ through $(0.1530, 20.99)$ at $\lambda = 1$ to $(0.1582, 17.40)$ at $\lambda = 2$. Notably, FPTO at $\lambda = 2$ still attains the smallest fairness violation in the entire table (17.40), so the two-stage family remains the \emph{fairest} operating point even when it loses on regret. Within the scalarized end-to-end family, the $\lambda$ sweep looks different from the $\alpha = 0.5$ case: FDFL-Scal's fairness violation is already small at $\lambda = 0$ (22.88) and shrinks only modestly to 21.84 at $\lambda = 2$, while its regret inches up from 0.1307 to 0.1350. FPLG uses the same $\lambda$ knob on top of its scheduled prediction weight $\alpha_t$, and its empirical response to $\lambda$ is tighter still: regret stays within a $0.0007$ band (0.1273--0.1282) and fairness violation stays near 25.1--25.5 across the full sweep. Among the scalarized end-to-end methods, FPLG with $\lambda = 0.5$ achieves the lowest normalized regret (\textbf{0.1275 $\pm$ 0.0020}).
+
+\emph{(iii) Multi-objective end-to-end methods.}
+The MOO variants behave very differently from each other at $\alpha = 2$. FDFL-PCGrad places second overall on regret (0.1282 $\pm$ 0.0019), within 0.0007 of the best scalarized method FPLG ($\lambda = 0.5$) and ahead of every two-stage baseline; its fairness violation (27.4) and prediction MSE (128.1) are only slightly worse than FPLG's. FDFL-MGDA, in contrast, lands at regret 0.1309---roughly tied with FDFL-Scal on the regret axis but with substantially worse prediction MSE (168.4 vs.\ 120.2). The gradient conflict analysis below explains this split: at $\alpha = 2$, FDFL-PCGrad's orthogonal-projection step keeps the decision--prediction gradient alignment positive, while FDFL-MGDA's minimum-norm combination leaves it in a region of strong objective conflict (including a negative decision--fairness cosine). The regret advantage of the top end-to-end methods comes at a modest fairness cost: FPLG settles near fairness violation 25.1--25.5, and FDFL-PCGrad at 27.4, both higher than the FPTO $\lambda = 2$ fairness minimum of 17.40. This trade-off is expected under strong concavity---end-to-end training reshapes the predictor around the allocation problem, spending some accuracy and fairness budget to reduce regret.
+
+\textit{Gradient conflict analysis.}
+Figure~\ref{fig:gradient-healthcare} reports the average pairwise cosine similarities between the three objective gradients during training, providing insight into the alignment structure that underlies the above findings.
+
+% \begin{figure}[ht]
+%   \centering
+%   \includegraphics[width=0.95\textwidth]{Plots/fig_gradient_healthcare.pdf}
+%   \caption{Average pairwise cosine similarities between objective gradients during training, measured at $\lambda = 0$ on the MAD cell for the four end-to-end methods (FDFL-Scal, FPLG, FDFL-PCGrad, FDFL-MGDA). The three gradient pairs are decision regret vs.\ prediction MSE ($\nabla_{\mathrm{dec}}, \nabla_{\mathrm{pred}}$), decision regret vs.\ prediction fairness ($\nabla_{\mathrm{dec}}, \nabla_{\mathrm{fair}}$), and prediction MSE vs.\ prediction fairness ($\nabla_{\mathrm{pred}}, \nabla_{\mathrm{fair}}$). Error bars show $\pm 1$ standard deviation over 5 seeds. Bars below the dashed line indicate anti-aligned gradients---a genuine objective conflict.}
+%   \label{fig:gradient-healthcare}
+% \end{figure}
+
+At $\alpha = 0.5$, all gradient pairs exhibit positive cosine similarity for FDFL-Scal, FPLG, and FDFL-MGDA: the decision--prediction cosine is $\approx 0.605$, decision--fairness $\approx 0.856$, and prediction--fairness $\approx 0.869$. FDFL-PCGrad, by virtue of its projection step, follows a different parameter trajectory and therefore measures smaller (but still positive) cosines of 0.329, 0.161, and 0.275 for the three pairs. This broad alignment at $\alpha = 0.5$ explains why the predict-then-optimize family and FDFL-PCGrad cluster tightly at low regret: improving prediction accuracy also tends to improve decision quality, so specialized decision-focused machinery has little to offer.
+
+At $\alpha = 2$, the gradient structure changes qualitatively. For the scalarized FDFL-Scal, the decision--prediction cosine becomes \emph{negative} ($-0.332 \pm 0.027$), as does the decision--fairness cosine ($-0.211 \pm 0.063$): the regret gradient pushes the predictor in a direction that anti-correlates with both accuracy-improving and fairness-improving moves. FDFL-MGDA similarly shows a strongly negative decision--fairness cosine ($-0.333 \pm 0.050$). FPLG sits in an intermediate regime ($-0.100$ and $-0.105$), reflecting its scheduled weighting that smooths out the transition from prediction-dominated updates to decision-dominated ones. Only FDFL-PCGrad maintains a positive decision--prediction cosine ($0.197 \pm 0.021$), because its orthogonal projection actively steers the model away from regions where the objectives conflict. This near-orthogonality or outright opposition between decision-side and prediction-side gradients at $\alpha = 2$ explains why predict-then-optimize methods (PTO, FPTO, WDRO) produce good prediction metrics but poor decision regret in this regime, and why FPLG and FDFL-PCGrad---both of which navigate conflicting gradient directions explicitly---achieve the lowest decision regret.
+
+\textit{Sensitivity to the prediction weight $\mu$.}
+
+%TODO put this in appendix
+FPLG differs from FDFL-Scal mainly through a scheduled weight
+$\alpha_t$ on the prediction-loss gradient that decays over
+training, smoothly handing the predictor off from an MSE-dominated
+regime early on to a regret-and-fairness-dominated regime later.
+A natural question is whether the same kind of control---reweighting
+the prediction term relative to the decision-regret term---is
+already useful as a \emph{fixed} dial, independent of any schedule.
+To probe this, we introduce a follow-up parameterization in which
+the scalarized training loss is written as
+$L_{\mathrm{regret}} + \mu\,L_{\mathrm{pred}} + \lambda F$, where
+$\mu \ge 0$ is a fixed prediction-loss weight. In this notation,
+the original FDFL ($\mu = 0$) recovers the no-MSE specification,
+FDFL-Scal ($\mu = 1$) recovers the unit-weight scalarization
+already reported in Table~\ref{tab:healthcare}, and intermediate
+values interpolate between them. The parameterization is a
+follow-up construct rather than a change to the methods evaluated
+in the main experiment.
+
+We rerun the healthcare experiment again with FDFL at $\mu \in \{0, 0.1, 0.5\}$
+alongside the $\mu = 1$ column already reported. At MAD fairness
+and $\alpha = 2$, all four $\mu$ values agree to within $0.003$ on
+normalized regret (FDFL $\mu=0$: $0.128 \pm 0.002$; $\mu=0.1$:
+$0.128 \pm 0.002$; $\mu=0.5$: $0.129 \pm 0.002$;
+$\mu=1$ (FDFL-Scal): $0.131 \pm 0.002$), and the same clustering
+holds for alternative prediction fairness, DP, bias-parity, and Atkinson at both $\alpha = 0.5$ and
+$\alpha = 2$. With the analytic decision gradient from
+Proposition~\ref{prop:analytical_gradient_group-1}, the regret term
+alone already supplies enough signal to keep the predictor
+calibrated, so varying $\mu$ has no measurable effect.
+Appendix~\ref{app:mu-followup} documents the full follow-up,
+including the contrasting behavior in the synthetic knapsack
+experiment where $\mu = 0$ diverges under stochastic decision
+gradients.
+
+
+
+
+\subsection{Synthetic Multidimensional Knapsack} \label{sec:exp-knapsack}
+
+We construct a synthetic knapsack allocation problem to examine how the methods perform under controlled unfairness conditions. A decision maker distributes a fixed budget across $n = 7$ items belonging to two groups, maximizing group-based $\alpha$-fairness subject to a knapsack constraint. Each item is described by 5 features, from which true benefit parameters are generated via a degree-2 polynomial model with additive group-dependent noise. We engineer three levels of systemic unfairness by varying the group bias and group size ratio:
+
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+Level & Group bias & Group ratio \\
+\midrule
+Mild   & 0.2 & 0.50 \\
+Medium & 0.4  & 0.60 \\
+High   & 0.6  & 0.75 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Higher unfairness levels correspond to larger systematic prediction bias against the minority group and more imbalanced group sizes. The budget tightness is 0.3, meaning the budget covers 30\% of total item costs, enforcing meaningful competition for resources. We use 400 training samples, 80 validation samples, and 200 test samples.
+
+We compare the same seven methods as in the healthcare experiment. All learning-based methods use a two-layer MLP with hidden dimension 64, trained with AdamW (learning rate $10^{-3}$, weight decay $10^{-4}$) for 70 steps with batch size 32. A key difference from the healthcare setting is the gradient computation: since the knapsack decision problem is solved via a general-purpose convex solver (MOSEK), decision gradients are approximated using simultaneous perturbation stochastic approximation (SPSA) rather than the analytic vector-Jacobian product available in the healthcare setting. This introduces noise into the decision gradient signal. We report results for $\alpha \in \{0.5, 2\}$ across all three unfairness levels, averaged over 5 seeds.
+
+
+\paragraph{Results at $\alpha = 0.5$.}
+Table~\ref{tab:knapsack-a05} reports the results at moderate fairness. DFL (FDFL-Scal, $\lambda = 0$) consistently achieves the lowest regret across all unfairness levels (0.0095--0.0103), improving 5--9\% over PTO (0.0104--0.0112). This demonstrates that decision-focused training provides a clear benefit even at moderate concavity, in contrast to the healthcare setting where PTO was competitive.
+
+The MOO methods FDFL-PCGrad and FDFL-CAGrad achieve intermediate regret (0.011--0.012), performing between DFL and PTO. While they do not match DFL's regret, they are competitive on prediction fairness: CAGrad achieves fairness violation of 0.058--0.094, comparable to FPTO ($\lambda = 0.5$). FDFL-MGDA shows higher variance and slightly worse regret. The $\lambda$-sweep methods (FPTO and FDFL-Scal with $\lambda > 0$) trade off regret for fairness, with over-regularization at $\lambda = 5$ roughly doubling the regret.
+
+\paragraph{Results at $\alpha = 2$.}
+Table~\ref{tab:knapsack-a2} reports the results under strong fairness. DFL again achieves the best or near-best regret (0.0775--0.0798), outperforming PTO (0.0829--0.0855) by 4--8\%. FDFL-Scal ($\lambda = 1$) reaches 0.0774 at high unfairness, matching DFL. These results confirm the advantage of end-to-end training in the knapsack setting.
+
+In sharp contrast to the healthcare experiment, the MOO methods perform substantially worse than the scalarized approaches: FDFL-PCGrad achieves regret of 0.104--0.115, FDFL-CAGrad 0.110--0.114, and FDFL-MGDA 0.134--0.146. The MOO methods also exhibit higher fairness violation (0.18--0.39 vs.\ 0.04--0.13 for FDFL-Scal variants) and prediction MSE (1.3--1.7 vs.\ 0.7--0.9). 
+
+%TODO put this in appendix
+\paragraph{Prediction-anchor dependence under stochastic decision gradients.}
+A feature of the knapsack experiment that does not appear in healthcare
+is that removing the prediction anchor entirely is not a safe operating
+point for FDFL. Within the follow-up $\mu$-parameterization introduced in Section~\ref{sec:exp-health}, the case $\mu = 0$ (no MSE term, matching the original FDFL specification) i.e.\ when
+the predictor is trained on decision regret and prediction-fairness
+alone, FDFL diverges on a substantial fraction of random seeds. On a
+redesigned per-individual cell ($\alpha = 2$,30 SPSA steps), FDFL at $\mu = 0$ attains
+average normalized regret $0.84 \pm 0.36$, with the predictor pushed
+into a degenerate region on 2 of 5 seeds where subsequent SPSA
+estimates provide no useful gradient. Introducing even a small fixed
+weight restores stability completely: FDFL at $\mu = 0.1$ drops to
+$0.197 \pm 0.004$, at $\mu = 0.5$ to $0.186 \pm 0.005$, and at
+$\mu = 1$ (FDFL-Scal) to $0.175 \pm 0.007$. The choice among these
+three $\mu$ values is second-order---they all sit in the same
+performance band as the scalarized FDFL-Scal reported in
+Table~\ref{tab:knapsack-a2}. The practical message is that a positive
+prediction weight acts as a cheap stabilizer in the stochastic-gradient
+regime, and leaving $\mu = 0$---which the original FDFL specification
+allows---is only safe when an accurate decision-gradient estimator is
+available.
+\paragraph{MOO in the stochastic-gradient regime.}
+The contrasting behavior of the multi-objective methods across the two
+experiments is informative. In the healthcare setting at $\alpha = 2$,
+FPLG and FDFL-PCGrad jointly achieved the lowest level of regret (within
+$0.0007$ of each other, both below every two-stage baseline); in the
+knapsack setting, FDFL-Scal and $\mu$-anchored FDFL variants are on
+top and the MOO methods are noticeably less reliable. Two structural
+differences explain the shift. First, the \textit{gradient computation}
+differs: the healthcare experiment uses the exact analytical Jacobian,
+while the knapsack relies on SPSA approximation. MOO algorithms such
+as PCGrad depend on accurate gradient directions to identify and
+resolve conflicts between objectives; when the decision gradient is
+noisy, the conflict-resolution projections can remove useful signal or
+introduce spurious corrections. Second, the \textit{gradient alignment
+structure} differs: prediction--fairness cosines and decision--prediction
+cosines are all small in the MD knapsack, indicating near-orthogonal
+objectives for which projection-based combination offers no advantage
+over a scalarized sum. A natural attempt at mitigation---equalizing
+the per-objective gradient magnitudes before PCGrad's conflict step,
+since the raw SPSA decision-regret norms exceed the prediction and
+fairness norms by roughly three orders of magnitude---removes the
+directional imbalance on most seeds but does not eliminate the
+stochastic-gradient failure mode: over nine seeds, eight produce
+stable runs competitive with FDFL-Scal, while one seed still diverges
+catastrophically. We
+document this analysis in Appendix~\ref{app:mu-followup} and conclude
+that MOO methods are best framed as a configuration option whose
+advantage is conditional on the quality of the decision-gradient
+estimator and the objective gradient alignment.
+
+
+
+\section{Conclusion and Discussion}\label{sec:conclusion}
+% summarize method
+This study introduces end-to-end fairness optimization (E2EFO) as a unifying framework for fair prediction-informed decision making. We focus on a resource allocation setting, where the prediction task estimates the impact of allocating resources, and the decision task seeks equitable distribution of these impacts. Within E2EFO, we define prediction fairness as the mean absolute deviation of prediction errors, and decision fairness as the $\alpha$-fairness of allocation utilities. We consider both group-based and individual-based definitions to distinguish fairness goals involving groups or individuals. 
+
+To operationalize E2EFO, we propose fair decision-focused learning (FDFL), a learning paradigm that jointly accounts for prediction fairness and decision fairness by minimizing a composite training loss, which combines decision regret and prediction fairness regularization. In contrast to the fair predict-then-optimize (FPTO) approach, which trains a predictor to attain low prediction error and disparity, FDFL directly aligns prediction training with the decision objective. A central technical challenge in training an FDFL predictor with backpropagation lies in computing the (sub)gradient of the prediction-based decision with respect to the predicted parameters, that is, differentiating through the decision optimization model. We provide three approaches to address this challenge: (1) exact closed-form gradients for $\alpha$-fairness maximization under non-negativity and knapsack constraints, (2) approximate gradients obtained from perturbation-based finite difference method, and (3) approximation based on unrolling an iterative optimization algorithm to solving the decision model. 
+
+% TODO summarize result
+We evaluate FDFL on two resource-allocation tasks: a healthcare allocation problem derived from real patient records (48,784) patients, analytic decision gradients) and a synthetic multidimensional knapsack (SPSA-based stochastic decision gradients). The two settings are chosen to span the quality of the decision-gradient estimator, which the empirical results identify as a key moderator of which training strategy wins. On healthcare, where the analytical vector-Jacobian product from Proposition~\ref{prop:analytical_gradient_group-1} is available, every decision-focused end-to-end method beats every two-stage baseline on regret at $\alpha = 2$ by $ 16$--$17\%$, and thee different prediction fairness level converts a fraction of that regret budget into lower prediction-fairness violation---at MAD $\alpha = 0.5$, FDFL-Scal reduces prediction-fairness violation by roughly $75\%$ going from $\lambda = 0$ to $\lambda = 2$ at a regret cost below $0.001$. Compared with DFL without prediction fairness consideration, FDFL thus attains notably better prediction fairness with minimal loss in decision quality. On the MD knapsack, where the decision gradient is approximated by SPSA, the end-to-end benefit persists for the scalarized and prediction-anchored variants but becomes fragile for the unanchored variant ($\mu = 0$) and for the multi-objective handlers. Adding any positive prediction weight $\mu > 0$ restores stability, and the choice of $\mu$ is second-order thereafter.
+FDFL thus attains notably better prediction fairness with minimal loss in decision quality. On the MD knapsack, where the decision gradient is approximated by SPSA, the end-to-end benefit persists for the scalarized and prediction-anchored variants but becomes fragile for the unanchored variant ($\mu = 0$) and for the multi-objective handlers. Adding any positive prediction weight $\mu > 0$ restores stability, and the choice of $\mu$ is second-order thereafter.
+
+% TODO practical implications
+We highlight two practical implications of our study. First, E2EFO provides a general and flexible framework for integrating fairness in data-driven decision systems. It is important to distinguish fair predictions and fair decisions for their different practical impacts: while prediction fairness can be interpreted as a type of procedural equity to seek comparable predictive performances, decision fairness emphasizes outcome equity to attain fair impact distribution. Second, FDFL offers a principled and practical solution to achieving end-to-end fairness. Our experiment results show strong empirical performance from both generic gradient approximation techniques and customized gradient computations leveraging problem structure. 
+%1. E2EFO provides a general tool for integrated consideration of fairness in data-driven decisions. Differentiate fairness in prediction and decision for their distinctive impacts on practice. Fair predictions can be interpreted as a type of procedural fairness - seeking comparable predictive performance. Fair decisions reflect outcome-centric fairness - seeking equity in impacts. 
+%2. FDFL is a promising method to address end-to-end fairness. Taking advantage of problem structure to design problem-specific gradient computation has potentials to improve performance. Generic method, such as pertubation based approximation, gives good empirical performance. 
+
+% limitations
+Several directions remain for future work. The current problem scope does not address important theoretical questions, such as 
+performance guarantees of FDFL under different fairness definitions, performance comparisons of FDFL versus standard DFL. 
+In addition, our method is developed for specific fairness definitions and the resource allocation problem. Future research could explore E2EFO and FDFL with alternative fairness 
+criteria or in other decision contexts. These new settings may also motivate the development of more scalable FDFL training strategies, such as gradient free methods \citep{shah2022decision,zharmagambetov2023landscape}.
+% our problem scope does not address many theoretical questions. Such as, lack of convexity of decision regret loss. performance guarantees of FDFL for different fairness definitions. Important future avenue to explore - whether and how fairness considerations in end-to-end methods are distinctive from the more common efficiency-driven decision goals in DFL. 
+
+
+%\THEEndNotes
+%\begingroup \parindent 0pt \parskip 0.0ex \def\enotesize{\normalsize} \theendnotes \endgroup
+
+% Appendix here
+% Options are (1) APPENDIX (with or without general title) or
+%             (2) APPENDICES (if it has more than one unrelated sections)
+% Outcomment the appropriate case if necessary
+%
+% \begin{APPENDIX}{<Title of the Appendix>}
+% \end{APPENDIX}
+%
+%   or
+%
+% \begin{APPENDICES}
+% \section{<Title of Section A>}
+% \section{<Title of Section B>}
+% etc
+% \end{APPENDICES}
+
+% Acknowledgments here
+% \ACKNOWLEDGMENT{We would like to express our sincere gratitude to [acknowledge individuals, organizations, or institutions] for their invaluable contributions to this research. We are also grateful to [mention any additional acknowledgements, such as technical assistance, data providers, or colleagues] for their support and assistance throughout the course of this work.}
+
+
+% References here (outcomment the appropriate case)
+
+% CASE 1: BiBTeX used to constantly update the references
+%   (while the paper is being written).
+
+\bibliographystyle{informs2014} % outcomment this and next line in Case 1
+\bibliography{sample-base} % if more than one, comma separated
+
+%\bibliographystyle{informs2014} % outcomment this and next line in Case 1
+%\bibliography{sample} % if more than one, comma separated
+
+% CASE 2: BiBTeX used to generate mypaper.bbl (to be further fine tuned)
+%\input{mypaper.bbl} % outcomment this line in Case 2
+
+%If you don't use BiBTex, you can manually itemize references as shown below.
+
+%\bibliographystyle{nonumber}
+\appendix
+
+\section{Appendix A}
+
+\begin{table}[htbp]
+\centering
+\caption{Healthcare resource allocation results, reporting MAD of group-wise prediction MSE as
+the fairness violation. Mean $\pm$ std.\ over 5 seeds, each using its own train/test partition of
+the 48{,}784-patient cohort. Best value per column is \textbf{bold}; all metrics are
+lower-is-better. FPTO, SAA, and WDRO train the same predictive model regardless of $\alpha$;
+only their normalized regret varies with $\alpha$. DFL-family methods use the decision gradient,
+so all three metrics depend on $\alpha$.}
+\label{tab:healthcare}
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+
+\smallskip
+\textit{Panel A: $\alpha = 0.5$}
+
+\smallskip
+\begin{tabular}{l ccc}
+\toprule
+Method & Norm.\ Regret & Fair.\ Viol. & Pred.\ MSE \\
+\midrule
+PTO ($\equiv$ FPTO, $\lambda\!=\!0$)      & $0.0500 \pm 0.0008$ & $23.938 \pm 1.373$ & $140.125 \pm 4.382$ \\
+FPTO ($\lambda\!=\!0.5$)                  & $0.0495 \pm 0.0006$ & $22.096 \pm 0.799$ & $135.311 \pm 3.009$ \\
+FPTO ($\lambda\!=\!1$)                    & $0.0496 \pm 0.0005$ & $20.987 \pm 0.593$ & $\mathbf{133.795 \pm 2.536}$ \\
+FPTO ($\lambda\!=\!2$)                    & $0.0508 \pm 0.0006$ & $\mathbf{17.400 \pm 3.377}$ & $145.638 \pm 12.049$ \\
+\midrule
+SAA                                       & $0.0754 \pm 0.0002$ & $58.498 \pm 3.647$ & $249.173 \pm 2.732$ \\
+WDRO                                      & $0.0490 \pm 0.0005$ & $21.008 \pm 0.851$ & $131.094 \pm 2.045$ \\
+\midrule
+DFL ($\equiv$ FDFL-Scal, $\lambda\!=\!0$) & $0.0749 \pm 0.0013$ & $119.686 \pm 5.605$ & $396.125 \pm 5.580$ \\
+FDFL-Scal ($\lambda\!=\!0.5$)             & $0.0653 \pm 0.0036$ & $112.172 \pm 6.972$ & $382.540 \pm 10.705$ \\
+FDFL-Scal ($\lambda\!=\!1$)               & $0.0731 \pm 0.0065$ & $46.208 \pm 13.070$ & $270.373 \pm 27.340$ \\
+FDFL-Scal ($\lambda\!=\!2$)               & $0.0746 \pm 0.0033$ & $30.009 \pm 2.100$ & $243.659 \pm 10.279$ \\
+\midrule
+FPLG ($\lambda\!=\!0$)                    & $0.0754 \pm 0.0013$ & $119.858 \pm 5.612$ & $396.682 \pm 5.565$ \\
+FPLG ($\lambda\!=\!0.5$)                  & $0.0748 \pm 0.0013$ & $119.702 \pm 5.607$ & $396.292 \pm 5.570$ \\
+FPLG ($\lambda\!=\!1$)                    & $0.0742 \pm 0.0013$ & $119.527 \pm 5.602$ & $395.878 \pm 5.579$ \\
+FPLG ($\lambda\!=\!2$)                    & $0.0735 \pm 0.0013$ & $119.309 \pm 5.595$ & $395.401 \pm 5.592$ \\
+\midrule
+FDFL-PCGrad                               & $\mathbf{0.0488 \pm 0.0004}$ & $21.282 \pm 0.579$ & $131.624 \pm 2.728$ \\
+FDFL-MGDA                                 & $0.0759 \pm 0.0014$ & $120.002 \pm 5.616$ & $397.067 \pm 5.561$ \\
+\bottomrule
+\end{tabular}
+
+\bigskip
+\textit{Panel B: $\alpha = 2$}
+
+\smallskip
+\begin{tabular}{l ccc}
+\toprule
+Method & Norm.\ Regret & Fair.\ Viol. & Pred.\ MSE \\
+\midrule
+PTO ($\equiv$ FPTO, $\lambda\!=\!0$)      & $0.1534 \pm 0.0033$ & $23.938 \pm 1.373$ & $140.125 \pm 4.382$ \\
+FPTO ($\lambda\!=\!0.5$)                  & $0.1522 \pm 0.0025$ & $22.096 \pm 0.799$ & $135.311 \pm 3.009$ \\
+FPTO ($\lambda\!=\!1$)                    & $0.1530 \pm 0.0020$ & $20.987 \pm 0.593$ & $\mathbf{133.795 \pm 2.536}$ \\
+FPTO ($\lambda\!=\!2$)                    & $0.1582 \pm 0.0018$ & $\mathbf{17.400 \pm 3.377}$ & $145.638 \pm 12.049$ \\
+\midrule
+SAA                                       & $0.2795 \pm 0.0024$ & $58.498 \pm 3.647$ & $249.173 \pm 2.732$ \\
+WDRO                                      & $0.1499 \pm 0.0024$ & $21.008 \pm 0.851$ & $131.094 \pm 2.045$ \\
+\midrule
+DFL ($\equiv$ FDFL-Scal, $\lambda\!=\!0$) & $0.1307 \pm 0.0019$ & $22.876 \pm 1.181$ & $\mathbf{120.202 \pm 1.166}$ \\
+FDFL-Scal ($\lambda\!=\!0.5$)             & $0.1310 \pm 0.0019$ & $22.298 \pm 1.106$ & $120.191 \pm 1.202$ \\
+FDFL-Scal ($\lambda\!=\!1$)               & $0.1315 \pm 0.0019$ & $21.868 \pm 1.100$ & $120.441 \pm 1.241$ \\
+FDFL-Scal ($\lambda\!=\!2$)               & $0.1350 \pm 0.0033$ & $21.842 \pm 1.099$ & $122.598 \pm 1.937$ \\
+\midrule
+FPLG ($\lambda\!=\!0$)                    & $0.1281 \pm 0.0018$ & $25.304 \pm 1.064$ & $125.483 \pm 1.155$ \\
+FPLG ($\lambda\!=\!0.5$)                  & $\mathbf{0.1275 \pm 0.0020}$ & $25.110 \pm 1.064$ & $124.370 \pm 1.149$ \\
+FPLG ($\lambda\!=\!1$)                    & $0.1277 \pm 0.0020$ & $25.284 \pm 0.943$ & $125.431 \pm 1.110$ \\
+FPLG ($\lambda\!=\!2$)                    & $0.1282 \pm 0.0020$ & $25.471 \pm 0.926$ & $127.382 \pm 1.197$ \\
+\midrule
+FDFL-PCGrad                               & $0.1282 \pm 0.0019$ & $27.386 \pm 2.871$ & $128.145 \pm 1.443$ \\
+FDFL-MGDA                                 & $0.1309 \pm 0.0013$ & $27.734 \pm 1.791$ & $168.381 \pm 6.972$ \\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+
+
+
+\begin{table}[htbp]
+\centering
+\caption{Synthetic knapsack, $\alpha=0.5$. Mean $\pm$ std over 5 seeds. Best in \textbf{bold}.}
+\label{tab:knapsack-a05}
+\small
+\begin{tabular}{lccc}
+\toprule
+Method & Regret & Fair. & MSE \\
+\midrule
+\multicolumn{4}{l}{\textbf{Mild}} \\
+PTO ($\equiv$ FPTO, $\lambda=0$) 
+    & 0.0110 $\pm$ 0.0008 & 0.0797 $\pm$ 0.0515 & \textbf{0.5753 $\pm$ 0.0375} \\
+FPTO ($\lambda=0.5$) 
+    & 0.0119 $\pm$ 0.0009 & \textbf{0.0428 $\pm$ 0.0219} & 0.6160 $\pm$ 0.0423 \\
+FPTO ($\lambda=1$) 
+    & 0.0143 $\pm$ 0.0015 & 0.0466 $\pm$ 0.0426 & 0.7114 $\pm$ 0.0412 \\
+FPTO ($\lambda=5$) 
+    & 0.0251 $\pm$ 0.0035 & 0.0448 $\pm$ 0.0171 & 1.2537 $\pm$ 0.1175 \\
+SAA 
+    & 0.0321 $\pm$ 0.0000 & 0.1689 $\pm$ 0.0000 & 1.6523 $\pm$ 0.0000 \\
+WDRO 
+    & 0.0115 $\pm$ 0.0010 & 0.0785 $\pm$ 0.0514 & 0.5902 $\pm$ 0.0400 \\
+DFL ($\equiv$ FDFL-Scal, $\lambda=0$) 
+    & \textbf{0.0100 $\pm$ 0.0006} & 0.0966 $\pm$ 0.0525 & 0.6015 $\pm$ 0.0390 \\
+FDFL-Scal ($\lambda=0.5$) 
+    & 0.0113 $\pm$ 0.0008 & 0.0492 $\pm$ 0.0245 & 0.6589 $\pm$ 0.0407 \\
+FDFL-Scal ($\lambda=1$) 
+    & 0.0142 $\pm$ 0.0019 & 0.0474 $\pm$ 0.0541 & 0.7771 $\pm$ 0.0458 \\
+FDFL-Scal ($\lambda=5$) 
+    & 0.0248 $\pm$ 0.0039 & 0.0524 $\pm$ 0.0152 & 1.3180 $\pm$ 0.1557 \\
+FDFL-PCGrad 
+    & 0.0123 $\pm$ 0.0012 & 0.0620 $\pm$ 0.0548 & 0.6837 $\pm$ 0.0317 \\
+FDFL-MGDA 
+    & 0.0122 $\pm$ 0.0008 & 0.0900 $\pm$ 0.0952 & 0.8584 $\pm$ 0.1064 \\
+FDFL-CAGrad 
+    & 0.0116 $\pm$ 0.0004 & 0.0732 $\pm$ 0.0602 & 0.7274 $\pm$ 0.0490 \\
+\midrule
+\multicolumn{4}{l}{\textbf{Medium}} \\
+PTO ($\equiv$ FPTO, $\lambda=0$) 
+    & 0.0112 $\pm$ 0.0008 & 0.1054 $\pm$ 0.0517 & \textbf{0.6006 $\pm$ 0.0355} \\
+FPTO ($\lambda=0.5$) 
+    & 0.0120 $\pm$ 0.0008 & 0.0528 $\pm$ 0.0338 & 0.6354 $\pm$ 0.0423 \\
+FPTO ($\lambda=1$) 
+    & 0.0146 $\pm$ 0.0015 & 0.0499 $\pm$ 0.0437 & 0.7474 $\pm$ 0.0384 \\
+FPTO ($\lambda=5$) 
+    & 0.0262 $\pm$ 0.0030 & \textbf{0.0327 $\pm$ 0.0239} & 1.3084 $\pm$ 0.1301 \\
+SAA 
+    & 0.0322 $\pm$ 0.0000 & 0.2470 $\pm$ 0.0000 & 1.7101 $\pm$ 0.0000 \\
+WDRO 
+    & 0.0117 $\pm$ 0.0009 & 0.1059 $\pm$ 0.0516 & 0.6152 $\pm$ 0.0374 \\
+DFL ($\equiv$ FDFL-Scal, $\lambda=0$) 
+    & \textbf{0.0103 $\pm$ 0.0004} & 0.1295 $\pm$ 0.0556 & 0.6337 $\pm$ 0.0438 \\
+FDFL-Scal ($\lambda=0.5$) 
+    & 0.0116 $\pm$ 0.0009 & 0.0614 $\pm$ 0.0408 & 0.6814 $\pm$ 0.0358 \\
+FDFL-Scal ($\lambda=1$) 
+    & 0.0145 $\pm$ 0.0022 & 0.0586 $\pm$ 0.0501 & 0.8144 $\pm$ 0.0576 \\
+FDFL-Scal ($\lambda=5$) 
+    & 0.0261 $\pm$ 0.0037 & 0.0888 $\pm$ 0.0673 & 1.4056 $\pm$ 0.2002 \\
+FDFL-PCGrad 
+    & 0.0123 $\pm$ 0.0012 & 0.0739 $\pm$ 0.0526 & 0.7081 $\pm$ 0.0325 \\
+FDFL-MGDA 
+    & 0.0127 $\pm$ 0.0010 & 0.0951 $\pm$ 0.0767 & 0.9165 $\pm$ 0.0879 \\
+FDFL-CAGrad 
+    & 0.0116 $\pm$ 0.0004 & 0.0942 $\pm$ 0.0545 & 0.7452 $\pm$ 0.0540 \\
+\midrule
+\multicolumn{4}{l}{\textbf{High}} \\
+PTO ($\equiv$ FPTO, $\lambda=0$) 
+    & 0.0104 $\pm$ 0.0011 & 0.0908 $\pm$ 0.0707 & \textbf{0.6503 $\pm$ 0.0343} \\
+FPTO ($\lambda=0.5$) 
+    & 0.0116 $\pm$ 0.0018 & \textbf{0.0398 $\pm$ 0.0197} & 0.7097 $\pm$ 0.0444 \\
+FPTO ($\lambda=1$) 
+    & 0.0137 $\pm$ 0.0014 & 0.0432 $\pm$ 0.0405 & 0.8544 $\pm$ 0.0589 \\
+FPTO ($\lambda=5$) 
+    & 0.0223 $\pm$ 0.0033 & 0.0884 $\pm$ 0.0748 & 1.3684 $\pm$ 0.1065 \\
+SAA 
+    & 0.0274 $\pm$ 0.0000 & 0.1369 $\pm$ 0.0000 & 1.8552 $\pm$ 0.0000 \\
+WDRO 
+    & 0.0108 $\pm$ 0.0012 & 0.0939 $\pm$ 0.0722 & 0.6659 $\pm$ 0.0359 \\
+DFL ($\equiv$ FDFL-Scal, $\lambda=0$) 
+    & \textbf{0.0095 $\pm$ 0.0005} & 0.1110 $\pm$ 0.0645 & 0.6853 $\pm$ 0.0441 \\
+FDFL-Scal ($\lambda=0.5$) 
+    & 0.0112 $\pm$ 0.0007 & \textbf{0.0202 $\pm$ 0.0232} & 0.7909 $\pm$ 0.0381 \\
+FDFL-Scal ($\lambda=1$) 
+    & 0.0136 $\pm$ 0.0016 & 0.0328 $\pm$ 0.0203 & 0.9416 $\pm$ 0.0760 \\
+FDFL-Scal ($\lambda=5$) 
+    & 0.0224 $\pm$ 0.0032 & 0.0868 $\pm$ 0.0687 & 1.4481 $\pm$ 0.1737 \\
+FDFL-PCGrad 
+    & 0.0116 $\pm$ 0.0008 & 0.0624 $\pm$ 0.0313 & 0.7887 $\pm$ 0.0354 \\
+FDFL-MGDA 
+    & 0.0123 $\pm$ 0.0010 & 0.0840 $\pm$ 0.0448 & 1.0381 $\pm$ 0.0712 \\
+FDFL-CAGrad 
+    & 0.0114 $\pm$ 0.0006 & 0.0577 $\pm$ 0.0208 & 0.8369 $\pm$ 0.0558 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+
+\begin{table}[htbp]
+\centering
+\caption{Synthetic knapsack, $\alpha=2$. Mean $\pm$ std over 5 seeds. Best in \textbf{bold}.}
+\label{tab:knapsack-a2}
+\small
+\begin{tabular}{lccc}
+\toprule
+Method & Regret & Fair. & MSE \\
+\midrule
+\multicolumn{4}{l}{\textbf{Mild}} \\
+PTO ($\equiv$ FPTO, $\lambda=0$) 
+    & 0.0829 $\pm$ 0.0121 & 0.0797 $\pm$ 0.0515 & \textbf{0.5753 $\pm$ 0.0375} \\
+FPTO ($\lambda=0.5$) 
+    & 0.0878 $\pm$ 0.0160 & \textbf{0.0428 $\pm$ 0.0219} & 0.6160 $\pm$ 0.0423 \\
+FPTO ($\lambda=1$) 
+    & 0.0967 $\pm$ 0.0118 & 0.0466 $\pm$ 0.0426 & 0.7114 $\pm$ 0.0412 \\
+FPTO ($\lambda=5$) 
+    & 0.1476 $\pm$ 0.0295 & 0.0448 $\pm$ 0.0171 & 1.2537 $\pm$ 0.1175 \\
+SAA 
+    & 0.1488 $\pm$ 0.0000 & 0.1689 $\pm$ 0.0000 & 1.6523 $\pm$ 0.0000 \\
+WDRO 
+    & 0.0853 $\pm$ 0.0129 & 0.0785 $\pm$ 0.0514 & 0.5902 $\pm$ 0.0400 \\
+DFL ($\equiv$ FDFL-Scal, $\lambda=0$) 
+    & \textbf{0.0798 $\pm$ 0.0187} & 0.1178 $\pm$ 0.0376 & 0.7374 $\pm$ 0.1856 \\
+FDFL-Scal ($\lambda=0.5$) 
+    & 0.0929 $\pm$ 0.0488 & 0.0844 $\pm$ 0.0408 & 0.8277 $\pm$ 0.3984 \\
+FDFL-Scal ($\lambda=1$) 
+    & 0.0917 $\pm$ 0.0426 & 0.0826 $\pm$ 0.0396 & 0.7723 $\pm$ 0.2701 \\
+FDFL-Scal ($\lambda=5$) 
+    & 0.0927 $\pm$ 0.0368 & 0.0834 $\pm$ 0.0357 & 0.8165 $\pm$ 0.2664 \\
+FDFL-PCGrad 
+    & 0.1037 $\pm$ 0.0183 & 0.1790 $\pm$ 0.1068 & 1.3927 $\pm$ 0.1260 \\
+FDFL-MGDA 
+    & 0.1336 $\pm$ 0.0479 & 0.1190 $\pm$ 0.0713 & 1.3067 $\pm$ 0.5814 \\
+FDFL-CAGrad 
+    & 0.1102 $\pm$ 0.0224 & 0.2006 $\pm$ 0.1176 & 1.5061 $\pm$ 0.1765 \\
+\midrule
+\multicolumn{4}{l}{\textbf{Medium}} \\
+PTO ($\equiv$ FPTO, $\lambda=0$) 
+    & 0.0842 $\pm$ 0.0130 & 0.1054 $\pm$ 0.0517 & \textbf{0.6006 $\pm$ 0.0355} \\
+FPTO ($\lambda=0.5$) 
+    & 0.0882 $\pm$ 0.0157 & 0.0528 $\pm$ 0.0338 & 0.6354 $\pm$ 0.0423 \\
+FPTO ($\lambda=1$) 
+    & 0.0995 $\pm$ 0.0120 & 0.0499 $\pm$ 0.0437 & 0.7474 $\pm$ 0.0384 \\
+FPTO ($\lambda=5$) 
+    & 0.1554 $\pm$ 0.0326 & \textbf{0.0327 $\pm$ 0.0239} & 1.3084 $\pm$ 0.1301 \\
+SAA 
+    & 0.1501 $\pm$ 0.0000 & 0.2470 $\pm$ 0.0000 & 1.7101 $\pm$ 0.0000 \\
+WDRO 
+    & 0.0866 $\pm$ 0.0136 & 0.1059 $\pm$ 0.0516 & 0.6152 $\pm$ 0.0374 \\
+DFL ($\equiv$ FDFL-Scal, $\lambda=0$) 
+    & \textbf{0.0775 $\pm$ 0.0105} & 0.1361 $\pm$ 0.0473 & 0.7213 $\pm$ 0.0654 \\
+FDFL-Scal ($\lambda=0.5$) 
+    & 0.0977 $\pm$ 0.0551 & 0.1189 $\pm$ 0.0453 & 0.8438 $\pm$ 0.3624 \\
+FDFL-Scal ($\lambda=1$) 
+    & 0.0883 $\pm$ 0.0329 & 0.1387 $\pm$ 0.0405 & 0.8401 $\pm$ 0.3371 \\
+FDFL-Scal ($\lambda=5$) 
+    & 0.0961 $\pm$ 0.0403 & 0.0875 $\pm$ 0.0461 & 0.8711 $\pm$ 0.3273 \\
+FDFL-PCGrad 
+    & 0.1053 $\pm$ 0.0178 & 0.2041 $\pm$ 0.1268 & 1.4649 $\pm$ 0.1416 \\
+FDFL-MGDA 
+    & 0.1344 $\pm$ 0.0335 & 0.2041 $\pm$ 0.0863 & 1.3981 $\pm$ 0.4863 \\
+FDFL-CAGrad 
+    & 0.1122 $\pm$ 0.0229 & 0.2598 $\pm$ 0.1571 & 1.5655 $\pm$ 0.1789 \\
+\midrule
+\multicolumn{4}{l}{\textbf{High}} \\
+PTO ($\equiv$ FPTO, $\lambda=0$) 
+    & 0.0855 $\pm$ 0.0142 & 0.0908 $\pm$ 0.0707 & \textbf{0.6503 $\pm$ 0.0343} \\
+FPTO ($\lambda=0.5$) 
+    & 0.0935 $\pm$ 0.0206 & \textbf{0.0398 $\pm$ 0.0197} & 0.7097 $\pm$ 0.0444 \\
+FPTO ($\lambda=1$) 
+    & 0.1058 $\pm$ 0.0155 & 0.0432 $\pm$ 0.0405 & 0.8544 $\pm$ 0.0589 \\
+FPTO ($\lambda=5$) 
+    & 0.1559 $\pm$ 0.0337 & 0.0884 $\pm$ 0.0748 & 1.3684 $\pm$ 0.1065 \\
+SAA 
+    & 0.1564 $\pm$ 0.0000 & 0.1369 $\pm$ 0.0000 & 1.8552 $\pm$ 0.0000 \\
+WDRO 
+    & 0.0877 $\pm$ 0.0147 & 0.0939 $\pm$ 0.0722 & 0.6659 $\pm$ 0.0359 \\
+DFL ($\equiv$ FDFL-Scal, $\lambda=0$) 
+    & 0.0786 $\pm$ 0.0104 & 0.1271 $\pm$ 0.0603 & 0.7768 $\pm$ 0.0731 \\
+FDFL-Scal ($\lambda=0.5$) 
+    & 0.0984 $\pm$ 0.0567 & 0.1250 $\pm$ 0.0446 & 0.9237 $\pm$ 0.4119 \\
+FDFL-Scal ($\lambda=1$) 
+    & \textbf{0.0774 $\pm$ 0.0095} & 0.0965 $\pm$ 0.0420 & 0.7789 $\pm$ 0.0783 \\
+FDFL-Scal ($\lambda=5$) 
+    & 0.0970 $\pm$ 0.0329 & 0.0452 $\pm$ 0.0335 & 0.9565 $\pm$ 0.3131 \\
+FDFL-PCGrad 
+    & 0.1148 $\pm$ 0.0327 & 0.2172 $\pm$ 0.1239 & 1.5401 $\pm$ 0.1869 \\
+FDFL-MGDA 
+    & 0.1461 $\pm$ 0.0408 & 0.1810 $\pm$ 0.1982 & 1.5919 $\pm$ 0.4634 \\
+FDFL-CAGrad 
+    & 0.1142 $\pm$ 0.0213 & 0.3947 $\pm$ 0.1291 & 1.6560 $\pm$ 0.1219 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+when the prediction-fairness penalty is
+\emph{decomposable}, namely when it can be written as an average of pointwise criterion terms
+over i.i.d.\ stakeholder-level records:
+\begin{equation}
+\label{eq:decomp-fair}
+\widetilde F(f_\theta(\mathcal D))
+=
+\frac{1}{n}\sum_{i=1}^n h_\theta(z_i),
+\qquad
+z_i=(x_i,r_i,a_i).
+\end{equation}
+In that case, the regularized FDFL objective
+\[
+L_{regret}(\theta)+\lambda \widetilde F(f_\theta(\mathcal D))
+\]
+is an empirical average of i.i.d.\ terms, and standard symmetrization, Rademacher complexity,
+and concentration arguments apply.
+
+The fairness metrics used in this paper are not of this form.
+For individual-based accuracy disparity \eqref{def:ind-acc-parity}, let
+\[
+e_i(\theta):=(r_i-f_\theta(x_i))^2,
+\qquad
+\overline e(\theta):=\frac{1}{n}\sum_{i=1}^n e_i(\theta).
+\]
+Then
+\begin{equation}
+\label{eq:ind-mad-repeat}
+F^{ind}(f_\theta(\mathcal D))
+=
+\frac{1}{n}\sum_{i=1}^n |e_i(\theta)-\overline e(\theta)|.
+\end{equation}
+Likewise, for group-based accuracy disparity \eqref{def:group-acc-parity}, define
+\[
+MSE_k(\theta):=\frac{1}{g_k}\sum_{i\in G_k}(r_i-f_\theta(x_i))^2,
+\qquad
+\overline{MSE}(\theta):=\frac{1}{K}\sum_{k=1}^K MSE_k(\theta),
+\]
+so that
+\begin{equation}
+\label{eq:group-mad-repeat}
+F^{grp}(f_\theta(\mathcal D))
+=
+\frac{1}{K}\sum_{k=1}^K |MSE_k(\theta)-\overline{MSE}(\theta)|.
+\end{equation}
+In both \eqref{eq:ind-mad-repeat} and \eqref{eq:group-mad-repeat}, each summand depends on a
+\emph{shared empirical center} ($\overline e(\theta)$ or $\overline{MSE}(\theta)$), so the fairness
+penalty is sample-coupled rather than pointwise decomposable.
+
+This creates two distinct failure modes in the standard proof.
+
+\paragraph{The symmetrization step is no longer pointwise.}
+For a decomposable fairness surrogate \eqref{eq:decomp-fair}, the empirical-process term takes the form
+\[
+\sup_{\theta\in\Theta}
+\left|
+\mathbb E[h_\theta(z)] - \frac{1}{n}\sum_{i=1}^n h_\theta(z_i)
+\right|,
+\]
+which can be controlled by standard symmetrization:
+\[
+\mathbb E\left[\sup_{\theta}
+\left|
+\mathbb E[h_\theta(z)] - \frac{1}{n}\sum_{i=1}^n h_\theta(z_i)
+\right|\right]
+\;\le\;
+2\,\text{Rad}_n(\{h_\theta:\theta\in\Theta\}).
+\]
+For the MAD penalty, however, the corresponding term is
+\[
+\sup_{\theta\in\Theta}
+\left|
+F^{ind}(f_\theta(\mathcal D))
+-
+F^{ind}_{pop}(\theta)
+\right|,
+\]
+or analogously for $F^{grp}$, and this is \emph{not} the supremum of an average of i.i.d.\ pointwise
+functions.
+Indeed,
+\[
+F^{ind}(f_\theta(\mathcal D))
+=
+\frac{1}{n}\sum_{i=1}^n
+\left|
+e_i(\theta)-\frac{1}{n}\sum_{j=1}^n e_j(\theta)
+\right|,
+\]
+so the $i$th term depends on all $z_1,\ldots,z_n$ through the empirical mean.
+Therefore one cannot directly rewrite the fairness part as a Rademacher process of the form
+\[
+\sup_{\theta\in\Theta}
+\frac{1}{n}\sum_{i=1}^n \sigma_i h_\theta(z_i).
+\]
+This is the first place where the usual proof architecture breaks.
+
+\paragraph{One-sample perturbations affect all summands.}
+For a decomposable criterion, replacing one sample $z_j$ by $z_j'$ changes only one summand in
+the empirical average, so bounded-difference estimates are immediate.
+For the individual-MAD penalty, replacing $z_j$ by $z_j'$ changes not only $e_j(\theta)$ but also
+the common center:
+\[
+\overline e(\theta)-\overline e'(\theta)=\frac{e_j(\theta)-e_j'(\theta)}{n}.
+\]
+Hence every summand is perturbed:
+\[
+\left|
+|e_i(\theta)-\overline e(\theta)|
+-
+|e_i'(\theta)-\overline e'(\theta)|
+\right|
+\neq 0
+\qquad
+\text{for many } i\neq j.
+\]
+Even when a bounded-difference inequality can still be proved, it is no longer a direct consequence
+of pointwise boundedness of $e_i(\theta)$; a separate argument is required.
+The same issue appears in the group-MAD penalty, where changing one observation perturbs the
+relevant group MSE and also the global center $\overline{MSE}(\theta)$.
+
+This phenomenon is standard in the literature on non-decomposable objectives.
+A common lesson is that once the target criterion is not an additive sum over data points, one
+typically cannot apply off-the-shelf stochastic-gradient or empirical-process arguments directly,
+and must instead use a reduction, linearization, plug-in argument, or a specially structured surrogate
+\citep{narasimhan2014consistency, narasimhan2015optimizing}.
+In the fairness literature, many works therefore adopt constraints, reductions, or convex penalties
+that preserve tractability and admit cleaner guarantees \citep{donini2018erm, agarwal2019fairregression}.
+
+\paragraph{What we do here.}
+Since our goal is not to propose a general new theory for non-decomposable fairness penalties.
+Instead, we could give a paper-specific bridge for the MAD criteria in
+\eqref{def:group-acc-parity}--\eqref{def:ind-acc-parity}.
+For the individual case, define the population-centered surrogate
+\[
+\widetilde F^{ind}_{ctr}(f_\theta(\mathcal D))
+:=
+\frac{1}{n}\sum_{i=1}^n |e_i(\theta)-\mu_\theta^{ind}|,
+\qquad
+\mu_\theta^{ind}:=\mathbb E[e_i(\theta)],
+\]
+and for the group case define
+\[
+\widetilde F^{grp}_{ctr}(f_\theta(\mathcal D))
+:=
+\frac{1}{K}\sum_{k=1}^K |MSE_k(\theta)-\mu_\theta^{grp}|,
+\qquad
+\mu_\theta^{grp}:=\frac{1}{K}\sum_{k=1}^K \mathbb E[MSE_k(\theta)].
+\]
+These surrogates remove the sample-coupled empirical centers and restore the decomposable structure.
+The key observation is that, by the reverse triangle inequality,
+\[
+\left|
+F^{ind}(f_\theta(\mathcal D))
+-
+\widetilde F^{ind}_{ctr}(f_\theta(\mathcal D))
+\right|
+\le
+|\overline e(\theta)-\mu_\theta^{ind}|,
+\]
+and similarly,
+\[
+\left|
+F^{grp}(f_\theta(\mathcal D))
+-
+\widetilde F^{grp}_{ctr}(f_\theta(\mathcal D))
+\right|
+\le
+|\overline{MSE}(\theta)-\mu_\theta^{grp}|.
+\]
+Therefore the statistical price of non-decomposability reduces to controlling the uniform deviation
+of the empirical center from its population counterpart.
+Once this deviation is bounded, the main generalization theorem can be applied to the centered
+surrogate, yielding the same $O(\sqrt{q/n})$ rate up to changed constants.
+
+\section{Appendix B}
+\subsection{FDFL Prediction-Weight Sweep and PCGrad Normalization}
+\label{app:mu-followup}
+
+This appendix documents two follow-up experiments motivated by the
+per-iteration gradient diagnostics on the knapsack task. Neither
+changes any number in the main-text tables
+(Table~\ref{tab:healthcare}, Tables~\ref{tab:knapsack-a05}--\ref{tab:knapsack-a2});
+both are offered as configuration options whose benefit is
+conditional on the decision-gradient regime.
+
+\paragraph{Setup.}
+Using the $\mu$-parameterization introduced in
+Section~\ref{sec:exp-health}, we rerun two cells of the main
+experiments with the extended FDFL family at $\mu\in\{0,0.1,0.5,1\}$
+alongside FPLG, FDFL-PCGrad, FDFL-MGDA, FPTO, SAA, and WDRO. The
+MD-knapsack cell uses the redesigned per-individual configuration
+($n_{\mathrm{train}} = 300$, $\alpha = 2$, MAD fairness, SPSA
+decision gradients with 8 directions and perturbation scale
+$5\times 10^{-3}$); we use five seeds and a follow-up run on four
+additional seeds to estimate the catastrophic-failure rate of
+normalized PCGrad. The healthcare cell reuses the main-text append
+configuration: four prediction-fairness measures, both
+$\alpha\in\{0.5,2\}$, 5 seeds, 70 training steps per $\lambda$,
+analytic decision gradients.
+
+\paragraph{Fixed prediction weight under SPSA.}
+The unanchored specification FDFL ($\mu = 0$) diverges on a
+substantial fraction of random seeds in the SPSA regime,
+attaining normalized test regret $0.84 \pm 0.36$ on the MD-knapsack
+cell with the predictor pushed into a degenerate region on
+$2/5$ seeds. Introducing any positive weight restores stability:
+FDFL-0.1 falls to $0.20 \pm 0.004$, FDFL-0.5 to
+$0.19 \pm 0.005$, and FDFL-Scal ($\mu = 1$) to $0.17 \pm 0.007$,
+all within the performance band of FPLG
+($0.19 \pm 0.004$). The choice among the positive $\mu$ values is
+second-order. A small fixed anchor is therefore the cheapest
+stabilizer against SPSA noise, and the original FDFL
+specification ($\mu = 0$) is only safe when an accurate
+decision-gradient estimator is available.
+
+\paragraph{PCGrad normalization.}
+A natural attempt to address PCGrad's scale-imbalance under SPSA is
+to normalize each per-objective gradient to unit length before the
+conflict-projection step and rescale the summed direction by the
+mean of the original norms. Normalization removes the directional
+imbalance on most seeds, but does not eliminate the
+stochastic-gradient failure mode: over nine seeds, eight produce
+stable runs competitive with FDFL-Scal
+($0.19 \pm 0.02$), while one seed diverges catastrophically
+($0.9999$, training regret $1.6\times 10^9$), an observed failure
+rate of $\approx 11\%$. On the analytic-gradient healthcare cell,
+normalization has a pronounced $\alpha$-dependent effect: at
+$\alpha = 0.5$ it improves normalized test regret by $16$--$34\%$
+relative to the anchored cluster across all four fairness measures,
+while at $\alpha = 2$ it is $\approx 3$--$5\%$ worse. The sign is
+consistent across fairness measures, suggesting that per-objective
+normalization selectively advantages the concave-welfare regime,
+where prediction and fairness gradients actively conflict in
+magnitude, over the convex regime, where the decision gradient is
+already well-aligned with the dominant objective.
+
+\paragraph{Gradient-scale diagnostic.}
+Figure~\ref{fig:app-gradient-scale-mu} visualizes the mechanism
+underlying the $\mu$ results. Under SPSA (top row),
+$\lVert\nabla_\theta L_{\mathrm{dec}}\rVert$ spans several orders
+of magnitude more than $\lVert\nabla_\theta L_{\mathrm{pred}}\rVert$
+at $\mu = 0$; introducing any positive $\mu$ suppresses the
+decision-norm explosion. Under analytic gradients (bottom row),
+decision and prediction norms remain on the same order of
+magnitude regardless of $\mu$, and the four trajectories are
+nearly indistinguishable.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.92\textwidth]{Plots/ijoc/fig_gradient_scale_mu_sweep.png}
+  \caption{Gradient-scale diagnostic for the $\mu$ follow-up. Each
+  panel reports $\lVert\nabla_\theta L_{\mathrm{dec}}\rVert$ and
+  $\lVert\nabla_\theta L_{\mathrm{pred}}\rVert$ on a log scale for
+  FDFL at $\mu\in\{0,0.1,0.5,1\}$. Top row: MD knapsack (SPSA)
+  shows an order-of-magnitude scale explosion at $\mu=0$ that
+  $\mu>0$ suppresses. Bottom row: healthcare (analytic gradients)
+  is flat across all $\mu$. Shaded bands are the $5$--$95\%$
+  seed/lambda quantile envelope.}
+  \label{fig:app-gradient-scale-mu}
+\end{figure}
+
+The two follow-up experiments isolate two distinct failure modes
+and two differently-shaped remedies. FDFL divergence under SPSA is
+cleanly resolved by any positive fixed prediction weight, with the
+particular value being second-order. PCGrad's scale-domination
+under SPSA is only partially addressed by per-objective
+normalization---a residual catastrophic-failure tail persists---and
+normalization has an $\alpha$-dependent effect on the analytic
+healthcare task. A positive prediction anchor is therefore the
+safer default under approximate decision gradients; per-objective
+normalization for PCGrad is best framed as a configuration option
+whose benefit depends on welfare curvature rather than a uniform
+improvement.
+
+%%%%%%%%%%%%%%%%%
+\end{document}
+%%%%%%%%%%%%%%%%%
+
+
+
