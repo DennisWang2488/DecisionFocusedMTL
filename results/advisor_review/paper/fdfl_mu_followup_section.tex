@@ -1,239 +1,107 @@
-% Standalone insertable LaTeX appendix section for the FDFL-mu /
-% PCGrad-normalization empirical follow-up. Intended to be \input{}'d
-% into the IJOC manuscript. Assumes the manuscript already loads
-% graphicx and booktabs.
-% Expected manuscript-side figure path:
+% Standalone insertable appendix section for the FDFL-mu /
+% PCGrad-normalization empirical follow-up. Tables removed;
+% key numbers inlined in prose. The only figure retained is the
+% gradient-scale diagnostic.
+%
+% Expected Overleaf-side figure path:
 %   Plots/fig_gradient_scale_mu_sweep.png
 
-\section{Empirical Follow-Up: Fixed Prediction Weights and Normalized PCGrad}
-\label{sec:exp-mu-followup}
+\section{FDFL Prediction-Weight Sweep and PCGrad Normalization}
+\label{app:mu-followup}
 
-\subsection{Motivation}
-The main experiments revealed a sharp contrast between the healthcare
-and knapsack settings. On healthcare, where decision gradients are
-computed analytically, end-to-end methods were consistently stable and
-the scalarized and multi-objective variants clustered tightly. On the
-synthetic multi-dimensional knapsack task, by contrast, the fair
-decision-focused methods were much more sensitive to the
-decision-gradient approximation. Per-iteration gradient logs showed two
-distinct failure modes specific to the SPSA decision-gradient regime.
-First, FDFL with no prediction weight ($\mu=0$) drifted during training
-whenever the SPSA estimate was noisy; without an MSE anchor, the
-predictor had no corrective signal to counteract stochastic decision
-updates. Second, PCGrad saw per-objective gradient norms differing by
-roughly three orders of magnitude---decision norms near $10^3$ and
-prediction / fairness norms near $10^0$---so the projection geometry
-that PCGrad uses to resolve conflicts was effectively dominated by a
-single objective on every step.
+This appendix documents two follow-up experiments motivated by the
+per-iteration gradient diagnostics on the knapsack task. Neither
+changes any number in the main-text tables
+(Table~\ref{tab:healthcare}, Tables~\ref{tab:knapsack-a05}--\ref{tab:knapsack-a2});
+both are offered as configuration options whose benefit is
+conditional on the decision-gradient regime.
 
-Two targeted fixes follow directly from this diagnosis. The first is a
-fixed prediction weight for FDFL, parameterized by $\mu$: we replace
-the original loss $L_{\mathrm{regret}} + \lambda F$ with
-\begin{equation}
-  L_{\mathrm{FDFL}}(\mu) = L_{\mathrm{regret}}
-  + \mu\, L_{\mathrm{pred}} + \lambda F.
-  \label{eq:fdfl-mu}
-\end{equation}
-The original FDFL corresponds to $\mu=0$, and FDFL-Scal corresponds to
-$\mu=1$; the intermediate values $\mu\in\{0.1,0.5\}$ allow us to test
-whether even a small anchor is sufficient. The second fix is
-per-objective normalization inside PCGrad: before the pairwise
-conflict-projection loop, each objective gradient is rescaled to unit
-$L_2$ norm, and the summed direction is then multiplied back by the
-mean of the original norms so the overall step size is preserved. This
-prevents any single objective's raw magnitude from biasing the
-projection while leaving PCGrad's optimization step scale unchanged.
+\paragraph{Setup.}
+Using the $\mu$-parameterization introduced in
+Section~\ref{sec:exp-health}, we rerun two cells of the main
+experiments with the extended FDFL family at $\mu\in\{0,0.1,0.5,1\}$
+alongside FPLG, FDFL-PCGrad, FDFL-MGDA, FPTO, SAA, and WDRO. The
+MD-knapsack cell uses the redesigned per-individual configuration
+($n_{\mathrm{train}} = 300$, $\alpha = 2$, MAD fairness, SPSA
+decision gradients with 8 directions and perturbation scale
+$5\times 10^{-3}$); we use five seeds and a follow-up run on four
+additional seeds to estimate the catastrophic-failure rate of
+normalized PCGrad. The healthcare cell reuses the main-text append
+configuration: four prediction-fairness measures, both
+$\alpha\in\{0.5,2\}$, 5 seeds, 70 training steps per $\lambda$,
+analytic decision gradients.
 
-\subsection{Follow-up design}
-We ran two follow-up experiments. The first is an MD-knapsack
-``$\mu$-sweep'' on the redesigned per-individual, two-resource knapsack
-with group-level $\alpha$-fair welfare, using $\alpha=2$, MAD
-fairness, $n_{\mathrm{train}}=300$, 30 training steps per $\lambda$,
-and SPSA decision gradients with 8 directions and perturbation scale
-$5\times 10^{-3}$. The initial run used five seeds
-$\{11,22,33,44,55\}$; a follow-up run on four additional seeds
-$\{66,77,88,99\}$ was used to estimate the catastrophic-failure rate
-of normalized PCGrad, yielding nine seeds in total. Ten methods were
-evaluated: FPTO, SAA, WDRO, FDFL with $\mu\in\{0,0.1,0.5\}$,
-FDFL-Scal, FPLG, PCGrad (with per-objective normalization), and MGDA.
-The second experiment is a healthcare append run on the full Obermeyer
-cohort with analytic decision gradients, which extends the existing
-grid with the three fixed-$\mu$ FDFL variants while leaving the
-paper-cited \texttt{stage\_results.csv} files untouched. The append
-run spans four prediction-fairness measures, two welfare curvatures
-$\alpha\in\{0.5,2\}$, five seeds, and 70 training steps per $\lambda$.
-In both experiments, performance is summarized by normalized test
-regret at the best $\lambda$ per (method, seed).
+\paragraph{Fixed prediction weight under SPSA.}
+The unanchored specification FDFL ($\mu = 0$) diverges on a
+substantial fraction of random seeds in the SPSA regime,
+attaining normalized test regret $0.84 \pm 0.36$ on the MD-knapsack
+cell with the predictor pushed into a degenerate region on
+$2/5$ seeds. Introducing any positive weight restores stability:
+FDFL-0.1 falls to $0.20 \pm 0.004$, FDFL-0.5 to
+$0.19 \pm 0.005$, and FDFL-Scal ($\mu = 1$) to $0.17 \pm 0.007$,
+all within the performance band of FPLG
+($0.19 \pm 0.004$). The choice among the positive $\mu$ values is
+second-order. A small fixed anchor is therefore the cheapest
+stabilizer against SPSA noise, and the original FDFL
+specification ($\mu = 0$) is only safe when an accurate
+decision-gradient estimator is available.
 
-\subsection{Results on MD knapsack (SPSA)}
-The $\mu$-sweep isolates the no-anchor variant as the unstable one.
-Table~\ref{tab:mu-followup-mdknapsack} reports normalized test regret
-for the main seed set at $\lambda=0$. FDFL with $\mu=0$ reaches
-$0.838 \pm 0.356$, diverging on two of five seeds and attaining
-genuine regret collapse (normalized regret $\approx 1.0$) in those
-runs. Introducing even a small fixed prediction weight is sufficient
-to restore stability: FDFL-$0.1$ falls to $0.197 \pm 0.004$ and
-FDFL-$0.5$ to $0.186 \pm 0.004$, placing both variants in the same
-performance band as FDFL-Scal ($0.175 \pm 0.007$) and FPLG
-($0.191 \pm 0.004$). This confirms the diagnosis: under SPSA, the
-decision gradient alone is too noisy to keep the predictor calibrated,
-whereas any positive MSE weight prevents the runaway trajectory
-observed for $\mu=0$.
+\paragraph{PCGrad normalization.}
+A natural attempt to address PCGrad's scale-imbalance under SPSA is
+to normalize each per-objective gradient to unit length before the
+conflict-projection step and rescale the summed direction by the
+mean of the original norms. Normalization removes the directional
+imbalance on most seeds, but does not eliminate the
+stochastic-gradient failure mode: over nine seeds, eight produce
+stable runs competitive with FDFL-Scal
+($0.19 \pm 0.02$), while one seed diverges catastrophically
+($0.9999$, training regret $1.6\times 10^9$), an observed failure
+rate of $\approx 11\%$. On the analytic-gradient healthcare cell,
+normalization has a pronounced $\alpha$-dependent effect: at
+$\alpha = 0.5$ it improves normalized test regret by $16$--$34\%$
+relative to the anchored cluster across all four fairness measures,
+while at $\alpha = 2$ it is $\approx 3$--$5\%$ worse. The sign is
+consistent across fairness measures, suggesting that per-objective
+normalization selectively advantages the concave-welfare regime,
+where prediction and fairness gradients actively conflict in
+magnitude, over the convex regime, where the decision gradient is
+already well-aligned with the dominant objective.
 
-Normalized PCGrad, in contrast, does not cleanly resolve the
-SPSA-induced failure. On the main five seeds its summary statistic is
-$0.354 \pm 0.362$, well above the anchored cluster and with very large
-variance. The source of the variance is a single catastrophic seed
-(seed~55) rather than uniformly noisy performance. To quantify this
-effect we ran PCGrad on four additional seeds with the same task and
-training configuration; all four produced stable runs (normalized
-regret in $[0.163,\,0.207]$). Over the full nine-seed panel, eight
-seeds are stable at $0.189 \pm 0.024$---numerically indistinguishable
-from the anchored methods---while seed 55 alone reaches $0.9999$ with
-an empirical training regret of $1.65\times 10^9$, a deterministic
-runaway rather than gradient overflow. This indicates a residual
-failure mode that normalization does not eliminate: the rescaling of
-the summed direction by the mean of the original gradient norms still
-allows an SPSA magnitude spike to inflate the effective step size, and
-a single large step into a degenerate region of parameter space is
-sufficient to trap the predictor, since subsequent SPSA estimates
-around that region are equally uninformative. The observed failure
-rate is $1/9 \approx 11\%$, not an artifact of the original five-seed
-sample.
+\paragraph{Gradient-scale diagnostic.}
+Figure~\ref{fig:app-gradient-scale-mu} visualizes the mechanism
+underlying the $\mu$ results. Under SPSA (top row),
+$\lVert\nabla_\theta L_{\mathrm{dec}}\rVert$ spans several orders
+of magnitude more than $\lVert\nabla_\theta L_{\mathrm{pred}}\rVert$
+at $\mu = 0$; introducing any positive $\mu$ suppresses the
+decision-norm explosion. Under analytic gradients (bottom row),
+decision and prediction norms remain on the same order of
+magnitude regardless of $\mu$, and the four trajectories are
+nearly indistinguishable.
 
-\begin{table}[t]
-\centering
-\small
-\caption{MD-knapsack follow-up at $\lambda=0$. Columns report
-normalized test regret as mean $\pm$ standard deviation over seeds.
-FDFL with $\mu=0$ diverges in $2/5$ seeds; normalized PCGrad fails in
-$1/9$ seeds, with the remaining eight seeds stable and competitive.
-Lower is better. Bold marks the best anchored method per column.}
-\label{tab:mu-followup-mdknapsack}
-\begin{tabular}{lcc}
-\toprule
-Method & 5-seed mean & 9-seed / stable-subset mean \\
-\midrule
-FDFL ($\mu=0$)     & 0.838 $\pm$ 0.356     & --- \\
-FDFL-0.1           & 0.197 $\pm$ 0.004     & --- \\
-FDFL-0.5           & 0.186 $\pm$ 0.004     & --- \\
-FDFL-Scal ($\mu=1$)& 0.175 $\pm$ 0.007     & --- \\
-FPLG               & \textbf{0.191 $\pm$ 0.004} & --- \\
-PCGrad (normalized)& 0.354 $\pm$ 0.362     & 0.189 $\pm$ 0.024 (8/9 stable) \\
-MGDA               & 0.167 $\pm$ 0.006     & --- \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Results on healthcare (analytic gradients)}
-The healthcare append experiment tells a complementary story.
-Table~\ref{tab:mu-followup-healthcare} reports normalized test regret
-at the best $\lambda$ per (method, seed) for each
-(fairness type, $\alpha$) cell. Two observations stand out.
-
-First, the fixed-$\mu$ FDFL variants are numerically indistinguishable
-from one another on this task. At MAD fairness and $\alpha=2$, FDFL
-with $\mu=0$ attains $0.128\pm 0.002$, FDFL-$0.1$ attains
-$0.128\pm 0.002$, FDFL-$0.5$ attains $0.129\pm 0.002$, and FDFL-Scal
-attains $0.131\pm 0.002$. The same clustering holds across the other
-fairness measures and at $\alpha=0.5$ (not shown individually, since
-the within-cell mu-cluster spread never exceeds $0.003$). This is the
-expected pattern: when the decision gradient is analytic and
-low-variance, the predictor is pulled toward the correct outcomes
-directly by the regret term, and the MSE anchor becomes redundant.
-
-Second, normalized PCGrad has a strikingly $\alpha$-dependent effect.
-At $\alpha=0.5$, normalization drives PCGrad well below the anchored
-scalarized family across all four fairness measures, with relative
-reductions in the 16--34\% range (for example, at MAD $\alpha=0.5$:
-PCGrad $0.048\pm 0.001$ vs. FDFL-Scal $0.064$ and FPLG $0.065$). At
-$\alpha=2$, the effect reverses: normalized PCGrad is a modest
-$3$--$5$\% worse than the anchored cluster (for example, at MAD
-$\alpha=2$: PCGrad $0.133\pm 0.004$ vs.\ FDFL-Scal $0.131$ and FPLG
-$0.128$). The sign of the effect is consistent across all four
-fairness types and both welfare curvatures, which suggests it is not
-sampling noise. The most plausible explanation is that per-objective
-normalization selectively advantages the concave-welfare regime, where
-the prediction and fairness gradients are comparable in magnitude and
-actively conflict, over the convex-welfare regime, where the
-decision-regret gradient is already well aligned with the dominant
-objective and equalizing magnitudes removes useful scale information.
-
-\begin{table}[t]
-\centering
-\small
-\caption{Healthcare follow-up, normalized test regret (mean $\pm$ std
-over 5 seeds, best-$\lambda$ per seed). Across the four prediction
-fairness measures, the FDFL $\mu$-family is indistinguishable within
-each cell. Normalized PCGrad improves on the anchored cluster at
-$\alpha=0.5$ across all four fairness measures and is marginally
-worse at $\alpha=2$. Lower is better. Bold marks the best method per
-column.}
-\label{tab:mu-followup-healthcare}
-\begin{tabular}{lcccccccc}
-\toprule
-& \multicolumn{2}{c}{MAD}
-& \multicolumn{2}{c}{DP}
-& \multicolumn{2}{c}{Atkinson}
-& \multicolumn{2}{c}{Bias-parity} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
-$\alpha$ & 0.5 & 2 & 0.5 & 2 & 0.5 & 2 & 0.5 & 2 \\
-\midrule
-FDFL           & 0.064 & 0.128 & 0.075 & 0.131 & 0.075 & 0.131 & 0.074 & 0.130 \\
-FDFL-0.1       & 0.064 & 0.128 & 0.074 & 0.131 & 0.074 & 0.131 & 0.074 & 0.130 \\
-FDFL-0.5       & 0.064 & 0.129 & 0.074 & 0.131 & 0.074 & 0.131 & 0.074 & 0.130 \\
-FDFL-Scal      & 0.064 & 0.131 & 0.075 & 0.131 & 0.075 & 0.131 & 0.075 & 0.131 \\
-FPLG           & 0.065 & \textbf{0.128} & 0.074 & \textbf{0.127} & 0.074 & \textbf{0.127} & 0.073 & \textbf{0.127} \\
-PCGrad (norm.) & \textbf{0.048} & 0.133 & \textbf{0.063} & 0.144 & \textbf{0.053} & 0.137 & \textbf{0.049} & 0.130 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Gradient-scale diagnostic}
-Figure~\ref{fig:gradient-scale-mu-followup} visualizes the mechanism
-behind the contrasting outcomes. The top row (MD knapsack, SPSA)
-shows a large separation between decision-gradient and
-prediction-gradient norms, with a pronounced vertical blow-up of the
-decision norm at $\mu=0$ and a sharp scale contraction for $\mu>0$.
-The bottom row (healthcare, analytic gradients) is visually flat:
-decision and prediction norms remain on the same order of magnitude
-across all four $\mu$ values throughout training, and the trajectories
-for $\mu\in\{0,0.1,0.5,1\}$ are nearly indistinguishable. The figure
-reinforces the main message: a fixed prediction weight matters when
-the decision gradient is noisy and poorly scaled, and has negligible
-effect when the gradient is analytic and well-behaved.
-
-\begin{figure}[t]
+\begin{figure}[ht]
   \centering
   \includegraphics[width=0.92\textwidth]{Plots/fig_gradient_scale_mu_sweep.png}
-  \caption{Gradient-scale diagnostic for the $\mu$-follow-up. Each
+  \caption{Gradient-scale diagnostic for the $\mu$ follow-up. Each
   panel reports $\lVert\nabla_\theta L_{\mathrm{dec}}\rVert$ and
   $\lVert\nabla_\theta L_{\mathrm{pred}}\rVert$ on a log scale for
   FDFL at $\mu\in\{0,0.1,0.5,1\}$. Top row: MD knapsack (SPSA)
   shows an order-of-magnitude scale explosion at $\mu=0$ that
-  $\mu>0$ suppresses. Bottom row: healthcare (analytic) is flat
-  across all $\mu$. Shaded bands are the $5$--$95\%$ seed/lambda
-  quantile envelope.}
-  \label{fig:gradient-scale-mu-followup}
+  $\mu>0$ suppresses. Bottom row: healthcare (analytic gradients)
+  is flat across all $\mu$. Shaded bands are the $5$--$95\%$
+  seed/lambda quantile envelope.}
+  \label{fig:app-gradient-scale-mu}
 \end{figure}
 
-\subsection{Takeaway}
-The two follow-up experiments isolate two distinct failure modes and
-two differently-shaped remedies. The first failure mode---FDFL
-divergence under SPSA---is cleanly resolved by adding any positive
-fixed prediction weight. The effect is monotone in the SPSA regime
-and the choice of $\mu\in\{0.1,0.5,1\}$ is second-order, while in
-the analytic regime the anchor is irrelevant. The second failure
-mode---PCGrad's scale-domination under SPSA---is only partially
-addressed by per-objective normalization: normalization resolves the
-directional imbalance on the majority of seeds but leaves a non-trivial
-($\approx 11\%$ observed) tail of catastrophic failures, because the
-step-size rescaling still transmits gradient-magnitude spikes to the
-predictor. On analytic gradients, normalization has an
-$\alpha$-dependent effect: a substantial improvement at concave
-welfare curvatures and a marginal regression at convex ones. The
-practical implication is that a fixed prediction anchor is a safe
-default first stabilizer whenever decision gradients are approximate,
-while per-objective gradient normalization is best framed as a
-configuration option to be enabled selectively rather than as a
-drop-in replacement for the original projection.
+\paragraph{Takeaway.}
+The two follow-up experiments isolate two distinct failure modes
+and two differently-shaped remedies. FDFL divergence under SPSA is
+cleanly resolved by any positive fixed prediction weight, with the
+particular value being second-order. PCGrad's scale-domination
+under SPSA is only partially addressed by per-objective
+normalization---a residual catastrophic-failure tail persists---and
+normalization has an $\alpha$-dependent effect on the analytic
+healthcare task. A positive prediction anchor is therefore the
+safer default under approximate decision gradients; per-objective
+normalization for PCGrad is best framed as a configuration option
+whose benefit depends on welfare curvature rather than a uniform
+improvement.
